@@ -34,7 +34,8 @@ CSV-GameChanger/
 │   ├── __init__.py
 │   ├── risk_strategist.py       # GAMP 5 risk assessment logic
 │   ├── requirement_architect.py # URS generation from natural language
-│   └── verification_agent.py    # URS verification against GAMP 5 text
+│   ├── verification_agent.py    # URS verification against GAMP 5 text
+│   └── integrity_manager.py     # Central audit trail + logic archives
 ├── API/
 │   ├── __init__.py
 │   └── main.py                  # FastAPI app with ServiceNow webhook
@@ -43,7 +44,8 @@ CSV-GameChanger/
 │   ├── ingest_docs.py           # Ingests GAMP 5 PDFs to Pinecone
 │   └── draft_urs.py             # Generate URS documents from requirements
 ├── output/
-│   └── urs/                     # Generated URS Markdown files
+│   ├── urs/                     # Generated URS Markdown files
+│   └── logic_archives/          # Hidden JSON logic-archive files (generated)
 ├── audit_trail.log              # 21 CFR Part 11 compliant audit log (generated)
 └── CLAUDE.md
 ```
@@ -350,6 +352,100 @@ results = agent.verify_batch([urs1, urs2, urs3])
 rejected = [r for r in results if r.is_rejected]
 ```
 
+### Agents/integrity_manager.py
+
+**Integrity Manager Module** - Provides a central, append-only CSV audit trail and optional logic archives for AI reasoning transparency.
+
+**Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `AUDIT_TRAIL_PATH` | `output/audit_trail.csv` | Central CSV audit trail |
+| `LOGIC_ARCHIVE_DIR` | `output/logic_archives/` | Directory for JSON logic-archive files |
+| `_ARCHIVE_SCHEMA_VERSION` | `"1.0.0"` | Schema version embedded in each archive |
+
+**Core Functions:**
+
+| Function | Input | Output | Purpose |
+|----------|-------|--------|---------|
+| `log_audit_event()` | agent_name, action, user_id, decision_logic, compliance_impact, audit_path, thought_process | str (SHA-256 hash) | Append audit record to CSV; optionally write logic archive |
+| `_compute_reasoning_hash()` | timestamp, user_id, agent_name, action, decision_logic, compliance_impact | str (SHA-256 hex) | Tamper-evident hash over audit row fields |
+| `_validate_thought_process()` | thought_process: Dict | None | Validates dict has `inputs`, `steps` (list), `outputs` keys |
+| `_write_logic_archive()` | timestamp, agent_name, action, user_id, compliance_impact, decision_logic, audit_trail_hash, thought_process | Path | Write hidden JSON archive cross-referenced to CSV row |
+| `_ensure_csv_header()` | path: Path | None | Write CSV header if file is new or empty |
+
+**Logic Archive Feature:**
+
+When `thought_process` is passed to `log_audit_event()`, a hidden dot-prefixed JSON file is written to `output/logic_archives/` containing the full AI reasoning chain (inputs, intermediate steps, outputs). The archive is cross-referenced to the CSV audit trail row via the SHA-256 reasoning hash and includes its own tamper-evident integrity hash.
+
+**`thought_process` Required Shape:**
+```python
+{
+    "inputs": { ... },   # Dict - agent inputs
+    "steps": [ ... ],    # List - intermediate reasoning steps
+    "outputs": { ... },  # Dict - agent outputs
+}
+```
+
+**Logic Archive JSON Schema:**
+```json
+{
+    "$schema_version": "1.0.0",
+    "archive_type": "logic_archive",
+    "audit_trail_hash": "<SHA-256 from CSV row>",
+    "timestamp": "<ISO-8601>",
+    "agent_name": "...",
+    "action": "...",
+    "user_id": "...",
+    "compliance_impact": "...",
+    "decision_logic_summary": "...",
+    "inputs": { },
+    "steps": [ ],
+    "outputs": { },
+    "integrity": {
+        "archive_hash": "<SHA-256 of JSON content>",
+        "algorithm": "sha256"
+    }
+}
+```
+
+**Archive Filename Convention:** `.{ACTION}_{YYYYMMDDTHHMMSSZ}_{hash[:8]}.json`
+
+**Backward Compatibility:** The `thought_process` parameter defaults to `None`. All existing callers of `log_audit_event()` are unaffected.
+
+**Thread Safety:** Archive writes occur inside the same `_write_lock` as CSV writes, ensuring the CSV row and JSON file are atomically paired.
+
+**Audit Events Logged:**
+All agent actions across the system are logged through this module. See `_IMPACT_MAP` for the full action-to-compliance-impact mapping.
+
+**Usage Example:**
+```python
+from Agents.integrity_manager import log_audit_event
+
+# Without logic archive (existing behavior)
+reasoning_hash = log_audit_event(
+    agent_name="RiskStrategist",
+    action="RISK_ASSESSMENT_COMPLETED",
+    decision_logic="RPN=6, Medium risk",
+)
+
+# With logic archive
+reasoning_hash = log_audit_event(
+    agent_name="RequirementArchitect",
+    action="URS_GENERATED",
+    decision_logic="Generated URS-7.1 from warehouse temp requirement",
+    thought_process={
+        "inputs": {"requirement": "Track warehouse temperature"},
+        "steps": [
+            "Queried Pinecone for GAMP 5 context",
+            "Classified criticality as Medium",
+            "Built regulatory rationale from page 42",
+        ],
+        "outputs": {"urs_id": "URS-7.1", "criticality": "Medium"},
+    },
+)
+```
+
 ### scripts/draft_urs.py
 
 **URS Drafting Script** - Generates complete URS documents from project descriptions.
@@ -444,6 +540,11 @@ Generates a Markdown file with:
 | URS-12.11 | Verify rationale relevance | `Agents/verification_agent.py:VerificationAgent._check_rationale_relevance()` |
 | URS-12.12 | Detect contradictions between URS and GAMP 5 | `Agents/verification_agent.py:VerificationAgent._check_contradictions()` |
 | URS-12.13 | Support batch verification | `Agents/verification_agent.py:VerificationAgent.verify_batch()` |
+| URS-13.1 | Archive AI reasoning alongside audit records | `Agents/integrity_manager.py:log_audit_event()` |
+| URS-13.2 | Validate thought-process payload shape | `Agents/integrity_manager.py:_validate_thought_process()` |
+| URS-13.3 | Write tamper-evident logic-archive JSON | `Agents/integrity_manager.py:_write_logic_archive()` |
+| URS-13.4 | Cross-reference archive to CSV audit row | `Agents/integrity_manager.py:_write_logic_archive()` |
+| URS-13.5 | Compute integrity hash for archive file | `Agents/integrity_manager.py:_write_logic_archive()` |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 
