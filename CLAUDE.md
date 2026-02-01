@@ -33,7 +33,8 @@ CSV-GameChanger/
 ├── Agents/
 │   ├── __init__.py
 │   ├── risk_strategist.py       # GAMP 5 risk assessment logic
-│   └── requirement_architect.py # URS generation from natural language
+│   ├── requirement_architect.py # URS generation from natural language
+│   └── verification_agent.py    # URS verification against GAMP 5 text
 ├── API/
 │   ├── __init__.py
 │   └── main.py                  # FastAPI app with ServiceNow webhook
@@ -232,6 +233,123 @@ except RegulatoryContextNotFoundError as e:
     print(f"Error: {e}")
 ```
 
+### Agents/verification_agent.py
+
+**Verification Agent** - Reviews URS output from the RequirementArchitect against GAMP 5 regulatory text in Pinecone. Rejects non-compliant drafts and logs Compliance Exceptions.
+
+**Class: `VerificationAgent`**
+
+Runs three independent checks on each URS document:
+
+1. **Criticality Alignment** - Detects under-classification by scanning GAMP 5 chunks for high-risk indicators when criticality is Low or Medium.
+2. **Rationale Relevance** - Verifies the best Pinecone match score meets the relevance threshold (0.45).
+3. **Contradiction Scan** - Matches known contradiction phrase pairs (e.g. "skip validation" vs. GAMP 5 "validation is required") across validation, testing, audit trail, and change control domains.
+
+**Enums:**
+- `Verdict`: APPROVED, REJECTED
+- `CheckStatus`: PASS, FAIL
+
+**Data Classes:**
+- `VerificationFinding`: check_name, status, detail, gamp5_reference
+- `VerificationResult`: urs_id, verdict, findings
+
+**Exception Classes:**
+- `VerificationError` (CSV-010) - Base verification error
+- `InvalidURSError` (CSV-011) - URS missing required fields
+
+**Core Methods:**
+
+| Method | Input | Output | Purpose |
+|--------|-------|--------|---------|
+| `verify_urs()` | urs: dict, min_score: float | VerificationResult | Verify a single URS against GAMP 5 text |
+| `verify_batch()` | urs_list: List[dict], min_score: float | List[VerificationResult] | Verify multiple URS documents |
+
+**Configuration Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `VERIFICATION_TOP_K` | 5 | Max Pinecone results per query |
+| `VERIFICATION_MIN_SCORE` | 0.35 | Minimum similarity score for retrieved chunks |
+| `RATIONALE_RELEVANCE_THRESHOLD` | 0.45 | Minimum score for rationale to be considered relevant |
+
+**High-Risk Indicators:**
+patient, safety, critical, gxp, sterile, batch release, adverse event, pharmacovigilance, clinical, life-sustaining, life-supporting, validated, 21 cfr part 11
+
+**Contradiction Pairs:**
+
+| Requirement Phrase | Opposing GAMP 5 Keyword |
+|--------------------|------------------------|
+| skip validation, no validation required | validation, shall be validated |
+| skip testing, no testing required | testing, shall be tested, test plan |
+| no audit trail, disable audit | audit trail, traceability, 21 cfr part 11 |
+| no change control, bypass change control | change control, change management |
+
+**Audit Events Logged:**
+1. `URS_VERIFIED` - URS passed all three checks (Compliance Impact: Regulatory Compliance)
+2. `COMPLIANCE_EXCEPTION` - URS rejected due to check failure (Compliance Impact: Compliance Exception)
+3. `URS_BATCH_VERIFIED` - Batch verification completed (Compliance Impact: Regulatory Compliance)
+
+**Verification Result Output Format:**
+```python
+{
+    "URS_ID": "URS-7.1",
+    "Verdict": "Approved",  # or "Rejected"
+    "Findings": [
+        {
+            "check_name": "Criticality Alignment",
+            "status": "Pass",
+            "detail": "Criticality Medium is consistent with ...",
+            "gamp5_reference": "Per GAMP5_Guide.pdf (p.42): ..."
+        },
+        {
+            "check_name": "Rationale Relevance",
+            "status": "Pass",
+            "detail": "Best GAMP 5 match score is 0.87, above ...",
+            "gamp5_reference": "Per GAMP5_Guide.pdf (p.42): ..."
+        },
+        {
+            "check_name": "Contradiction Scan",
+            "status": "Pass",
+            "detail": "No contradictions detected ...",
+            "gamp5_reference": "Per GAMP5_Guide.pdf (p.42): ..."
+        }
+    ]
+}
+```
+
+**Dependencies:**
+- Pinecone (csv-knowledge-base index)
+- OpenAI (text-embedding-3-small)
+
+**Usage Example:**
+```python
+from Agents.verification_agent import (
+    VerificationAgent,
+    InvalidURSError
+)
+
+agent = VerificationAgent()
+
+# Verify a single URS from RequirementArchitect
+urs = {
+    "URS_ID": "URS-7.1",
+    "Requirement_Statement": "The system shall track warehouse temperature.",
+    "Criticality": "Medium",
+    "Regulatory_Rationale": "Per GAMP 5 Guide (p.42): ..."
+}
+
+result = agent.verify_urs(urs)
+print(result.verdict)       # "Approved" or "Rejected"
+print(result.is_rejected)   # True/False
+
+for finding in result.findings:
+    print(f"{finding.check_name}: {finding.status} - {finding.detail}")
+
+# Batch verification
+results = agent.verify_batch([urs1, urs2, urs3])
+rejected = [r for r in results if r.is_rejected]
+```
+
 ### scripts/draft_urs.py
 
 **URS Drafting Script** - Generates complete URS documents from project descriptions.
@@ -313,6 +431,19 @@ Generates a Markdown file with:
 | URS-7.3 | Output URS as Markdown table | `scripts/draft_urs.py:generate_urs_table()` |
 | URS-7.4 | Save URS to output/urs directory | `scripts/draft_urs.py:save_urs_document()` |
 | URS-7.5 | Accept interactive user input | `scripts/draft_urs.py:interactive_input()` |
+| URS-12.1 | Verify generated URS against GAMP 5 text | `Agents/verification_agent.py:VerificationAgent.verify_urs()` |
+| URS-12.2 | Reject URS drafts that contradict regulatory guidance | `Agents/verification_agent.py:VerificationAgent.verify_urs()` |
+| URS-12.3 | Report verification errors | `Agents/verification_agent.py:VerificationError` |
+| URS-12.4 | Produce structured verification findings | `Agents/verification_agent.py:VerificationFinding` |
+| URS-12.5 | Connect to Pinecone for verification queries | `Agents/verification_agent.py:VerificationAgent.__init__()` |
+| URS-12.6 | Validate environment before verification | `Agents/verification_agent.py:VerificationAgent._validate_dependencies()` |
+| URS-12.7 | Embed text for verification queries | `Agents/verification_agent.py:VerificationAgent._get_embedding()` |
+| URS-12.8 | Retrieve GAMP 5 text for verification | `Agents/verification_agent.py:VerificationAgent._query_pinecone()` |
+| URS-12.9 | Validate URS input before verification | `Agents/verification_agent.py:VerificationAgent._validate_urs()` |
+| URS-12.10 | Detect criticality misclassification | `Agents/verification_agent.py:VerificationAgent._check_criticality_alignment()` |
+| URS-12.11 | Verify rationale relevance | `Agents/verification_agent.py:VerificationAgent._check_rationale_relevance()` |
+| URS-12.12 | Detect contradictions between URS and GAMP 5 | `Agents/verification_agent.py:VerificationAgent._check_contradictions()` |
+| URS-12.13 | Support batch verification | `Agents/verification_agent.py:VerificationAgent.verify_batch()` |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

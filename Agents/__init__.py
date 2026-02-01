@@ -26,6 +26,9 @@ from Agents.requirement_architect import (
     EnterpriseTemplate,
     load_template
 )
+from Agents.integrity_manager import (
+    log_audit_event as log_integrity_event,
+)
 from Agents.ingestor_agent import (
     IngestorAgent,
     IngestedDocument,
@@ -35,4 +38,13 @@ from Agents.ingestor_agent import (
     IngestorError,
     UnsupportedFileTypeError,
     DocumentParseError
+)
+from Agents.verification_agent import (
+    VerificationAgent,
+    VerificationResult,
+    VerificationFinding,
+    Verdict,
+    CheckStatus,
+    VerificationError,
+    InvalidURSError
 )
