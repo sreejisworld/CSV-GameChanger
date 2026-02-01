@@ -6,6 +6,10 @@ GAMP 5 and CSA Compliant Risk Assessment Logic.
 from enum import Enum
 from typing import Tuple
 
+from Agents.integrity_manager import (
+    log_audit_event as _log_integrity_event,
+)
+
 
 class RiskLevel(Enum):
     """
@@ -193,7 +197,7 @@ def assess_change_request(
     rpn, risk_level = calculate_risk_score(severity, occurrence, detectability)
     testing_strategy = get_csa_testing_strategy(risk_level)
 
-    return {
+    result = {
         "severity": severity.name,
         "occurrence": occurrence.name,
         "detectability": detectability.name,
@@ -202,3 +206,10 @@ def assess_change_request(
         "testing_strategy": testing_strategy.value,
         "patient_safety_override": severity == Severity.HIGH
     }
+
+    _log_integrity_event(
+        agent_name="RiskStrategist",
+        action="RISK_ASSESSMENT_COMPLETED",
+    )
+
+    return result

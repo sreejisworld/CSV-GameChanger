@@ -16,6 +16,9 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from Agents.risk_strategist import assess_change_request
+from Agents.integrity_manager import (
+    log_audit_event as log_integrity_event,
+)
 
 
 # Configure audit logger for 21 CFR Part 11 compliance
@@ -155,6 +158,12 @@ async def receive_servicenow_change(
             }
         )
 
+        log_integrity_event(
+            agent_name="API",
+            action="CHANGE_REQUEST_RECEIVED",
+            user_id=user_id,
+        )
+
         # Trigger Risk Strategist Agent
         risk_result = assess_change_request(
             system_criticality=change_request.system_criticality,
@@ -172,6 +181,12 @@ async def receive_servicenow_change(
                 "testing_strategy": risk_result["testing_strategy"],
                 "patient_safety_override": risk_result["patient_safety_override"]
             }
+        )
+
+        log_integrity_event(
+            agent_name="API",
+            action="CHANGE_REQUEST_ASSESSED",
+            user_id=user_id,
         )
 
         return ChangeRequestResponse(
@@ -192,6 +207,11 @@ async def receive_servicenow_change(
             user_id=user_id,
             action="CHANGE_REQUEST_FAILED",
             details={"cr_id": change_request.cr_id, "error": str(e)}
+        )
+        log_integrity_event(
+            agent_name="API",
+            action="CHANGE_REQUEST_FAILED",
+            user_id=user_id,
         )
         raise HTTPException(
             status_code=500,

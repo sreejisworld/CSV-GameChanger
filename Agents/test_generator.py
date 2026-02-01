@@ -21,6 +21,10 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 
+from Agents.integrity_manager import (
+    log_audit_event as _log_integrity_event,
+)
+
 try:
     from pinecone import Pinecone
 except ImportError:
@@ -514,14 +518,17 @@ class TestGenerator:
             steps = self._build_scripted_steps(
                 urs_id, statement, rationale, validation_type
             )
+            step_strategy = "Rigorous Scripted (6 steps)"
         elif crit_lower == "low":
             steps = self._build_unscripted_steps(
                 urs_id, statement, rationale, validation_type
             )
+            step_strategy = "Objective-Based Unscripted (3 steps)"
         else:
             steps = self._build_medium_steps(
                 urs_id, statement, rationale, validation_type
             )
+            step_strategy = "Focused Scripted (4 steps)"
 
         script = TestScript(
             urs_id=urs_id,
@@ -529,6 +536,28 @@ class TestGenerator:
             criticality=criticality,
             csa_justification=csa_justification,
             steps=steps,
+        )
+
+        # Build decision logic summary from actual reasoning
+        first_test_id = steps[0].test_id if steps else "N/A"
+
+        # Extract first CSA source citation for the summary
+        csa_ref_short = csa_justification.split("|")[0].strip()
+        if len(csa_ref_short) > 120:
+            csa_ref_short = csa_ref_short[:117] + "..."
+
+        decision_logic = (
+            f"Determined {first_test_id} is "
+            f"{validation_type.value} because Criticality "
+            f"is {criticality} ({crit_lower.capitalize()}); "
+            f"selected {step_strategy}; "
+            f"CSA justification: {csa_ref_short}"
+        )
+
+        _log_integrity_event(
+            agent_name="TestGenerator",
+            action="TEST_SCRIPT_GENERATED",
+            decision_logic=decision_logic,
         )
 
         return script.to_dict()
@@ -981,6 +1010,28 @@ class TestGenerator:
         :requirement: URS-8.6 - System shall support batch
                       generation.
         """
-        return [
+        results = [
             self.generate_test_script(urs) for urs in urs_list
         ]
+
+        # Summarise the batch composition for the audit trail
+        crit_counts: Dict[str, int] = {}
+        for r in results:
+            crit = r.get("Criticality", "Unknown")
+            crit_counts[crit] = crit_counts.get(crit, 0) + 1
+        breakdown = ", ".join(
+            f"{cnt} {lvl}" for lvl, cnt in crit_counts.items()
+        )
+        decision_logic = (
+            f"Batch-generated {len(results)} test scripts "
+            f"from {len(urs_list)} URS inputs; "
+            f"criticality breakdown: {breakdown}"
+        )
+
+        _log_integrity_event(
+            agent_name="TestGenerator",
+            action="TEST_BATCH_GENERATED",
+            decision_logic=decision_logic,
+        )
+
+        return results
