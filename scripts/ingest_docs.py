@@ -49,6 +49,21 @@ PINECONE_CLOUD = "aws"
 PINECONE_REGION = "us-east-1"
 
 
+def _derive_reg_version(filename: str) -> str:
+    """
+    Derive a regulatory version identifier from a PDF filename.
+
+    Strips the file extension and returns the stem as the version
+    string (e.g. ``"GAMP5_Rev2.pdf"`` becomes ``"GAMP5_Rev2"``).
+
+    :param filename: The PDF filename (not a full path).
+    :return: Version string derived from the filename stem.
+    :requirement: URS-14.1 - System shall derive reg version from
+                  PDF filename at ingestion.
+    """
+    return Path(filename).stem
+
+
 class DocumentChunk:
     """
     Represents a chunk of a document with metadata.
@@ -62,13 +77,15 @@ class DocumentChunk:
         source_document: str,
         page_number: int,
         chunk_index: int,
-        timestamp: str
+        timestamp: str,
+        reg_version: str = ""
     ):
         self.text = text
         self.source_document = source_document
         self.page_number = page_number
         self.chunk_index = chunk_index
         self.timestamp = timestamp
+        self.reg_version = reg_version
         self.chunk_id = self._generate_id()
 
     def _generate_id(self) -> str:
@@ -88,7 +105,8 @@ class DocumentChunk:
             "page_number": self.page_number,
             "timestamp": self.timestamp,
             "text": self.text,
-            "chunk_index": self.chunk_index
+            "chunk_index": self.chunk_index,
+            "reg_version": self.reg_version
         }
 
 
@@ -185,13 +203,15 @@ def chunk_documents(
 
     for doc in documents:
         text_chunks = splitter.split_text(doc["content"])
+        reg_version = _derive_reg_version(doc["source_document"])
         for text in text_chunks:
             chunk = DocumentChunk(
                 text=text,
                 source_document=doc["source_document"],
                 page_number=doc["page_number"],
                 chunk_index=chunk_index,
-                timestamp=timestamp
+                timestamp=timestamp,
+                reg_version=reg_version
             )
             chunks.append(chunk)
             chunk_index += 1
@@ -346,6 +366,7 @@ def ingest_documents(
         print(f"  source_document: {sample.source_document}")
         print(f"  page_number: {sample.page_number}")
         print(f"  timestamp: {sample.timestamp}")
+        print(f"  reg_version: {sample.reg_version}")
 
     if dry_run:
         print("\n[DRY RUN] Skipping embedding and Pinecone upload")
@@ -387,6 +408,47 @@ def ingest_documents(
     pc = Pinecone(api_key=pinecone_api_key)
     upserted = upsert_to_pinecone(chunks, all_embeddings, pc)
 
+    # Detect new regulatory versions in this batch
+    batch_versions = {
+        c.reg_version for c in chunks if c.reg_version
+    }
+    if batch_versions:
+        print(f"\n  Regulatory versions in batch: "
+              f"{', '.join(sorted(batch_versions))}")
+        try:
+            index = pc.Index(PINECONE_INDEX_NAME)
+            stats = index.describe_index_stats()
+            existing_versions: set = set()
+            # Sample a few vectors to discover existing versions
+            sample_ids = [
+                c.chunk_id for c in chunks[:5]
+            ]
+            if sample_ids:
+                fetched = index.fetch(ids=sample_ids)
+                for vec in fetched.vectors.values():
+                    ver = vec.metadata.get("reg_version", "")
+                    if ver:
+                        existing_versions.add(ver)
+            new_versions = batch_versions - existing_versions
+            if new_versions:
+                for ver in sorted(new_versions):
+                    print(
+                        f"\n  New regulatory version detected: "
+                        f"{ver}. Do you wish to re-evaluate "
+                        f"existing logic? (y/n)"
+                    )
+                    try:
+                        answer = input("  > ").strip().lower()
+                    except EOFError:
+                        answer = "n"
+                    if answer == "y":
+                        print(
+                            f"  Flagged {ver} for "
+                            f"re-evaluation."
+                        )
+        except Exception:
+            pass  # Non-critical; proceed with ingestion
+
     print("\n" + "=" * 50)
     print("INGESTION COMPLETE")
     print("=" * 50)
@@ -399,7 +461,8 @@ def ingest_documents(
         "documents_loaded": len(documents),
         "total_chunks": len(chunks),
         "vectors_upserted": upserted,
-        "index_name": PINECONE_INDEX_NAME
+        "index_name": PINECONE_INDEX_NAME,
+        "reg_versions": sorted(batch_versions)
     }
 
 

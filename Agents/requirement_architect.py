@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 
+from Agents.integrity_manager import (
+    log_audit_event as _log_integrity_event,
+)
+
 try:
     from pinecone import Pinecone
 except ImportError:
@@ -29,6 +33,8 @@ PINECONE_INDEX_NAME = "csv-knowledge-base"
 EMBEDDING_MODEL = "text-embedding-3-small"
 TOP_K_RESULTS = 5
 MIN_SIMILARITY_SCORE = 0.5
+
+_KNOWN_REG_VERSIONS: set = set()
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "enterprise_standards"
 
@@ -193,6 +199,7 @@ class SearchResult:
     source_document: str
     page_number: int
     similarity_score: float
+    reg_version: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -205,7 +212,8 @@ class SearchResult:
             "text": self.text,
             "source_document": self.source_document,
             "page_number": self.page_number,
-            "similarity_score": self.similarity_score
+            "similarity_score": self.similarity_score,
+            "reg_version": self.reg_version
         }
 
 
@@ -345,9 +353,16 @@ class RequirementArchitect:
                 matches.append({
                     "chunk_id": match.id,
                     "text": match.metadata.get("text", ""),
-                    "source_document": match.metadata.get("source_document", ""),
-                    "page_number": match.metadata.get("page_number", 0),
-                    "score": match.score
+                    "source_document": match.metadata.get(
+                        "source_document", ""
+                    ),
+                    "page_number": match.metadata.get(
+                        "page_number", 0
+                    ),
+                    "score": match.score,
+                    "reg_version": match.metadata.get(
+                        "reg_version", ""
+                    ),
                 })
 
         return matches
@@ -395,16 +410,48 @@ class RequirementArchitect:
                 text=m["text"],
                 source_document=m["source_document"],
                 page_number=m["page_number"],
-                similarity_score=m["score"]
+                similarity_score=m["score"],
+                reg_version=m.get("reg_version", ""),
             )
             for m in matches
         ]
 
-        return SearchResponse(
+        response = SearchResponse(
             query=query,
             results=results,
             total_results=len(results)
         )
+
+        # Detect new regulatory versions
+        global _KNOWN_REG_VERSIONS
+        new_versions = {
+            r.reg_version
+            for r in results
+            if r.reg_version
+        } - _KNOWN_REG_VERSIONS
+        if new_versions:
+            for ver in sorted(new_versions):
+                print(
+                    f"[RequirementArchitect] New regulatory "
+                    f"version detected: {ver}. Do you wish "
+                    f"to re-evaluate existing logic? (y/n)"
+                )
+                _log_integrity_event(
+                    agent_name="RequirementArchitect",
+                    action="REG_VERSION_CHANGE_DETECTED",
+                    decision_logic=(
+                        f"New regulatory version {ver} "
+                        f"detected in search results"
+                    ),
+                )
+            _KNOWN_REG_VERSIONS |= new_versions
+
+        _log_integrity_event(
+            agent_name="RequirementArchitect",
+            action="SEARCH_KNOWLEDGE_BASE",
+        )
+
+        return response
 
     def _determine_criticality(
         self,
@@ -517,13 +564,21 @@ class RequirementArchitect:
             source = result.source_document or "Unknown"
             page = result.page_number or 0
             text = result.text[:200] if result.text else ""
+            ver = result.reg_version or ""
 
             source_key = f"{source}:p{page}"
             if source_key not in seen_sources:
                 seen_sources.add(source_key)
-                rationale_parts.append(
-                    f"{prefix} {source} (p.{page}): {text}..."
-                )
+                if ver:
+                    rationale_parts.append(
+                        f"{prefix} {source} [{ver}] "
+                        f"(p.{page}): {text}..."
+                    )
+                else:
+                    rationale_parts.append(
+                        f"{prefix} {source} "
+                        f"(p.{page}): {text}..."
+                    )
 
         return " | ".join(rationale_parts)
 
@@ -614,6 +669,10 @@ class RequirementArchitect:
 
         # Step 2: Ensure at least one matching chunk is found
         if not search_response.results:
+            _log_integrity_event(
+                agent_name="RequirementArchitect",
+                action="URS_GENERATION_FAILED",
+            )
             raise RegulatoryContextNotFoundError(requirement)
 
         # Step 3: Determine criticality based on content
@@ -631,6 +690,13 @@ class RequirementArchitect:
         # Step 6: Build regulatory rationale from search results
         rationale = self._build_regulatory_rationale(search_response.results)
 
+        # Collect unique regulatory versions cited
+        reg_versions_cited = sorted({
+            r.reg_version
+            for r in search_response.results
+            if r.reg_version
+        })
+
         # Create URS document
         urs = URSDocument(
             urs_id=urs_id,
@@ -639,4 +705,11 @@ class RequirementArchitect:
             regulatory_rationale=rationale
         )
 
-        return urs.to_dict()
+        _log_integrity_event(
+            agent_name="RequirementArchitect",
+            action="URS_GENERATED",
+        )
+
+        result = urs.to_dict()
+        result["Reg_Versions_Cited"] = reg_versions_cited
+        return result

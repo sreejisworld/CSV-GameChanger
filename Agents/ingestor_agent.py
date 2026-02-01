@@ -18,6 +18,10 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from Agents.integrity_manager import (
+    log_audit_event as _log_integrity_event,
+)
+
 try:
     from docx import Document as DocxDocument
 except ImportError:
@@ -643,6 +647,21 @@ class IngestorAgent:
             }
         )
 
+        decision_logic = (
+            f"Parsed {result.file_name} "
+            f"({ext.lstrip('.').upper()}, "
+            f"{result.total_pages} pages); "
+            f"extracted {len(result.sections)} sections and "
+            f"{len(result.requirements)} requirement-like "
+            f"statements using keyword pattern matching"
+        )
+
+        _log_integrity_event(
+            agent_name="IngestorAgent",
+            action="DOCUMENT_INGESTED",
+            decision_logic=decision_logic,
+        )
+
         return result
 
     def ingest_all(self) -> List[IngestedDocument]:
@@ -682,6 +701,32 @@ class IngestorAgent:
                             }
                         }
                     )
+                    _log_integrity_event(
+                        agent_name="IngestorAgent",
+                        action="DOCUMENT_INGESTION_FAILED",
+                        decision_logic=(
+                            f"Failed to ingest "
+                            f"{file_path.name}: {e}"
+                        ),
+                    )
+
+        succeeded = len(results)
+        failed = sum(
+            1 for fp in sorted(docs_dir.iterdir())
+            if fp.suffix.lower() in SUPPORTED_EXTENSIONS
+        ) - succeeded
+
+        decision_logic = (
+            f"Batch-ingested documents from "
+            f"{self._vendor_docs_dir}; "
+            f"{succeeded} succeeded, {failed} failed"
+        )
+
+        _log_integrity_event(
+            agent_name="IngestorAgent",
+            action="BATCH_INGESTION_COMPLETED",
+            decision_logic=decision_logic,
+        )
 
         return results
 
@@ -816,9 +861,17 @@ class IngestorAgent:
                     src = r.source_document or "GAMP 5"
                     pg = r.page_number or 0
                     txt = (r.text or "")[:200]
-                    gamp5_ref = (
-                        f"Per {src} (p.{pg}): {txt}..."
-                    )
+                    ver = r.reg_version or ""
+                    if ver:
+                        gamp5_ref = (
+                            f"Per {src} [{ver}] "
+                            f"(p.{pg}): {txt}..."
+                        )
+                    else:
+                        gamp5_ref = (
+                            f"Per {src} "
+                            f"(p.{pg}): {txt}..."
+                        )
             except Exception:
                 gamp5_ref = "GAMP 5 reference unavailable"
 
@@ -895,6 +948,28 @@ class IngestorAgent:
                 "gaps": gap_count,
                 "report_path": str(saved_path)
             }
+        )
+
+        # Build decision logic from gap analysis findings
+        if gap_names:
+            gap_detail = (
+                f"Gaps: {', '.join(gap_names)}"
+            )
+        else:
+            gap_detail = "No gaps identified"
+
+        decision_logic = (
+            f"Analyzed {doc.file_name} against "
+            f"{total} GAMP 5 lifecycle categories; "
+            f"{covered_count} covered, "
+            f"{gap_count} gaps identified. "
+            f"{gap_detail}"
+        )
+
+        _log_integrity_event(
+            agent_name="IngestorAgent",
+            action="GAP_ANALYSIS_COMPLETED",
+            decision_logic=decision_logic,
         )
 
         return report

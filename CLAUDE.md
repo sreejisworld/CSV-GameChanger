@@ -164,7 +164,7 @@ Generates User Requirements Specifications by querying Pinecone for relevant GAM
 - `RegulatoryContextNotFoundError` (CSV-004) - No matching GAMP 5/CSA context found
 
 **Data Classes:**
-- `SearchResult`: chunk_id, text, source_document, page_number, similarity_score
+- `SearchResult`: chunk_id, text, source_document, page_number, similarity_score, reg_version
 - `SearchResponse`: query, results, total_results
 
 **Core Methods:**
@@ -180,7 +180,8 @@ Generates User Requirements Specifications by querying Pinecone for relevant GAM
     "URS_ID": "URS-7.1",
     "Requirement_Statement": "The system shall track warehouse temp.",
     "Criticality": "Medium",
-    "Regulatory_Rationale": "Per GAMP 5 Guide (p.42): ..."
+    "Regulatory_Rationale": "Per GAMP5_Guide.pdf [GAMP5_Rev2] (p.42): ...",
+    "Reg_Versions_Cited": ["GAMP5_Rev2"]
 }
 ```
 
@@ -195,7 +196,8 @@ Generates User Requirements Specifications by querying Pinecone for relevant GAM
             "text": "Temperature monitoring is critical...",
             "source_document": "GAMP5_Guide.pdf",
             "page_number": 42,
-            "similarity_score": 0.87
+            "similarity_score": 0.87,
+            "reg_version": "GAMP5_Guide"
         }
     ]
 }
@@ -301,19 +303,19 @@ patient, safety, critical, gxp, sterile, batch release, adverse event, pharmacov
             "check_name": "Criticality Alignment",
             "status": "Pass",
             "detail": "Criticality Medium is consistent with ...",
-            "gamp5_reference": "Per GAMP5_Guide.pdf (p.42): ..."
+            "gamp5_reference": "Per GAMP5_Guide.pdf [GAMP5_Guide] (p.42): ..."
         },
         {
             "check_name": "Rationale Relevance",
             "status": "Pass",
             "detail": "Best GAMP 5 match score is 0.87, above ...",
-            "gamp5_reference": "Per GAMP5_Guide.pdf (p.42): ..."
+            "gamp5_reference": "Per GAMP5_Guide.pdf [GAMP5_Guide] (p.42): ..."
         },
         {
             "check_name": "Contradiction Scan",
             "status": "Pass",
             "detail": "No contradictions detected ...",
-            "gamp5_reference": "Per GAMP5_Guide.pdf (p.42): ..."
+            "gamp5_reference": "Per GAMP5_Guide.pdf [GAMP5_Guide] (p.42): ..."
         }
     ]
 }
@@ -545,6 +547,17 @@ Generates a Markdown file with:
 | URS-13.3 | Write tamper-evident logic-archive JSON | `Agents/integrity_manager.py:_write_logic_archive()` |
 | URS-13.4 | Cross-reference archive to CSV audit row | `Agents/integrity_manager.py:_write_logic_archive()` |
 | URS-13.5 | Compute integrity hash for archive file | `Agents/integrity_manager.py:_write_logic_archive()` |
+| URS-14.1 | Derive reg version from PDF filename at ingestion | `scripts/ingest_docs.py:_derive_reg_version()` |
+| URS-14.2 | Store reg_version in Pinecone chunk metadata | `scripts/ingest_docs.py:DocumentChunk.to_metadata()` |
+| URS-14.3 | Propagate reg_version through search results | `Agents/requirement_architect.py:SearchResult` |
+| URS-14.4 | Include reg version in verification citations | `Agents/verification_agent.py:_format_gamp5_ref()` |
+| URS-14.5 | Include reg version in URS rationale citations | `Agents/requirement_architect.py:_build_regulatory_rationale()` |
+| URS-14.6 | Collect Reg_Versions_Cited per URS | `Agents/requirement_architect.py:generate_urs()` |
+| URS-14.7 | Include regulatory version footer in URS document | `scripts/draft_urs.py:generate_urs_table()` |
+| URS-14.8 | Detect new regulatory versions at ingestion | `scripts/ingest_docs.py:ingest_documents()` |
+| URS-14.9 | Detect new regulatory versions at query time | `Agents/requirement_architect.py:search()` |
+| URS-14.10 | Detect new regulatory versions during verification | `Agents/verification_agent.py:verify_urs()` |
+| URS-14.11 | Include reg version in gap analysis citations | `Agents/ingestor_agent.py:analyze_gaps()` |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

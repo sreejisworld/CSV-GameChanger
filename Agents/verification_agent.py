@@ -120,6 +120,8 @@ URS_REQUIRED_FIELDS = [
     "Regulatory_Rationale",
 ]
 
+_KNOWN_REG_VERSIONS: set = set()
+
 
 # ------------------------------------------------------------------
 # Exceptions
@@ -370,6 +372,9 @@ class VerificationAgent:
                         "page_number", 0
                     ),
                     "score": match.score,
+                    "reg_version": match.metadata.get(
+                        "reg_version", ""
+                    ),
                 })
 
         return matches
@@ -399,6 +404,8 @@ class VerificationAgent:
 
         :param matches: List of Pinecone match dicts.
         :return: Formatted citation or fallback text.
+        :requirement: URS-14.4 - System shall include reg version
+                      in verification citations.
         """
         if not matches:
             return "No GAMP 5 reference available"
@@ -406,6 +413,11 @@ class VerificationAgent:
         src = m["source_document"] or "GAMP 5"
         pg = m["page_number"] or 0
         txt = (m["text"] or "")[:150]
+        ver = m.get("reg_version", "")
+        if ver:
+            return (
+                f"Per {src} [{ver}] (p.{pg}): {txt}..."
+            )
         return f"Per {src} (p.{pg}): {txt}..."
 
     # --------------------------------------------------------------
@@ -566,16 +578,24 @@ class VerificationAgent:
         :requirement: URS-12.12 - System shall detect contradictions
                       between URS and GAMP 5 text.
         """
-        gamp5_ref = (
-            "No GAMP 5 reference available"
-            if not matches
-            else (
-                f"Per "
-                f"{matches[0]['source_document'] or 'GAMP 5'} "
-                f"(p.{matches[0]['page_number'] or 0}): "
-                f"{(matches[0]['text'] or '')[:150]}..."
-            )
-        )
+        if not matches:
+            gamp5_ref = "No GAMP 5 reference available"
+        else:
+            _m = matches[0]
+            _src = _m["source_document"] or "GAMP 5"
+            _pg = _m["page_number"] or 0
+            _txt = (_m["text"] or "")[:150]
+            _ver = _m.get("reg_version", "")
+            if _ver:
+                gamp5_ref = (
+                    f"Per {_src} [{_ver}] "
+                    f"(p.{_pg}): {_txt}..."
+                )
+            else:
+                gamp5_ref = (
+                    f"Per {_src} "
+                    f"(p.{_pg}): {_txt}..."
+                )
 
         statement_lower = statement.lower()
         context = " ".join(
@@ -679,6 +699,30 @@ class VerificationAgent:
             top_k=VERIFICATION_TOP_K,
             min_score=min_score,
         )
+
+        # Detect new regulatory versions
+        global _KNOWN_REG_VERSIONS
+        new_versions = {
+            m.get("reg_version", "")
+            for m in matches
+            if m.get("reg_version")
+        } - _KNOWN_REG_VERSIONS
+        if new_versions:
+            for ver in sorted(new_versions):
+                print(
+                    f"[VerificationAgent] New regulatory "
+                    f"version detected: {ver}. Do you wish "
+                    f"to re-evaluate existing logic? (y/n)"
+                )
+                _log_integrity_event(
+                    agent_name="VerificationAgent",
+                    action="REG_VERSION_CHANGE_DETECTED",
+                    decision_logic=(
+                        f"New regulatory version {ver} "
+                        f"detected during verification"
+                    ),
+                )
+            _KNOWN_REG_VERSIONS |= new_versions
 
         # Run all three checks
         findings: List[VerificationFinding] = [
