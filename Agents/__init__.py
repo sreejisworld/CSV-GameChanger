@@ -48,3 +48,11 @@ from Agents.verification_agent import (
     VerificationError,
     InvalidURSError
 )
+from Agents.delta_agent import (
+    DeltaAgent,
+    DeltaAgentError
+)
+from Agents.auditor_agent import (
+    AuditorAgent,
+    AuditorAgentError
+)
