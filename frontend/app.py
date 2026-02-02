@@ -180,7 +180,59 @@ with st.sidebar:
         f"Audit Trail: &ensp;"
         f"{'**Active**' if AUDIT_CSV.exists() else '**Missing**'}"
     )
-    st.caption(f"v0.1.0")
+    st.caption("v0.1.0")
+
+    # ---- Compliance Monitor: Live Audit Feed ----
+    st.markdown("---")
+    st.caption("Compliance Monitor")
+    st.markdown(
+        '<p style="font-size:0.7rem; opacity:0.55; '
+        'margin:0 0 0.4rem 0;">'
+        "21 CFR Part 11 &bull; Live Audit Feed</p>",
+        unsafe_allow_html=True,
+    )
+
+    if AUDIT_CSV.exists():
+        try:
+            _audit_df = pd.read_csv(AUDIT_CSV)
+            _latest = _audit_df.tail(5).iloc[::-1]
+            for _, _row in _latest.iterrows():
+                _ts = str(
+                    _row.get("Timestamp", "")
+                )[:19]
+                _agent = _row.get("Agent_Name", "-")
+                _action = _row.get(
+                    "Action_Performed", "-"
+                )
+                st.markdown(
+                    f'<div style="'
+                    f"background:rgba(255,255,255,0.07);"
+                    f"border-left:3px solid "
+                    f"rgba(59,130,246,0.6);"
+                    f"border-radius:4px;"
+                    f"padding:0.35rem 0.5rem;"
+                    f"margin-bottom:0.35rem;"
+                    f"font-size:0.72rem;"
+                    f'">'
+                    f"<strong>{_action}</strong><br/>"
+                    f'<span style="opacity:0.7;">'
+                    f"{_agent} &bull; {_ts}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+        except Exception:
+            st.markdown(
+                '<span style="font-size:0.75rem; '
+                'opacity:0.6;">Unable to read audit trail'
+                "</span>",
+                unsafe_allow_html=True,
+            )
+    else:
+        st.markdown(
+            '<span style="font-size:0.75rem; '
+            'opacity:0.6;">No entries yet</span>',
+            unsafe_allow_html=True,
+        )
 
 
 # -------------------------------------------------------------------
