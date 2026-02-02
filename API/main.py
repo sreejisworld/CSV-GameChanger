@@ -7,18 +7,19 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from Agents.risk_strategist import assess_change_request
-from Agents.integrity_manager import (
-    log_audit_event as log_integrity_event,
-)
+from API.agent_controller import AgentController
+
+
+# Centralized agent controller — all agent calls go through here.
+_controller = AgentController()
 
 
 # Configure audit logger for 21 CFR Part 11 compliance
@@ -66,43 +67,105 @@ class ServiceNowChangeRequest(BaseModel):
     """
     Pydantic model for ServiceNow Change Request payload.
 
-    :requirement: URS-1.1 - System shall accept change requests from ServiceNow.
+    :requirement: URS-1.1 - System shall accept change requests
+                  from ServiceNow.
     """
 
-    cr_id: str
-    description: str
-    system_criticality: str
-    change_type: str
+    cr_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=40,
+        description="ServiceNow Change Request ID.",
+        examples=["CHG0012345"],
+    )
+    description: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Change description.",
+        examples=["Upgrade firmware on temperature sensors"],
+    )
+    system_criticality: Literal[
+        "high", "critical", "medium", "moderate", "low", "minor"
+    ] = Field(
+        ...,
+        description=(
+            "System criticality level. Maps to GAMP 5 severity."
+        ),
+        examples=["high"],
+    )
+    change_type: Literal[
+        "emergency", "expedited", "normal", "standard", "routine"
+    ] = Field(
+        ...,
+        description=(
+            "ServiceNow change type. Maps to GAMP 5 occurrence."
+        ),
+        examples=["normal"],
+    )
 
 
 class RiskAssessmentResult(BaseModel):
     """
     Risk assessment result from the Risk Strategist Agent.
 
-    :requirement: URS-4.7 - System shall return risk assessment results.
+    :requirement: URS-4.7 - System shall return risk assessment
+                  results.
     """
 
-    severity: str
-    occurrence: str
-    detectability: str
-    rpn: int
-    risk_level: str
-    testing_strategy: str
-    patient_safety_override: bool
+    severity: Literal["LOW", "MEDIUM", "HIGH"] = Field(
+        ..., description="GAMP 5 severity classification."
+    )
+    occurrence: Literal["RARE", "OCCASIONAL", "FREQUENT"] = Field(
+        ..., description="GAMP 5 occurrence classification."
+    )
+    detectability: Literal["HIGH", "MEDIUM", "LOW"] = Field(
+        ..., description="GAMP 5 detectability classification."
+    )
+    rpn: int = Field(
+        ...,
+        ge=1,
+        le=27,
+        description="Risk Priority Number (1-27 scale).",
+    )
+    risk_level: Literal["Low", "Medium", "High"] = Field(
+        ..., description="Overall risk level."
+    )
+    testing_strategy: str = Field(
+        ..., description="CSA testing recommendation."
+    )
+    patient_safety_override: bool = Field(
+        ...,
+        description=(
+            "True when severity is HIGH, forcing risk to HIGH."
+        ),
+    )
 
 
 class ChangeRequestResponse(BaseModel):
     """
     Response model for change request acknowledgment.
 
-    :requirement: URS-1.2 - System shall acknowledge receipt of change requests.
+    :requirement: URS-1.2 - System shall acknowledge receipt of
+                  change requests.
     """
 
-    status: str
-    cr_id: str
-    message: str
-    timestamp: str
-    risk_assessment: Optional[RiskAssessmentResult] = None
+    status: Literal["assessed", "error"] = Field(
+        ..., description="Processing outcome."
+    )
+    cr_id: str = Field(
+        ..., description="Echo of the submitted CR ID."
+    )
+    message: str = Field(
+        ..., description="Human-readable status message."
+    )
+    timestamp: str = Field(
+        ..., description="ISO-8601 timestamp of processing."
+    )
+    risk_assessment: Optional[RiskAssessmentResult] = Field(
+        default=None,
+        description="Risk assessment (present on success).",
+    )
 
 
 def log_audit_event(
@@ -153,21 +216,25 @@ async def receive_servicenow_change(
             action="CHANGE_REQUEST_RECEIVED",
             details={
                 "cr_id": change_request.cr_id,
-                "system_criticality": change_request.system_criticality,
-                "change_type": change_request.change_type
-            }
+                "system_criticality": (
+                    change_request.system_criticality
+                ),
+                "change_type": change_request.change_type,
+            },
         )
 
-        log_integrity_event(
+        _controller.log_event(
             agent_name="API",
             action="CHANGE_REQUEST_RECEIVED",
             user_id=user_id,
         )
 
-        # Trigger Risk Strategist Agent
-        risk_result = assess_change_request(
-            system_criticality=change_request.system_criticality,
-            change_type=change_request.change_type
+        # Trigger Risk Strategist via controller
+        risk_result = _controller.assess_risk(
+            system_criticality=(
+                change_request.system_criticality
+            ),
+            change_type=change_request.change_type,
         )
 
         # Log risk assessment to audit trail
@@ -178,12 +245,16 @@ async def receive_servicenow_change(
                 "cr_id": change_request.cr_id,
                 "risk_level": risk_result["risk_level"],
                 "rpn": risk_result["rpn"],
-                "testing_strategy": risk_result["testing_strategy"],
-                "patient_safety_override": risk_result["patient_safety_override"]
-            }
+                "testing_strategy": (
+                    risk_result["testing_strategy"]
+                ),
+                "patient_safety_override": (
+                    risk_result["patient_safety_override"]
+                ),
+            },
         )
 
-        log_integrity_event(
+        _controller.log_event(
             agent_name="API",
             action="CHANGE_REQUEST_ASSESSED",
             user_id=user_id,
@@ -192,28 +263,42 @@ async def receive_servicenow_change(
         return ChangeRequestResponse(
             status="assessed",
             cr_id=change_request.cr_id,
-            message=f"Risk assessment complete: {risk_result['risk_level']} risk",
+            message=(
+                "Risk assessment complete: "
+                f"{risk_result['risk_level']} risk"
+            ),
             timestamp=timestamp,
-            risk_assessment=RiskAssessmentResult(**risk_result)
+            risk_assessment=RiskAssessmentResult(
+                **risk_result
+            ),
         )
 
     except AuditLogError as e:
         raise HTTPException(
             status_code=500,
-            detail=f"[{e.error_code}] Audit logging failed: {str(e)}"
+            detail=(
+                f"[{e.error_code}] Audit logging failed: "
+                f"{str(e)}"
+            ),
         ) from e
     except Exception as e:
         log_audit_event(
             user_id=user_id,
             action="CHANGE_REQUEST_FAILED",
-            details={"cr_id": change_request.cr_id, "error": str(e)}
+            details={
+                "cr_id": change_request.cr_id,
+                "error": str(e),
+            },
         )
-        log_integrity_event(
+        _controller.log_event(
             agent_name="API",
             action="CHANGE_REQUEST_FAILED",
             user_id=user_id,
         )
         raise HTTPException(
             status_code=500,
-            detail=f"[{ProcessingError.error_code}] Processing failed: {str(e)}"
+            detail=(
+                f"[{ProcessingError.error_code}] "
+                f"Processing failed: {str(e)}"
+            ),
         ) from e
