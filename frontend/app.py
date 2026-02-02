@@ -207,32 +207,73 @@ if page.startswith("1"):
         "Upload vendor documentation for GAMP 5 gap analysis",
     )
 
+    # Persistent state for results across reruns
+    if "ingest_result" not in st.session_state:
+        st.session_state.ingest_result = None
+    if "gap_result" not in st.session_state:
+        st.session_state.gap_result = None
+    if "ingest_path" not in st.session_state:
+        st.session_state.ingest_path = None
+
     col1, col2 = st.columns([2, 1])
 
     with col1:
         uploaded = st.file_uploader(
-            "Upload a vendor document (.pdf or .docx)",
+            "Upload a vendor document",
             type=["pdf", "docx"],
-            help="The file will be parsed and checked against "
-                 "GAMP 5 requirements.",
+            help="Accepts .pdf and .docx files. The document "
+                 "will be ingested and analysed against GAMP 5.",
         )
 
         if uploaded is not None:
+            # Save file locally
             dest = VENDOR_DIR / uploaded.name
             VENDOR_DIR.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(uploaded.getvalue())
-            st.success(f"Saved to `{dest.relative_to(PROJECT_ROOT)}`")
 
-            if st.button("Run Gap Analysis", type="primary"):
-                with st.spinner("Analyzing..."):
+            st.success(
+                f"Uploaded **{uploaded.name}** "
+                f"({uploaded.size / 1024:.1f} KB)"
+            )
+
+            # Clear stale results when a new file is uploaded
+            if st.session_state.ingest_path != str(dest):
+                st.session_state.ingest_result = None
+                st.session_state.gap_result = None
+                st.session_state.ingest_path = str(dest)
+
+            # ---- Step 1: Ingest ----
+            btn_cols = st.columns(2)
+            with btn_cols[0]:
+                run_ingest = st.button(
+                    "Ingest Document", type="primary"
+                )
+            with btn_cols[1]:
+                run_gap = st.button("Run Gap Analysis")
+
+            if run_ingest:
+                with st.spinner("Ingesting document..."):
                     try:
                         ctrl = AgentController()
-                        result = ctrl.analyze_vendor_gaps(
-                            str(dest)
+                        st.session_state.ingest_result = (
+                            ctrl.ingest_vendor_document(
+                                str(dest)
+                            )
                         )
-                        st.json(result)
                     except Exception as exc:
-                        st.error(f"Analysis failed: {exc}")
+                        st.error(f"Ingestion failed: {exc}")
+
+            if run_gap:
+                with st.spinner(
+                    "Running GAMP 5 gap analysis..."
+                ):
+                    try:
+                        ctrl = AgentController()
+                        st.session_state.gap_result = (
+                            ctrl.analyze_vendor_gaps(str(dest))
+                        )
+                    except Exception as exc:
+                        st.error(f"Gap analysis failed: {exc}")
 
     with col2:
         st.markdown("##### Accepted Formats")
@@ -240,11 +281,182 @@ if page.startswith("1"):
             "- **PDF** &mdash; vendor SOPs, manuals\n"
             "- **DOCX** &mdash; specifications, protocols"
         )
-        existing = list(VENDOR_DIR.glob("*")) if VENDOR_DIR.exists() else []
+        existing = (
+            sorted(VENDOR_DIR.glob("*"))
+            if VENDOR_DIR.exists() else []
+        )
         if existing:
             st.markdown("##### Previously Uploaded")
             for f in existing[:10]:
                 st.text(f.name)
+
+    # ---- Ingestion Results ----
+    ingest = st.session_state.ingest_result
+    if ingest is not None:
+        st.markdown("---")
+        st.markdown("### Document Structure")
+        im1, im2, im3 = st.columns(3)
+        im1.metric("Title", ingest.get("title", "-"))
+        im2.metric(
+            "Pages", ingest.get("total_pages", "-")
+        )
+        im3.metric(
+            "Sections",
+            len(ingest.get("sections", [])),
+        )
+
+        sections = ingest.get("sections", [])
+        if sections:
+            with st.expander(
+                f"Extracted Sections ({len(sections)})",
+                expanded=True,
+            ):
+                sec_df = pd.DataFrame(sections)
+                display_cols = [
+                    c for c in [
+                        "section_index",
+                        "heading",
+                        "page_number",
+                        "content",
+                    ]
+                    if c in sec_df.columns
+                ]
+                if display_cols:
+                    st.dataframe(
+                        sec_df[display_cols],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                else:
+                    st.dataframe(
+                        sec_df,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+        reqs = ingest.get("requirements", [])
+        if reqs:
+            with st.expander(
+                f"Extracted Requirements ({len(reqs)})"
+            ):
+                for i, r in enumerate(reqs, 1):
+                    st.markdown(f"{i}. {r}")
+
+        with st.expander("Raw JSON"):
+            st.json(ingest)
+
+    # ---- Gap Analysis Results ----
+    gap = st.session_state.gap_result
+    if gap is not None:
+        st.markdown("---")
+        st.markdown("### GAMP 5 Gap Analysis")
+
+        # Summary metrics
+        gm1, gm2, gm3 = st.columns(3)
+        total_cat = gap.get("total_categories", 0)
+        covered = gap.get("covered", 0)
+        gaps_count = gap.get("gaps", 0)
+        gm1.metric("Categories Assessed", total_cat)
+        gm2.metric("Covered", covered)
+        gm3.metric("Gaps Found", gaps_count)
+
+        # Coverage bar
+        if total_cat > 0:
+            pct = int((covered / total_cat) * 100)
+            bar_color = (
+                "#065F46" if pct >= 80
+                else "#92400E" if pct >= 50
+                else "#991B1B"
+            )
+            st.markdown(
+                f"""
+                <div style="
+                    background:{BORDER};
+                    border-radius:6px;
+                    height:24px;
+                    margin:0.5rem 0 1rem 0;
+                    overflow:hidden;">
+                    <div style="
+                        width:{pct}%;
+                        height:100%;
+                        background:{bar_color};
+                        border-radius:6px;
+                        text-align:center;
+                        color:#FFF;
+                        font-size:0.75rem;
+                        line-height:24px;
+                        font-weight:600;">
+                        {pct}% covered
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        summary = gap.get("summary", "")
+        if summary:
+            st.info(summary)
+
+        findings = gap.get("findings", [])
+        if findings:
+            with st.expander(
+                f"Detailed Findings ({len(findings)})",
+                expanded=True,
+            ):
+                # Status badge helper
+                def _status_badge(status: str) -> str:
+                    s = status.lower()
+                    if s in ("covered", "pass", "met"):
+                        cls = "badge-low"
+                    elif s in ("partial", "warning"):
+                        cls = "badge-medium"
+                    else:
+                        cls = "badge-high"
+                    return (
+                        f'<span class="badge {cls}">'
+                        f"{status}</span>"
+                    )
+
+                for i, f in enumerate(findings):
+                    cat = f.get("category", "Unknown")
+                    status = f.get("status", "-")
+                    badge = _status_badge(status)
+
+                    with st.expander(
+                        f"{cat}  |  {status}", expanded=False
+                    ):
+                        st.markdown(
+                            f"**Status:** {badge}",
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f"**Vendor Evidence:** "
+                            f"{f.get('vendor_evidence', '-')}"
+                        )
+                        st.markdown(
+                            f"**GAMP 5 Reference:** "
+                            f"{f.get('gamp5_reference', '-')}"
+                        )
+                        st.markdown(
+                            f"**Recommendation:** "
+                            f"{f.get('recommendation', '-')}"
+                        )
+
+            # Downloadable findings table
+            findings_df = pd.DataFrame(findings)
+            st.download_button(
+                "Download Findings CSV",
+                data=findings_df.to_csv(index=False),
+                file_name=(
+                    f"gap_analysis_"
+                    f"{datetime.utcnow():%Y%m%d_%H%M%S}"
+                    f".csv"
+                ),
+                mime="text/csv",
+            )
+
+        with st.expander("Raw JSON"):
+            st.json(gap)
 
 
 # ===================================================================
