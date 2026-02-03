@@ -538,6 +538,9 @@ elif page.startswith("2"):
              "reduce relevance.",
     )
 
+    if "generated_urs" not in st.session_state:
+        st.session_state.generated_urs = None
+
     if st.button("Generate URS", type="primary"):
         if not requirement.strip():
             st.warning("Please enter a requirement description.")
@@ -545,38 +548,80 @@ elif page.startswith("2"):
             with st.spinner("Generating URS..."):
                 try:
                     ctrl = AgentController()
-                    urs = ctrl.generate_urs(
-                        requirement=requirement.strip(),
-                        min_score=min_score,
+                    st.session_state.generated_urs = (
+                        ctrl.generate_urs(
+                            requirement=requirement.strip(),
+                            min_score=min_score,
+                        )
                     )
-                    st.markdown("#### Generated URS")
-
-                    # Summary metrics
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("URS ID", urs.get("URS_ID", "-"))
-                    crit = urs.get("Criticality", "-")
-                    c2.metric("Criticality", crit)
-                    versions = urs.get(
-                        "Reg_Versions_Cited", []
-                    )
-                    c3.metric(
-                        "Reg Versions",
-                        ", ".join(versions) if versions else "-",
-                    )
-
-                    st.markdown("**Requirement Statement**")
-                    st.info(
-                        urs.get("Requirement_Statement", "-")
-                    )
-                    st.markdown("**Regulatory Rationale**")
-                    st.markdown(
-                        urs.get("Regulatory_Rationale", "-")
-                    )
-                    st.markdown("---")
-                    with st.expander("Raw JSON"):
-                        st.json(urs)
                 except Exception as exc:
                     st.error(f"URS generation failed: {exc}")
+
+    urs = st.session_state.generated_urs
+    if urs is not None:
+        st.markdown("#### Generated URS")
+
+        # Summary metrics
+        c1, c2, c3 = st.columns(3)
+        c1.metric("URS ID", urs.get("URS_ID", "-"))
+        crit = urs.get("Criticality", "-")
+        c2.metric("Criticality", crit)
+        versions = urs.get(
+            "Reg_Versions_Cited", []
+        )
+        c3.metric(
+            "Reg Versions",
+            ", ".join(versions) if versions else "-",
+        )
+
+        st.markdown("**Requirement Statement**")
+        st.info(
+            urs.get("Requirement_Statement", "-")
+        )
+        st.markdown("**Regulatory Rationale**")
+        st.markdown(
+            urs.get("Regulatory_Rationale", "-")
+        )
+        st.markdown("---")
+        with st.expander("Raw JSON"):
+            st.json(urs)
+
+        # ---- PDF Download ------------------------------------
+        st.markdown("#### Download Approved URS")
+        signer_name = st.text_input(
+            "Signer Name",
+            placeholder="e.g. Jane Smith",
+            help="Name that will appear on the "
+                 "Manifestation of Signature page.",
+        )
+        sig_meaning = st.text_input(
+            "Signature Meaning",
+            value="Approval of Requirements",
+        )
+
+        if signer_name.strip():
+            from utils.pdf_generator import (
+                generate_urs_pdf,
+            )
+
+            pdf_bytes = generate_urs_pdf(
+                urs=urs,
+                signer_name=signer_name.strip(),
+                meaning=sig_meaning.strip(),
+            )
+            urs_id = urs.get("URS_ID", "URS")
+            st.download_button(
+                "Download PDF",
+                data=pdf_bytes,
+                file_name=f"{urs_id}.pdf",
+                mime="application/pdf",
+                type="primary",
+            )
+        else:
+            st.caption(
+                "Enter a signer name to enable "
+                "PDF download."
+            )
 
 
 # ===================================================================
