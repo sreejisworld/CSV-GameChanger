@@ -10,7 +10,7 @@ CSV-GameChanger is a GAMP 5 and CSA (Computer Software Assurance) compliant CSV 
 
 ```bash
 # Install dependencies
-pip install fastapi uvicorn pydantic pinecone openai langchain-community langchain-text-splitters
+pip install fastapi uvicorn pydantic pinecone openai langchain-community langchain-text-splitters fpdf2
 
 # Run the API server
 uvicorn API.main:app --reload
@@ -43,8 +43,11 @@ CSV-GameChanger/
 │   ├── setup_pinecone_index.py  # Creates Pinecone index
 │   ├── ingest_docs.py           # Ingests GAMP 5 PDFs to Pinecone
 │   └── draft_urs.py             # Generate URS documents from requirements
+├── utils/
+│   ├── __init__.py
+│   └── pdf_generator.py         # URS PDF export with signature page
 ├── output/
-│   ├── urs/                     # Generated URS Markdown files
+│   ├── urs/                     # Generated URS Markdown/PDF files
 │   └── logic_archives/          # Hidden JSON logic-archive files (generated)
 ├── audit_trail.log              # 21 CFR Part 11 compliant audit log (generated)
 └── CLAUDE.md
@@ -491,6 +494,70 @@ Generates a Markdown file with:
 
 **Example Output File:** `output/urs/URS_Warehouse_System_20240115_143022.md`
 
+### utils/pdf_generator.py
+
+**URS PDF Generator** - Converts approved URS dictionaries into professional two-page PDFs with a Manifestation of Signature page for 21 CFR Part 11 compliance.
+
+**Core Function:**
+
+| Function | Input | Output | Purpose |
+|----------|-------|--------|---------|
+| `generate_urs_pdf()` | urs: dict, signer_name: str, meaning: str | bytes | Generate a two-page PDF from an approved URS |
+
+**Parameters:**
+
+| Parameter | Type | Default | Purpose |
+|-----------|------|---------|---------|
+| `urs` | Dict[str, Any] | required | URS dict with URS_ID, Requirement_Statement, Criticality, Regulatory_Rationale, Reg_Versions_Cited |
+| `signer_name` | str | required | Full name of the approver |
+| `meaning` | str | "Approval of Requirements" | Meaning of the electronic signature |
+
+**PDF Structure:**
+
+- **Page 1 — URS Document:**
+  - Branded header (TRUSTME AI | CSV Engine)
+  - URS ID and generation timestamp
+  - Requirement Statement
+  - Criticality (color-coded: High=red, Medium=amber, Low=green)
+  - Regulatory Rationale (split by citation)
+  - Regulatory Versions Cited
+  - Page footer with page number and date
+
+- **Page 2 — Manifestation of Signature:**
+  - Title: "Manifestation of Signature"
+  - Signature table with Document, Signer Name, Timestamp (UTC), Meaning
+  - Signature and date lines
+  - 21 CFR Part 11 compliance note
+
+**Dependencies:**
+- fpdf2
+
+**Usage Example:**
+```python
+from utils.pdf_generator import generate_urs_pdf
+
+urs = {
+    "URS_ID": "URS-7.1",
+    "Requirement_Statement": "The system shall track warehouse temperature.",
+    "Criticality": "Medium",
+    "Regulatory_Rationale": "Per GAMP5_Guide.pdf [GAMP5_Rev2] (p.42): ...",
+    "Reg_Versions_Cited": ["GAMP5_Rev2"],
+}
+
+pdf_bytes = generate_urs_pdf(
+    urs=urs,
+    signer_name="Jane Smith",
+    meaning="Approval of Requirements",
+)
+
+# Write to file
+with open("URS-7.1.pdf", "wb") as f:
+    f.write(pdf_bytes)
+
+# Or use with Streamlit
+st.download_button("Download PDF", data=pdf_bytes, file_name="URS-7.1.pdf", mime="application/pdf")
+```
+
 ## URS Traceability Index
 
 | URS ID | Requirement | Implemented In |
@@ -547,6 +614,10 @@ Generates a Markdown file with:
 | URS-13.3 | Write tamper-evident logic-archive JSON | `Agents/integrity_manager.py:_write_logic_archive()` |
 | URS-13.4 | Cross-reference archive to CSV audit row | `Agents/integrity_manager.py:_write_logic_archive()` |
 | URS-13.5 | Compute integrity hash for archive file | `Agents/integrity_manager.py:_write_logic_archive()` |
+| URS-15.1 | Generate URS as professional PDF | `utils/pdf_generator.py:generate_urs_pdf()` |
+| URS-15.2 | Append Manifestation of Signature page | `utils/pdf_generator.py:generate_urs_pdf()` |
+| URS-15.3 | Include signer name, timestamp, and meaning | `utils/pdf_generator.py:generate_urs_pdf()` |
+| URS-15.4 | Provide PDF download from Streamlit UI | `frontend/app.py` (Page 2) |
 | URS-14.1 | Derive reg version from PDF filename at ingestion | `scripts/ingest_docs.py:_derive_reg_version()` |
 | URS-14.2 | Store reg_version in Pinecone chunk metadata | `scripts/ingest_docs.py:DocumentChunk.to_metadata()` |
 | URS-14.3 | Propagate reg_version through search results | `Agents/requirement_architect.py:SearchResult` |
