@@ -157,7 +157,8 @@ with st.sidebar:
             "1. Ingest Vendor Docs",
             "2. Generate Requirements",
             "3. Risk Assessment (Delta)",
-            "4. Audit Logs",
+            "4. Gap Analysis",
+            "5. Audit Logs",
         ],
         label_visibility="collapsed",
     )
@@ -660,9 +661,198 @@ elif page.startswith("3"):
 
 
 # ===================================================================
-# Page 4 — Audit Logs
+# Page 4 — Gap Analysis Dashboard
 # ===================================================================
 elif page.startswith("4"):
+    _page_header(
+        "Gap Analysis Dashboard",
+        "Vendor document compliance review against GAMP 5",
+    )
+
+    # Additional CSS for color-coded gap table
+    st.markdown(
+        """
+        <style>
+        .gap-row-missing {
+            background-color: #FEE2E2 !important;
+        }
+        .gap-row-partial {
+            background-color: #FEF3C7 !important;
+        }
+        .gap-row-covered {
+            background-color: #D1FAE5 !important;
+        }
+        .gap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+        .gap-table th {
+            background-color: #1B2A4A;
+            color: #FFFFFF;
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        .gap-table td {
+            padding: 0.55rem 0.8rem;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    gap = st.session_state.get("gap_result")
+
+    if gap is None:
+        st.info(
+            "No gap analysis results available. "
+            "Upload a vendor document on the **Ingest Vendor "
+            "Docs** page and run **Gap Analysis** first."
+        )
+    else:
+        findings = gap.get("findings", [])
+        total = len(findings)
+
+        # Derive counts by status
+        missing = sum(
+            1 for f in findings
+            if f.get("status", "").lower()
+            in ("missing", "gap", "fail", "not met")
+        )
+        partial = sum(
+            1 for f in findings
+            if f.get("status", "").lower()
+            in ("partial", "warning")
+        )
+        covered = sum(
+            1 for f in findings
+            if f.get("status", "").lower()
+            in ("covered", "pass", "met")
+        )
+        critical = missing  # missing items are critical gaps
+        compliance_pct = (
+            int((covered / total) * 100) if total else 0
+        )
+
+        # ---- KPI metrics row ----
+        k1, k2, k3 = st.columns(3)
+        k1.metric(
+            "Total Requirements Found",
+            total,
+        )
+        k2.metric(
+            "Critical Gaps",
+            critical,
+            delta=(
+                f"-{critical}" if critical else "0"
+            ),
+            delta_color="inverse",
+        )
+        k3.metric(
+            "Compliance Score",
+            f"{compliance_pct}%",
+        )
+
+        st.markdown("---")
+
+        # ---- Color-coded findings table ----
+        if findings:
+            st.markdown("#### Detailed Findings")
+
+            # Build HTML table
+            rows_html = ""
+            for f in findings:
+                status = f.get("status", "-")
+                s_lower = status.lower()
+                if s_lower in (
+                    "missing", "gap", "fail", "not met"
+                ):
+                    row_cls = "gap-row-missing"
+                elif s_lower in ("partial", "warning"):
+                    row_cls = "gap-row-partial"
+                else:
+                    row_cls = "gap-row-covered"
+
+                category = f.get("category", "-")
+                vendor_ev = f.get(
+                    "vendor_evidence", "-"
+                )
+                gamp_ref = f.get(
+                    "gamp5_reference", "-"
+                )
+                rec = f.get("recommendation", "-")
+
+                rows_html += (
+                    f'<tr class="{row_cls}">'
+                    f"<td>{category}</td>"
+                    f"<td><strong>{status}</strong></td>"
+                    f"<td>{vendor_ev}</td>"
+                    f"<td>{gamp_ref}</td>"
+                    f"<td>{rec}</td>"
+                    f"</tr>"
+                )
+
+            st.markdown(
+                f"""
+                <table class="gap-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Vendor Evidence</th>
+                            <th>GAMP 5 Reference</th>
+                            <th>Recommendation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("")  # spacing
+
+            # Legend
+            st.markdown(
+                '<div style="font-size:0.8rem; '
+                'margin-top:0.5rem;">'
+                '<span class="badge badge-high">'
+                "Missing</span> &ensp; "
+                '<span class="badge badge-medium">'
+                "Partial</span> &ensp; "
+                '<span class="badge badge-low">'
+                "Covered</span>"
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("---")
+
+            # Download
+            findings_df = pd.DataFrame(findings)
+            st.download_button(
+                "Download Gap Analysis CSV",
+                data=findings_df.to_csv(index=False),
+                file_name=(
+                    f"gap_analysis_"
+                    f"{datetime.utcnow():%Y%m%d_%H%M%S}"
+                    f".csv"
+                ),
+                mime="text/csv",
+            )
+
+        with st.expander("Raw JSON"):
+            st.json(gap)
+
+
+# ===================================================================
+# Page 5 — Audit Logs
+# ===================================================================
+elif page.startswith("5"):
     _page_header(
         "Audit Trail",
         "21 CFR Part 11 compliant, append-only audit log",
