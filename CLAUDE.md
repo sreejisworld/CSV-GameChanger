@@ -159,6 +159,10 @@ Generates User Requirements Specifications by querying Pinecone for relevant GAM
 
 **Enums:**
 - `Criticality`: HIGH, MEDIUM, LOW
+- `RiskAssessmentCategory`: GXP_DIRECT, GXP_INDIRECT, GXP_NONE
+- `ImplementationMethod`: OUT_OF_THE_BOX, CONFIGURED, CUSTOM
+- `URFRRiskLevel`: HIGH, MEDIUM, LOW
+- `URFRTestStrategy`: OQ_UAT, INFORMAL, SUPPLIER_PROVIDED
 
 **Data Classes:**
 - `URSDocument`: Structured URS with urs_id, requirement_statement, criticality, regulatory_rationale
@@ -176,6 +180,23 @@ Generates User Requirements Specifications by querying Pinecone for relevant GAM
 |--------|-------|--------|---------|
 | `search()` | query: str, top_k: int, min_score: float | SearchResponse | Queries Pinecone for GAMP 5/CSA chunks |
 | `generate_urs()` | requirement: str, min_score: float | dict | Generates structured URS from natural language |
+| `transform_urs_to_ur_fr()` | urs: dict, role, category, risk_assessment, implementation_method | dict | Transforms URS into UR/FR document (deterministic) |
+
+**UR/FR Risk Matrix (RiskAssessmentCategory x ImplementationMethod → Risk Level):**
+
+| IM \ RA | GxP Direct | GxP Indirect | GxP None |
+|---------|-----------|-------------|---------|
+| Custom | HIGH | MEDIUM | LOW |
+| Configured | HIGH | HIGH | LOW |
+| Out of the Box | MEDIUM | LOW | LOW |
+
+**UR/FR Test Strategy Matrix (Risk Level x ImplementationMethod → Test Strategy):**
+
+| Risk \ IM | Out of the Box | Configured | Custom |
+|-----------|---------------|-----------|--------|
+| HIGH | OQ and/or UAT | OQ and/or UAT | OQ and/or UAT |
+| MEDIUM | Supplier Provided | Informal | Informal |
+| LOW | Supplier Provided | Informal | Informal |
 
 **URS Output Format:**
 ```python
@@ -238,6 +259,47 @@ try:
     print(urs)
 except RegulatoryContextNotFoundError as e:
     print(f"Error: {e}")
+
+# Transform URS to UR/FR (deterministic, no LLM calls)
+ur_fr = architect.transform_urs_to_ur_fr(
+    urs=urs,
+    role="Lab Technician",
+    category="General",
+    risk_assessment="GxP Indirect",
+    implementation_method="Configured",
+)
+print(ur_fr["user_requirement"]["risk_level"])   # "High"
+print(ur_fr["user_requirement"]["test_strategy"]) # "OQ and/or UAT"
+```
+
+**UR/FR Output Format:**
+```python
+{
+    "urs_id": "URS-7.1",
+    "requirement_summary": "The system shall track warehouse temperature.",
+    "category": "General",
+    "user_requirement": {
+        "ur_id": "UR-1",
+        "statement": "As a User, there will be track warehouse temperature so that the requirement is fulfilled.",
+        "risk_assessment": "GxP Indirect",
+        "implementation_method": "Configured",
+        "risk_level": "High",
+        "test_strategy": "OQ and/or UAT",
+        "risk_note": "Final Risk Profiling will be decided with stakeholders..."
+    },
+    "functional_requirements": [
+        {
+            "fr_id": "FR-1",
+            "parent_ur_id": "UR-1",
+            "statement": "The system shall track warehouse temperature",
+            "acceptance_criteria": ["Given/When/Then..."]
+        }
+    ],
+    "assumptions_and_dependencies": ["..."],
+    "compliance_notes": ["Cross-reference SOP-436231...", "..."],
+    "implementation_notes": ["..."],
+    "reg_versions_cited": ["GAMP5_Rev2"]
+}
 ```
 
 ### Agents/verification_agent.py
@@ -629,6 +691,13 @@ st.download_button("Download PDF", data=pdf_bytes, file_name="URS-7.1.pdf", mime
 | URS-14.9 | Detect new regulatory versions at query time | `Agents/requirement_architect.py:search()` |
 | URS-14.10 | Detect new regulatory versions during verification | `Agents/verification_agent.py:verify_urs()` |
 | URS-14.11 | Include reg version in gap analysis citations | `Agents/ingestor_agent.py:analyze_gaps()` |
+| URS-16.1 | Classify UR risk assessment and implementation method | `Agents/requirement_architect.py:RiskAssessmentCategory, ImplementationMethod` |
+| URS-16.2 | Determine UR/FR risk level from matrix | `Agents/requirement_architect.py:_determine_ur_fr_risk_level()` |
+| URS-16.3 | Determine UR/FR test strategy from matrix | `Agents/requirement_architect.py:_determine_ur_fr_test_strategy()` |
+| URS-16.4 | Decompose URS into functional requirements | `Agents/requirement_architect.py:_split_requirement_to_frs()` |
+| URS-16.5 | Generate acceptance criteria for FRs | `Agents/requirement_architect.py:_generate_acceptance_criteria()` |
+| URS-16.6 | Transform URS to UR/FR document | `Agents/requirement_architect.py:transform_urs_to_ur_fr()` |
+| URS-16.7 | Log UR/FR transformation to audit trail | `Agents/requirement_architect.py:transform_urs_to_ur_fr()` |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

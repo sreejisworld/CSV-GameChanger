@@ -24,7 +24,11 @@ from Agents.test_generator import (
 )
 from Agents.requirement_architect import (
     EnterpriseTemplate,
-    load_template
+    load_template,
+    RiskAssessmentCategory,
+    ImplementationMethod,
+    URFRRiskLevel,
+    URFRTestStrategy
 )
 from Agents.integrity_manager import (
     log_audit_event as log_integrity_event,

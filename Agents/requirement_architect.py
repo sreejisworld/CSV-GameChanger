@@ -149,6 +149,118 @@ class Criticality(Enum):
     LOW = "Low"
 
 
+class RiskAssessmentCategory(Enum):
+    """
+    GAMP 5 risk assessment category for UR/FR transformation.
+
+    :requirement: URS-16.1 - System shall classify UR risk assessment.
+    """
+
+    GXP_DIRECT = "GxP Direct"
+    GXP_INDIRECT = "GxP Indirect"
+    GXP_NONE = "GxP None"
+
+
+class ImplementationMethod(Enum):
+    """
+    Implementation method for UR/FR transformation.
+
+    :requirement: URS-16.1 - System shall classify UR implementation method.
+    """
+
+    OUT_OF_THE_BOX = "Out of the Box"
+    CONFIGURED = "Configured"
+    CUSTOM = "Custom"
+
+
+class URFRRiskLevel(Enum):
+    """
+    Risk level derived from risk-assessment x implementation-method matrix.
+
+    Distinct from ``Criticality`` and ``risk_strategist.RiskLevel``.
+
+    :requirement: URS-16.2 - System shall determine UR/FR risk level.
+    """
+
+    HIGH = "High"
+    MEDIUM = "Medium"
+    LOW = "Low"
+
+
+class URFRTestStrategy(Enum):
+    """
+    Test strategy derived from risk-level x implementation-method matrix.
+
+    :requirement: URS-16.3 - System shall determine UR/FR test strategy.
+    """
+
+    OQ_UAT = "OQ and/or UAT"
+    INFORMAL = "Informal"
+    SUPPLIER_PROVIDED = "Supplier Provided"
+
+
+# ── UR/FR risk & test-strategy matrices ──────────────────────────
+
+_RISK_MATRIX: Dict[
+    tuple, URFRRiskLevel
+] = {
+    (RiskAssessmentCategory.GXP_DIRECT, ImplementationMethod.CUSTOM):
+        URFRRiskLevel.HIGH,
+    (RiskAssessmentCategory.GXP_DIRECT, ImplementationMethod.CONFIGURED):
+        URFRRiskLevel.HIGH,
+    (RiskAssessmentCategory.GXP_DIRECT, ImplementationMethod.OUT_OF_THE_BOX):
+        URFRRiskLevel.MEDIUM,
+    (RiskAssessmentCategory.GXP_INDIRECT, ImplementationMethod.CUSTOM):
+        URFRRiskLevel.MEDIUM,
+    (RiskAssessmentCategory.GXP_INDIRECT, ImplementationMethod.CONFIGURED):
+        URFRRiskLevel.HIGH,
+    (RiskAssessmentCategory.GXP_INDIRECT, ImplementationMethod.OUT_OF_THE_BOX):
+        URFRRiskLevel.LOW,
+    (RiskAssessmentCategory.GXP_NONE, ImplementationMethod.CUSTOM):
+        URFRRiskLevel.LOW,
+    (RiskAssessmentCategory.GXP_NONE, ImplementationMethod.CONFIGURED):
+        URFRRiskLevel.LOW,
+    (RiskAssessmentCategory.GXP_NONE, ImplementationMethod.OUT_OF_THE_BOX):
+        URFRRiskLevel.LOW,
+}
+
+_TEST_STRATEGY_MATRIX: Dict[
+    tuple, URFRTestStrategy
+] = {
+    (URFRRiskLevel.HIGH, ImplementationMethod.OUT_OF_THE_BOX):
+        URFRTestStrategy.OQ_UAT,
+    (URFRRiskLevel.HIGH, ImplementationMethod.CONFIGURED):
+        URFRTestStrategy.OQ_UAT,
+    (URFRRiskLevel.HIGH, ImplementationMethod.CUSTOM):
+        URFRTestStrategy.OQ_UAT,
+    (URFRRiskLevel.MEDIUM, ImplementationMethod.OUT_OF_THE_BOX):
+        URFRTestStrategy.SUPPLIER_PROVIDED,
+    (URFRRiskLevel.MEDIUM, ImplementationMethod.CONFIGURED):
+        URFRTestStrategy.INFORMAL,
+    (URFRRiskLevel.MEDIUM, ImplementationMethod.CUSTOM):
+        URFRTestStrategy.INFORMAL,
+    (URFRRiskLevel.LOW, ImplementationMethod.OUT_OF_THE_BOX):
+        URFRTestStrategy.SUPPLIER_PROVIDED,
+    (URFRRiskLevel.LOW, ImplementationMethod.CONFIGURED):
+        URFRTestStrategy.INFORMAL,
+    (URFRRiskLevel.LOW, ImplementationMethod.CUSTOM):
+        URFRTestStrategy.INFORMAL,
+}
+
+URFR_CATEGORIES: List[str] = [
+    "General",
+    "Reporting",
+    "Integration",
+    "Security",
+    "Non-functional",
+]
+
+_RISK_NOTE: str = (
+    "Final Risk Profiling will be decided with stakeholders "
+    "as part of the Risk Assessment process."
+)
+
+
 @dataclass
 class URSDocument:
     """
@@ -712,4 +824,297 @@ class RequirementArchitect:
 
         result = urs.to_dict()
         result["Reg_Versions_Cited"] = reg_versions_cited
+        return result
+
+    # ── UR/FR transformation helpers ─────────────────────────────
+
+    @staticmethod
+    def _determine_ur_fr_risk_level(
+        ra: RiskAssessmentCategory,
+        im: ImplementationMethod,
+    ) -> URFRRiskLevel:
+        """
+        Look up risk level from the risk-assessment x implementation matrix.
+
+        :param ra: Risk assessment category.
+        :param im: Implementation method.
+        :return: Derived risk level.
+        :requirement: URS-16.2 - System shall determine UR/FR risk level.
+        """
+        return _RISK_MATRIX[(ra, im)]
+
+    @staticmethod
+    def _determine_ur_fr_test_strategy(
+        risk_level: URFRRiskLevel,
+        im: ImplementationMethod,
+    ) -> URFRTestStrategy:
+        """
+        Look up test strategy from the risk-level x implementation matrix.
+
+        :param risk_level: The derived risk level.
+        :param im: Implementation method.
+        :return: Recommended test strategy.
+        :requirement: URS-16.3 - System shall determine UR/FR test strategy.
+        """
+        return _TEST_STRATEGY_MATRIX[(risk_level, im)]
+
+    @staticmethod
+    def _split_requirement_to_frs(
+        statement: str,
+    ) -> List[str]:
+        """
+        Split a compound requirement statement into FR clauses.
+
+        Splits on common conjunctions (``and``, ``as well as``,
+        semicolons) while preserving each clause as a complete
+        sentence.  Single-clause statements return a one-element
+        list.
+
+        :param statement: The requirement statement to split.
+        :return: List of individual FR clause strings.
+        :requirement: URS-16.4 - System shall decompose URS into FRs.
+        """
+        import re
+
+        # Normalise whitespace
+        text = " ".join(statement.split())
+
+        # Split on semicolons first
+        parts: List[str] = []
+        for segment in text.split(";"):
+            segment = segment.strip()
+            if not segment:
+                continue
+            # Split on " and " / " as well as " only when they
+            # separate independent clauses (preceded by a comma or
+            # appearing after "shall").
+            sub_parts = re.split(
+                r",\s*and\s+|,\s*as well as\s+|\band\b\s+shall\s+",
+                segment,
+            )
+            for sp in sub_parts:
+                sp = sp.strip(" .,")
+                if sp:
+                    parts.append(sp)
+
+        # Fallback: if nothing was split, return the original
+        if not parts:
+            parts = [text.strip(" .")]
+
+        return parts
+
+    @staticmethod
+    def _generate_acceptance_criteria(
+        fr_statement: str,
+        criticality: str,
+    ) -> List[str]:
+        """
+        Produce Given/When/Then acceptance criteria for a single FR.
+
+        Uses deterministic templates based on criticality to ensure
+        consistent output without LLM calls.
+
+        :param fr_statement: The functional requirement statement.
+        :param criticality: URS criticality (High, Medium, Low).
+        :return: List of acceptance-criteria strings.
+        :requirement: URS-16.5 - System shall generate acceptance criteria.
+        """
+        criteria = [
+            (
+                f"Given the system is operational, "
+                f"when {fr_statement.rstrip('.')}, "
+                f"then the expected outcome is achieved "
+                f"and an audit trail entry is recorded."
+            ),
+        ]
+        if criticality in ("High", "Medium"):
+            criteria.append(
+                f"Given an invalid input, "
+                f"when {fr_statement.rstrip('.')} is attempted, "
+                f"then the system rejects the action "
+                f"and logs the failure."
+            )
+        return criteria
+
+    def transform_urs_to_ur_fr(
+        self,
+        urs: Dict[str, Any],
+        role: str = "User",
+        category: str = "General",
+        risk_assessment: str = "GxP Indirect",
+        implementation_method: str = "Configured",
+    ) -> Dict[str, Any]:
+        """
+        Transform an approved URS dict into a structured UR/FR document.
+
+        This is a fully deterministic, rule-based transformation.
+        No LLM or Pinecone calls are made; all regulatory context
+        is inherited from the source URS.
+
+        :param urs: URS dictionary (must contain URS_ID,
+                    Requirement_Statement, Criticality,
+                    Regulatory_Rationale).
+        :param role: The user role for the UR statement
+                     (default "User").
+        :param category: UR/FR category from URFR_CATEGORIES
+                         (default "General").
+        :param risk_assessment: Risk assessment category string
+                                (default "GxP Indirect").
+        :param implementation_method: Implementation method string
+                                      (default "Configured").
+        :return: Structured UR/FR JSON-serialisable dictionary.
+        :raises ValueError: If URS is missing required keys or
+                            category / risk_assessment /
+                            implementation_method are invalid.
+        :requirement: URS-16.6 - System shall transform URS to UR/FR.
+        :requirement: URS-16.7 - System shall log UR/FR transformation.
+        """
+        # ── validate inputs ──────────────────────────────────────
+        required_keys = {
+            "URS_ID", "Requirement_Statement",
+            "Criticality", "Regulatory_Rationale",
+        }
+        missing = required_keys - urs.keys()
+        if missing:
+            raise ValueError(
+                f"URS dict missing required keys: "
+                f"{', '.join(sorted(missing))}"
+            )
+
+        if category not in URFR_CATEGORIES:
+            raise ValueError(
+                f"Invalid category '{category}'. "
+                f"Must be one of {URFR_CATEGORIES}"
+            )
+
+        # Resolve enums from string values
+        ra_map = {e.value: e for e in RiskAssessmentCategory}
+        im_map = {e.value: e for e in ImplementationMethod}
+
+        if risk_assessment not in ra_map:
+            raise ValueError(
+                f"Invalid risk_assessment '{risk_assessment}'. "
+                f"Must be one of {list(ra_map.keys())}"
+            )
+        if implementation_method not in im_map:
+            raise ValueError(
+                f"Invalid implementation_method "
+                f"'{implementation_method}'. "
+                f"Must be one of {list(im_map.keys())}"
+            )
+
+        ra_enum = ra_map[risk_assessment]
+        im_enum = im_map[implementation_method]
+
+        # ── derive risk & test strategy ──────────────────────────
+        risk_level = self._determine_ur_fr_risk_level(ra_enum, im_enum)
+        test_strategy = self._determine_ur_fr_test_strategy(
+            risk_level, im_enum,
+        )
+
+        # ── build UR statement ───────────────────────────────────
+        statement = urs["Requirement_Statement"]
+        # Strip "The system shall " prefix for embedding in UR
+        core = statement
+        for prefix in (
+            "The system shall ", "the system shall ",
+        ):
+            if core.startswith(prefix):
+                core = core[len(prefix):]
+                break
+        ur_statement = (
+            f"As a {role}, there will be "
+            f"{core.rstrip('.')} so that the requirement "
+            f"is fulfilled."
+        )
+
+        # ── split into FRs ───────────────────────────────────────
+        fr_clauses = self._split_requirement_to_frs(statement)
+        criticality = urs["Criticality"]
+        functional_requirements: List[Dict[str, Any]] = []
+        for idx, clause in enumerate(fr_clauses, start=1):
+            fr_id = f"FR-{idx}"
+            acceptance = self._generate_acceptance_criteria(
+                clause, criticality,
+            )
+            functional_requirements.append({
+                "fr_id": fr_id,
+                "parent_ur_id": "UR-1",
+                "statement": clause,
+                "acceptance_criteria": acceptance,
+            })
+
+        # ── assemble output ──────────────────────────────────────
+        reg_versions = urs.get("Reg_Versions_Cited", [])
+        result: Dict[str, Any] = {
+            "urs_id": urs["URS_ID"],
+            "requirement_summary": statement,
+            "category": category,
+            "user_requirement": {
+                "ur_id": "UR-1",
+                "statement": ur_statement,
+                "risk_assessment": risk_assessment,
+                "implementation_method": implementation_method,
+                "risk_level": risk_level.value,
+                "test_strategy": test_strategy.value,
+                "risk_note": _RISK_NOTE,
+            },
+            "functional_requirements": functional_requirements,
+            "assumptions_and_dependencies": [
+                "System access and permissions are managed "
+                "per site SOP.",
+            ],
+            "compliance_notes": [
+                "Cross-reference SOP-436231 for change-control "
+                "procedures.",
+                "All testing evidence must be retained per "
+                "21 CFR Part 11.",
+            ],
+            "implementation_notes": [
+                f"Implementation method: {implementation_method}.",
+                f"Risk assessment category: {risk_assessment}.",
+            ],
+            "reg_versions_cited": reg_versions,
+        }
+
+        # ── audit trail ──────────────────────────────────────────
+        _log_integrity_event(
+            agent_name="RequirementArchitect",
+            action="URS_TRANSFORMED_TO_UR_FR",
+            decision_logic=(
+                f"Transformed {urs['URS_ID']} to UR/FR. "
+                f"RA={risk_assessment}, IM={implementation_method}, "
+                f"Risk={risk_level.value}, "
+                f"Test={test_strategy.value}."
+            ),
+            thought_process={
+                "inputs": {
+                    "urs_id": urs["URS_ID"],
+                    "criticality": criticality,
+                    "role": role,
+                    "category": category,
+                    "risk_assessment": risk_assessment,
+                    "implementation_method": implementation_method,
+                },
+                "steps": [
+                    "Validated URS contains required keys",
+                    "Resolved risk-assessment and implementation "
+                    "enums",
+                    f"Looked up risk level: {risk_level.value}",
+                    f"Looked up test strategy: "
+                    f"{test_strategy.value}",
+                    f"Split requirement into "
+                    f"{len(fr_clauses)} FR(s)",
+                    "Generated acceptance criteria per FR",
+                    "Assembled UR/FR output document",
+                ],
+                "outputs": {
+                    "ur_id": "UR-1",
+                    "fr_count": len(functional_requirements),
+                    "risk_level": risk_level.value,
+                    "test_strategy": test_strategy.value,
+                },
+            },
+        )
+
         return result

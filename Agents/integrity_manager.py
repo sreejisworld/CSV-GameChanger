@@ -46,6 +46,7 @@ _IMPACT_MAP = {
     "SEARCH_KNOWLEDGE_BASE": "Reference Query",
     "URS_GENERATED": "GxP Documentation",
     "URS_GENERATION_FAILED": "GxP Documentation",
+    "URS_TRANSFORMED_TO_UR_FR": "GxP Documentation",
     # IngestorAgent
     "DOCUMENT_INGESTED": "Data Integrity",
     "DOCUMENT_INGESTION_FAILED": "Data Integrity",
