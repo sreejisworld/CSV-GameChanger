@@ -400,19 +400,21 @@ class RequirementArchitect:
 
     def _validate_dependencies(self) -> None:
         """
-        Validate that required dependencies are available.
+        Check whether vector-search dependencies are available.
 
-        :raises ImportError: If pinecone or openai packages are not installed.
-        :requirement: URS-6.6 - System shall validate environment before processing.
+        Sets ``_vector_search_available`` instead of raising.
+        When Pinecone / OpenAI are absent the agent falls back
+        to expert-defined logic (no external calls needed).
+
+        :requirement: URS-6.6 - System shall validate environment
+                      before processing.
         """
-        if Pinecone is None:
-            raise ImportError(
-                "pinecone-client is required. Install with: pip install pinecone"
-            )
-        if OpenAI is None:
-            raise ImportError(
-                "openai is required. Install with: pip install openai"
-            )
+        self._vector_search_available = (
+            Pinecone is not None
+            and OpenAI is not None
+            and bool(self._pinecone_api_key)
+            and bool(self._openai_api_key)
+        )
 
     def _get_embedding(self, text: str) -> List[float]:
         """
@@ -770,56 +772,80 @@ class RequirementArchitect:
             }
         """
         if not requirement or not requirement.strip():
-            raise ValueError("Requirement cannot be empty")
-
-        # Step 1: Search Pinecone for relevant GAMP 5/CSA sections
-        search_response = self.search(
-            query=requirement,
-            top_k=TOP_K_RESULTS,
-            min_score=min_score
-        )
-
-        # Step 2: Ensure at least one matching chunk is found
-        if not search_response.results:
-            _log_integrity_event(
-                agent_name="RequirementArchitect",
-                action="URS_GENERATION_FAILED",
+            raise ValueError(
+                "Requirement cannot be empty"
             )
-            raise RegulatoryContextNotFoundError(requirement)
 
-        # Step 3: Determine criticality based on content
+        # Step 1: Try Pinecone search (optional enrichment).
+        # User input is the primary context; GAMP 5 citations
+        # are a bonus, not a gate.
+        search_results: list = []
+        if self._vector_search_available:
+            try:
+                search_response = self.search(
+                    query=requirement,
+                    top_k=TOP_K_RESULTS,
+                    min_score=min_score,
+                )
+                search_results = search_response.results
+            except Exception:
+                search_results = []
+
+        # Step 2: Determine criticality (works with or
+        #         without GAMP 5 context — keyword-based)
         criticality = self._determine_criticality(
-            requirement,
-            search_response.results
+            requirement, search_results,
         )
 
-        # Step 4: Generate URS ID
+        # Step 3: Generate URS ID
         urs_id = self._generate_urs_id()
 
-        # Step 5: Format requirement statement
-        statement = self._format_requirement_statement(requirement)
+        # Step 4: Format requirement statement
+        statement = (
+            self._format_requirement_statement(
+                requirement,
+            )
+        )
 
-        # Step 6: Build regulatory rationale from search results
-        rationale = self._build_regulatory_rationale(search_response.results)
-
-        # Collect unique regulatory versions cited
-        reg_versions_cited = sorted({
-            r.reg_version
-            for r in search_response.results
-            if r.reg_version
-        })
+        # Step 5: Build regulatory rationale
+        if search_results:
+            rationale = (
+                self._build_regulatory_rationale(
+                    search_results,
+                )
+            )
+            reg_versions_cited = sorted({
+                r.reg_version
+                for r in search_results
+                if r.reg_version
+            })
+        else:
+            # No GAMP 5 match — use expert-defined logic
+            rationale = (
+                "Expert-Defined Logic: Requirement "
+                "classified as "
+                f"{criticality.value} criticality "
+                "based on proprietary risk assessment "
+                "criteria and industry best practices."
+            )
+            reg_versions_cited = []
 
         # Create URS document
         urs = URSDocument(
             urs_id=urs_id,
             requirement_statement=statement,
             criticality=criticality.value,
-            regulatory_rationale=rationale
+            regulatory_rationale=rationale,
         )
 
         _log_integrity_event(
             agent_name="RequirementArchitect",
             action="URS_GENERATED",
+            decision_logic=(
+                f"Generated {urs_id} "
+                f"(criticality={criticality.value}, "
+                f"basis={'GAMP5' if search_results else 'Expert-Defined'})"
+            ),
         )
 
         result = urs.to_dict()

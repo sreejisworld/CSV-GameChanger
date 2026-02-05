@@ -8,8 +8,9 @@ Wraps the stateless ``scripts.generate_vtm`` and
 
 :requirement: URS-12.1 - Verify generated URS against GAMP 5 text.
 """
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from Agents.integrity_manager import (
     log_audit_event as _log_integrity_event,
@@ -157,4 +158,175 @@ class AuditorAgent:
                 f"Generated VSR from {urs_path} -> {out_path}"
             ),
         )
+        return result
+
+    # ----------------------------------------------------------
+    # Requirements Traceability Matrix
+    # ----------------------------------------------------------
+
+    def generate_rtm(
+        self,
+        ur_fr: Dict[str, Any],
+        test_script: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Generate a Requirements Traceability Matrix (RTM).
+
+        Maps every Functional Requirement ID from the
+        RequirementArchitect to every matching Test Step
+        from the DeltaAgent test script.
+
+        :param ur_fr: UR/FR document from
+            ``RequirementArchitect.transform_urs_to_ur_fr()``.
+        :param test_script: Test script from
+            ``DeltaAgent.generate_csa_test_from_ur_fr()``.
+        :return: RTM dict with rows and coverage metrics.
+        :raises AuditorAgentError: If RTM generation fails.
+        :requirement: URS-18.1 - Generate RTM from UR/FR
+                      and test script.
+        """
+        try:
+            return self._do_generate_rtm(
+                ur_fr, test_script,
+            )
+        except AuditorAgentError:
+            raise
+        except Exception as exc:
+            urs_id = ur_fr.get("urs_id", "unknown")
+            raise AuditorAgentError(
+                f"RTM generation failed for "
+                f"{urs_id}: {exc}"
+            ) from exc
+
+    def _do_generate_rtm(
+        self,
+        ur_fr: Dict[str, Any],
+        test_script: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Internal RTM generation logic.
+
+        :param ur_fr: UR/FR document dictionary.
+        :param test_script: Test script dictionary.
+        :return: RTM dictionary.
+        """
+        urs_id = ur_fr.get("urs_id", "unknown")
+        ur = ur_fr.get("user_requirement", {})
+        ur_id = ur.get("ur_id", "UR-?")
+        frs = ur_fr.get(
+            "functional_requirements", [],
+        )
+
+        script_id = test_script.get(
+            "script_id", "unknown",
+        )
+        steps = test_script.get("steps", [])
+
+        # Build lookup: fr_id -> matching exec steps
+        fr_map: Dict[str, List[Dict]] = {}
+        for step in steps:
+            ref = step.get(
+                "requirement_reference", "",
+            )
+            if not ref:
+                continue
+            for fr in frs:
+                fr_id = fr.get("fr_id", "")
+                if fr_id and fr_id in ref:
+                    fr_map.setdefault(
+                        fr_id, [],
+                    ).append(step)
+
+        rows: List[Dict[str, Any]] = []
+        covered = 0
+
+        for fr in frs:
+            fr_id = fr.get("fr_id", "")
+            matching = fr_map.get(fr_id, [])
+
+            if matching:
+                covered += 1
+                status = "Covered"
+                step_refs = ", ".join(
+                    f"{s['step_number']} "
+                    f"({s.get('test_case_type', '-')})"
+                    for s in matching
+                )
+                case_types = sorted({
+                    s.get("test_case_type", "")
+                    for s in matching
+                    if s.get("test_case_type")
+                })
+            else:
+                status = "Gap"
+                step_refs = "-"
+                case_types = []
+
+            rows.append({
+                "urs_id": urs_id,
+                "ur_id": ur_id,
+                "fr_id": fr_id,
+                "requirement_statement": fr.get(
+                    "statement", "",
+                ),
+                "test_script_id": script_id,
+                "test_steps": step_refs,
+                "test_case_types": case_types,
+                "coverage_status": status,
+            })
+
+        total = len(frs)
+        pct = (
+            (covered / total * 100) if total else 0.0
+        )
+
+        result: Dict[str, Any] = {
+            "rtm_id": f"RTM-{urs_id}",
+            "generated_at": datetime.now(
+                timezone.utc,
+            ).isoformat(),
+            "urs_id": urs_id,
+            "ur_id": ur_id,
+            "test_script_id": script_id,
+            "risk_level": ur.get(
+                "risk_level", "-",
+            ),
+            "test_strategy": ur.get(
+                "test_strategy", "-",
+            ),
+            "total_requirements": total,
+            "covered_requirements": covered,
+            "gap_requirements": total - covered,
+            "coverage_percentage": round(pct, 1),
+            "rows": rows,
+        }
+
+        _log_integrity_event(
+            agent_name="AuditorAgent",
+            action="RTM_GENERATED",
+            decision_logic=(
+                f"Generated {result['rtm_id']}: "
+                f"{covered}/{total} FRs covered "
+                f"({pct:.0f}%)"
+            ),
+            thought_process={
+                "inputs": {
+                    "urs_id": urs_id,
+                    "script_id": script_id,
+                    "fr_count": total,
+                },
+                "steps": [
+                    "Extracted FRs from UR/FR document",
+                    "Matched test steps by "
+                    "requirement_reference",
+                    f"Found {covered} covered, "
+                    f"{total - covered} gaps",
+                ],
+                "outputs": {
+                    "rtm_id": result["rtm_id"],
+                    "coverage_pct": pct,
+                },
+            },
+        )
+
         return result
