@@ -620,6 +620,179 @@ with open("URS-7.1.pdf", "wb") as f:
 st.download_button("Download PDF", data=pdf_bytes, file_name="URS-7.1.pdf", mime="application/pdf")
 ```
 
+### Agents/delta_agent.py
+
+**Delta Agent** - Facade for CSA testing strategy determination, test script generation, and deterministic CSA test script generation from UR/FR documents.
+
+**Enums:**
+- `CSATestType`: `INFORMAL`, `FORMAL_OQ`, `FORMAL_UAT`
+- `StepType`: `SETUP`, `EXECUTION`
+- `TestCaseType`: `POSITIVE`, `NEGATIVE`, `EDGE_CASE`
+
+**Data Classes:**
+- `CSATestStep`: step_type, step_number, step_title, step_instruction, expected_result, test_case_type, requirement_reference
+  - `to_dict()` → serializes to dict matching Excel column structure
+
+**Exception Classes:**
+- `DeltaAgentError` (CSV-012) - Delta agent processing failed
+
+**Core Methods:**
+
+| Method | Input | Output | Purpose |
+|--------|-------|--------|---------|
+| `determine_testing_strategy()` | risk_level: RiskLevel | TestingStrategy | CSA strategy from risk level |
+| `generate_test_script()` | urs: dict | dict | Generate test script from URS (LLM-based) |
+| `generate_test_batch()` | urs_list: List[dict] | List[dict] | Batch test script generation |
+| `generate_csa_test_from_ur_fr()` | ur_fr: dict, test_type: str | dict | Generate CSA test from UR/FR (deterministic) |
+| `generate_csa_test_batch()` | ur_fr_list: List[dict], test_type: str | List[dict] | Batch CSA test generation from UR/FR |
+
+**Static Helper Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `_build_setup_steps()` | Common setup steps (login, navigate, prepare data) |
+| `_build_positive_steps()` | Positive execution steps per FR |
+| `_build_negative_steps()` | Negative execution steps per FR |
+| `_build_edge_case_steps()` | Edge-case execution steps per FR |
+| `_build_uat_steps()` | UAT business-process steps (end-to-end) |
+| `_build_charter_steps()` | Unscripted exploratory charter steps |
+| `_build_quality_checklist()` | Self-check quality dict |
+
+**Routing Logic (``generate_csa_test_from_ur_fr()``):**
+
+| Risk Level | Test Type | Steps Generated |
+|------------|-----------|-----------------|
+| High | Informal | Setup + positive + negative + edge per FR |
+| High | Formal OQ | Setup + positive per FR |
+| High | Formal UAT | Setup + UAT business-process per FR |
+| Medium/Low | Any | Charter (exploratory) steps |
+
+**Scripted Output (High risk):**
+```python
+{
+    "script_id": "TS-URS-7.1",
+    "urs_id": "URS-7.1",
+    "ur_id": "UR-1",
+    "test_type": "Informal",
+    "risk_level": "High",
+    "test_strategy": "OQ and/or UAT",
+    "generated_at": "2024-...",
+    "steps": [
+        {
+            "step_type": "Setup",
+            "step_number": 1,
+            "step_title": "Login as System Owner",
+            "step_instruction": "Log into the application...",
+            "expected_result": "",
+            "test_case_type": "",
+            "requirement_reference": ""
+        },
+        {
+            "step_type": "Execution",
+            "step_number": 1,
+            "step_title": "Verify FR-1 - Positive",
+            "step_instruction": "...",
+            "expected_result": "System records temperature...",
+            "test_case_type": "Positive",
+            "requirement_reference": "UR-1 / FR-1"
+        }
+    ],
+    "quality_checklist": {
+        "steps_clear_and_sequential": true,
+        "expected_results_observable": true,
+        "execution_steps_have_references": true,
+        "test_types_assigned": true,
+        "no_redundant_steps": true
+    }
+}
+```
+
+**Charter Output (Medium/Low risk):**
+```python
+{
+    "script_id": "TC-URS-7.1",
+    "urs_id": "URS-7.1",
+    "ur_id": "UR-1",
+    "test_type": "Informal",
+    "risk_level": "Medium",
+    "test_strategy": "Informal",
+    "generated_at": "...",
+    "steps": [
+        {
+            "step_type": "Setup",
+            "step_number": 1,
+            "step_title": "Establish test environment",
+            "step_instruction": "Confirm system access...",
+            "expected_result": "",
+            "test_case_type": "",
+            "requirement_reference": ""
+        },
+        {
+            "step_type": "Execution",
+            "step_number": 1,
+            "step_title": "Exploratory: Verify FR-1 core functionality",
+            "step_instruction": "Using tester expertise, exercise...",
+            "expected_result": "Feature operates as intended...",
+            "test_case_type": "Positive",
+            "requirement_reference": "UR-1 / FR-1"
+        }
+    ],
+    "quality_checklist": { ... }
+}
+```
+
+**Audit Events Logged:**
+1. `CSA_TEST_SCRIPT_GENERATED` - High risk scripted test generated (Compliance Impact: Validation Evidence)
+2. `CSA_TEST_CHARTER_GENERATED` - Medium/Low risk charter generated (Compliance Impact: Validation Evidence)
+3. `CSA_TEST_BATCH_GENERATED` - Batch CSA test generation completed (Compliance Impact: Validation Evidence)
+
+**Dependencies:**
+- None (fully deterministic, no LLM or Pinecone calls)
+
+**Usage Example:**
+```python
+from Agents.delta_agent import DeltaAgent
+
+agent = DeltaAgent()
+
+# Assume ur_fr from RequirementArchitect.transform_urs_to_ur_fr()
+ur_fr = {
+    "urs_id": "URS-7.1",
+    "requirement_summary": "The system shall track warehouse temperature.",
+    "category": "General",
+    "user_requirement": {
+        "ur_id": "UR-1",
+        "statement": "As a User, there will be track warehouse temperature...",
+        "risk_assessment": "GxP Indirect",
+        "implementation_method": "Configured",
+        "risk_level": "High",
+        "test_strategy": "OQ and/or UAT",
+    },
+    "functional_requirements": [
+        {
+            "fr_id": "FR-1",
+            "parent_ur_id": "UR-1",
+            "statement": "The system shall track warehouse temperature",
+            "acceptance_criteria": ["Given/When/Then..."],
+        }
+    ],
+}
+
+# Generate informal scripted test (High risk)
+script = agent.generate_csa_test_from_ur_fr(ur_fr, "Informal")
+print(script["script_id"])  # "TS-URS-7.1"
+print(len(script["steps"]))  # Setup + positive + negative + edge
+
+# Generate OQ test (High risk, positive only)
+oq = agent.generate_csa_test_from_ur_fr(ur_fr, "Formal OQ")
+
+# Generate UAT test (High risk, business-process)
+uat = agent.generate_csa_test_from_ur_fr(ur_fr, "Formal UAT")
+
+# Batch generation
+results = agent.generate_csa_test_batch([ur_fr], "Informal")
+```
+
 ## URS Traceability Index
 
 | URS ID | Requirement | Implemented In |
@@ -698,6 +871,14 @@ st.download_button("Download PDF", data=pdf_bytes, file_name="URS-7.1.pdf", mime
 | URS-16.5 | Generate acceptance criteria for FRs | `Agents/requirement_architect.py:_generate_acceptance_criteria()` |
 | URS-16.6 | Transform URS to UR/FR document | `Agents/requirement_architect.py:transform_urs_to_ur_fr()` |
 | URS-16.7 | Log UR/FR transformation to audit trail | `Agents/requirement_architect.py:transform_urs_to_ur_fr()` |
+| URS-17.1 | Generate CSA test scripts from UR/FR documents | `Agents/delta_agent.py:generate_csa_test_from_ur_fr()` |
+| URS-17.2 | Support informal, OQ, and UAT test types | `Agents/delta_agent.py:CSATestType` |
+| URS-17.3 | Separate setup from execution steps | `Agents/delta_agent.py:_build_setup_steps()` |
+| URS-17.4 | Classify steps as positive, negative, or edge case | `Agents/delta_agent.py:TestCaseType` |
+| URS-17.5 | Produce tabular test steps with standard columns | `Agents/delta_agent.py:CSATestStep` |
+| URS-17.6 | Generate UAT business-process test steps | `Agents/delta_agent.py:_build_uat_steps()` |
+| URS-17.7 | Generate unscripted test charters for medium/low risk | `Agents/delta_agent.py:_build_charter_steps()` |
+| URS-17.8 | Support batch CSA test generation | `Agents/delta_agent.py:generate_csa_test_batch()` |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

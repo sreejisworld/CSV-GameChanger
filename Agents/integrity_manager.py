@@ -59,6 +59,10 @@ _IMPACT_MAP = {
     "TEST_SCRIPT_GENERATED": "Validation Evidence",
     "TEST_SCRIPT_GENERATION_FAILED": "Validation Evidence",
     "TEST_BATCH_GENERATED": "Validation Evidence",
+    # DeltaAgent CSA test from UR/FR
+    "CSA_TEST_SCRIPT_GENERATED": "Validation Evidence",
+    "CSA_TEST_CHARTER_GENERATED": "Validation Evidence",
+    "CSA_TEST_BATCH_GENERATED": "Validation Evidence",
     # API / Webhook
     "CHANGE_REQUEST_RECEIVED": "Change Control",
     "CHANGE_REQUEST_ASSESSED": "Change Control",
