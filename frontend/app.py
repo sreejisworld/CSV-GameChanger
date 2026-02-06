@@ -455,6 +455,17 @@ DEMO_DATA = {
         "test_type": "Informal",
         "risk_level": "High",
         "test_strategy": "OQ and/or UAT",
+        "regulatory_justification": (
+            "Per FDA General Principles of Software "
+            "Validation and GAMP 5 risk-based approach, "
+            "high-risk functions with direct GxP impact "
+            "require rigorous scripted testing with "
+            "documented evidence. "
+            "EMA Annex 11 mandates that test records "
+            "demonstrate complete verification of "
+            "intended use for systems affecting patient "
+            "safety or data integrity."
+        ),
         "generated_at": "2026-02-03T08:30:00Z",
         "steps": [
             {
@@ -803,6 +814,15 @@ with st.sidebar:
     demo_on = st.toggle("Demo Mode", key="demo_mode")
     if demo_on:
         st.caption("Showing sample LIMS data")
+
+    # ---- Expert Mode Toggle ----
+    expert_on = st.toggle(
+        "Expert Mode", key="expert_mode",
+    )
+    if expert_on:
+        st.caption(
+            "Skip doc lookup \u2014 use custom logic"
+        )
 
     # ---- Compliance Monitor: Live Audit Feed ----
     st.markdown("---")
@@ -1848,9 +1868,17 @@ elif page.startswith("6"):
     )
 
     _demo_vf = st.session_state.get("demo_mode", False)
+    _expert_vf = st.session_state.get(
+        "expert_mode", False,
+    )
     if _demo_vf:
         st.info(
             "Demo Mode \u2014 showing sample LIMS data"
+        )
+    if _expert_vf and not _demo_vf:
+        st.info(
+            "Expert Mode \u2014 skipping external "
+            "document lookup; using custom UR/FR logic"
         )
 
     # ---- Input controls ----
@@ -1943,7 +1971,8 @@ elif page.startswith("6"):
                             import RequirementArchitect
                         architect = RequirementArchitect()
                         urs = architect.generate_urs(
-                            vf_requirement.strip()
+                            vf_requirement.strip(),
+                            expert_mode=_expert_vf,
                         )
                         ur_fr = (
                             architect.transform_urs_to_ur_fr(
@@ -2245,6 +2274,33 @@ elif page.startswith("6"):
                 unsafe_allow_html=True,
             )
             st.markdown("")
+
+            # ---- Show Justification toggle ----
+            show_just = st.toggle(
+                "Show Justification",
+                key="vf_show_justification",
+            )
+            if show_just:
+                just_text = ts.get(
+                    "regulatory_justification", "",
+                )
+                if just_text:
+                    st.markdown(
+                        f'<div style="'
+                        f"background:#F0F4FF;"
+                        f"border-left:4px solid "
+                        f"{ACCENT};"
+                        f"border-radius:6px;"
+                        f"padding:0.7rem 1rem;"
+                        f"margin-bottom:0.8rem;"
+                        f"font-size:0.85rem;"
+                        f"color:#1B2A4A;"
+                        f'">'
+                        f"<strong>Regulatory "
+                        f"Justification</strong>"
+                        f"<br/>{just_text}</div>",
+                        unsafe_allow_html=True,
+                    )
 
             # Steps table
             steps = ts.get("steps", [])

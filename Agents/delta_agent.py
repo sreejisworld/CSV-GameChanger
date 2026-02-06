@@ -30,6 +30,41 @@ from Agents.test_generator import TestGenerator
 
 
 # ------------------------------------------------------------------
+# Regulatory justifications per risk level
+# ------------------------------------------------------------------
+
+_RISK_JUSTIFICATIONS: Dict[str, str] = {
+    "High": (
+        "Per FDA General Principles of Software Validation "
+        "and GAMP 5 risk-based approach, high-risk functions "
+        "with direct GxP impact require rigorous scripted "
+        "testing with documented evidence. "
+        "EMA Annex 11 mandates that test records demonstrate "
+        "complete verification of intended use for systems "
+        "affecting patient safety or data integrity."
+    ),
+    "Medium": (
+        "Per GAMP 5 risk-based testing principles, "
+        "medium-risk functions warrant a hybrid approach "
+        "combining targeted scripted checks with exploratory "
+        "testing to balance assurance and efficiency. "
+        "FDA CSA guidance recognises that not all testing "
+        "requires full scripted protocols when risk is "
+        "moderate and detectability is adequate."
+    ),
+    "Low": (
+        "Per FDA CSA framework and GAMP 5 Appendix M5, "
+        "low-risk functions with no direct GxP impact may "
+        "be verified through unscripted exploratory testing "
+        "or supplier-provided evidence. "
+        "This risk-proportionate approach aligns with ICH Q9 "
+        "principles, directing validation effort where "
+        "patient safety impact is greatest."
+    ),
+}
+
+
+# ------------------------------------------------------------------
 # Enums for CSA test script generation
 # ------------------------------------------------------------------
 
@@ -733,6 +768,11 @@ class DeltaAgent:
 
         checklist = self._build_quality_checklist(steps)
 
+        justification = _RISK_JUSTIFICATIONS.get(
+            risk_level,
+            _RISK_JUSTIFICATIONS["Low"],
+        )
+
         result: Dict[str, Any] = {
             "script_id": script_id,
             "urs_id": urs_id,
@@ -740,6 +780,7 @@ class DeltaAgent:
             "test_type": test_type,
             "risk_level": risk_level,
             "test_strategy": test_strategy,
+            "regulatory_justification": justification,
             "generated_at": datetime.now(
                 timezone.utc
             ).isoformat(),

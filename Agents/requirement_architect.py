@@ -737,39 +737,34 @@ class RequirementArchitect:
     def generate_urs(
         self,
         requirement: str,
-        min_score: float = MIN_SIMILARITY_SCORE
+        min_score: float = MIN_SIMILARITY_SCORE,
+        expert_mode: bool = False,
     ) -> Dict[str, Any]:
         """
         Generate a User Requirements Specification from natural language input.
 
-        This function takes a natural language requirement description,
-        queries the Pinecone index for relevant GAMP 5 guidance, and
-        produces a structured URS document with regulatory rationale.
+        When ``expert_mode`` is *True* the agent skips all
+        external document lookups and applies the proprietary
+        criticality-classification and UR/FR transformation
+        logic directly.  The regulatory basis is labelled
+        *Expert-Defined Logic*.
 
-        Every generated URS is guaranteed to have at least one matching
-        chunk from the ingested GAMP 5/CSA documents as regulatory context.
+        When ``expert_mode`` is *False* (default) the agent
+        tries Pinecone for GAMP 5 context but still falls
+        back to expert-defined logic if nothing is found.
 
-        :param requirement: Natural language requirement description
-                          (e.g., "I want to track warehouse temp").
-        :param min_score: Minimum similarity score for matching chunks
-                         (default: 0.5).
-        :return: Dictionary containing URS_ID, Requirement_Statement,
-                Criticality, and Regulatory_Rationale.
-        :raises ValueError: If requirement is empty or API keys are missing.
-        :raises RegulatoryContextNotFoundError: If no matching GAMP 5/CSA
-                context is found in the knowledge base.
-        :requirement: URS-6.1 - System shall generate URS from natural language input.
-
-        Example:
-            >>> architect = RequirementArchitect()
-            >>> urs = architect.generate_urs("I want to track warehouse temp")
-            >>> print(urs)
-            {
-                "URS_ID": "URS-7.1",
-                "Requirement_Statement": "The system shall track warehouse temp.",
-                "Criticality": "Medium",
-                "Regulatory_Rationale": "Per GAMP 5 Guide (p.42): ..."
-            }
+        :param requirement: Natural language requirement
+            description.
+        :param min_score: Minimum similarity score for
+            matching chunks (default: 0.5).
+        :param expert_mode: When *True*, skip external
+            document lookup entirely.
+        :return: Dictionary containing URS_ID,
+            Requirement_Statement, Criticality, and
+            Regulatory_Rationale.
+        :raises ValueError: If requirement is empty.
+        :requirement: URS-6.1 - System shall generate URS
+                      from natural language input.
         """
         if not requirement or not requirement.strip():
             raise ValueError(
@@ -779,8 +774,12 @@ class RequirementArchitect:
         # Step 1: Try Pinecone search (optional enrichment).
         # User input is the primary context; GAMP 5 citations
         # are a bonus, not a gate.
+        # In expert_mode the lookup is skipped entirely.
         search_results: list = []
-        if self._vector_search_available:
+        if (
+            not expert_mode
+            and self._vector_search_available
+        ):
             try:
                 search_response = self.search(
                     query=requirement,
