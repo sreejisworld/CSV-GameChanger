@@ -2423,6 +2423,55 @@ elif page.startswith("6"):
                 "CSA test script here."
             )
 
+    # ---- Download Validation Report (combined PDF) ----
+    vr_ur = st.session_state.vf_ur_fr
+    vr_ts = st.session_state.vf_test_script
+    if vr_ur is not None and vr_ts is not None:
+        st.divider()
+        st.subheader("Download Validation Report")
+        vr_c1, vr_c2 = st.columns(2)
+        with vr_c1:
+            vr_signer = st.text_input(
+                "Signer Name",
+                placeholder="Jane Smith",
+                key="vr_signer",
+            )
+        with vr_c2:
+            vr_meaning = st.text_input(
+                "Signature Meaning",
+                value="Approval of Validation Report",
+                key="vr_meaning",
+            )
+
+        if vr_signer.strip():
+            from utils.pdf_generator import (
+                generate_validation_report_pdf,
+            )
+
+            vr_pdf = generate_validation_report_pdf(
+                ur_fr=vr_ur,
+                test_script=vr_ts,
+                signer_name=vr_signer.strip(),
+                meaning=vr_meaning.strip(),
+            )
+            vr_id = vr_ur.get("urs_id", "doc")
+            st.download_button(
+                "Download Validation Report",
+                data=vr_pdf,
+                file_name=(
+                    f"validation_report_{vr_id}.pdf"
+                ),
+                mime="application/pdf",
+                key="vf_vr_pdf",
+                type="primary",
+                use_container_width=True,
+            )
+        else:
+            st.info(
+                "Enter a signer name to enable the "
+                "Validation Report download."
+            )
+
 
 # ===================================================================
 # Page 7 — Traceability

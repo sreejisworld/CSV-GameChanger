@@ -558,13 +558,14 @@ Generates a Markdown file with:
 
 ### utils/pdf_generator.py
 
-**URS PDF Generator** - Converts approved URS dictionaries into professional two-page PDFs with a Manifestation of Signature page for 21 CFR Part 11 compliance.
+**PDF Generators** - Converts approved URS dictionaries and combined Validation Reports into professional PDFs with a Manifestation of Signature page for 21 CFR Part 11 compliance.
 
-**Core Function:**
+**Core Functions:**
 
 | Function | Input | Output | Purpose |
 |----------|-------|--------|---------|
 | `generate_urs_pdf()` | urs: dict, signer_name: str, meaning: str | bytes | Generate a two-page PDF from an approved URS |
+| `generate_validation_report_pdf()` | ur_fr: dict, test_script: dict, signer_name: str, meaning: str | bytes | Generate combined Validation Report PDF |
 
 **Parameters:**
 
@@ -618,6 +619,29 @@ with open("URS-7.1.pdf", "wb") as f:
 
 # Or use with Streamlit
 st.download_button("Download PDF", data=pdf_bytes, file_name="URS-7.1.pdf", mime="application/pdf")
+```
+
+**Validation Report PDF Structure:**
+
+- **Page 1 — Cover (Portrait):** Title, doc ID, key-value summary (category, risk, strategy, script ID), requirement summary, assumptions, compliance notes, reg versions
+- **Page 2 — UR/FR Table (Landscape):** UR summary metadata, FR table (FR ID, Parent UR, Statement, Acceptance Criteria)
+- **Page 3 — Test Script Table (Landscape):** Script metadata, steps table (Type, #, Title, Instruction, Expected Result, Case, Ref)
+- **Page 4 — Regulatory Justification (Portrait):** Full justification text (if present)
+- **Page 5 — Manifestation of Signature (Portrait):** 21 CFR Part 11 signature page
+
+**Validation Report Usage Example:**
+```python
+from utils.pdf_generator import generate_validation_report_pdf
+
+# ur_fr from RequirementArchitect, test_script from DeltaAgent
+pdf_bytes = generate_validation_report_pdf(
+    ur_fr=ur_fr,
+    test_script=test_script,
+    signer_name="Jane Smith",
+    meaning="Approval of Validation Report",
+)
+
+st.download_button("Download Validation Report", data=pdf_bytes, file_name="report.pdf", mime="application/pdf")
 ```
 
 ### Agents/delta_agent.py
@@ -879,6 +903,12 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-17.6 | Generate UAT business-process test steps | `Agents/delta_agent.py:_build_uat_steps()` |
 | URS-17.7 | Generate unscripted test charters for medium/low risk | `Agents/delta_agent.py:_build_charter_steps()` |
 | URS-17.8 | Support batch CSA test generation | `Agents/delta_agent.py:generate_csa_test_batch()` |
+| URS-18.1 | Generate combined Validation Report PDF | `utils/pdf_generator.py:generate_validation_report_pdf()` |
+| URS-18.2 | Include cover page with summary metadata | `utils/pdf_generator.py:generate_validation_report_pdf()` |
+| URS-18.3 | Include landscape UR/FR and test script tables | `utils/pdf_generator.py:_table_page()` |
+| URS-18.4 | Include regulatory justification page | `utils/pdf_generator.py:generate_validation_report_pdf()` |
+| URS-18.5 | Include Manifestation of Signature page | `utils/pdf_generator.py:generate_validation_report_pdf()` |
+| URS-18.6 | Provide Validation Report download from Streamlit UI | `frontend/app.py` (Page 6) |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 
