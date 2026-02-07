@@ -961,6 +961,93 @@ class RequirementArchitect:
             )
         return criteria
 
+    @staticmethod
+    def _parse_roles(
+        roles_text: str,
+    ) -> List[tuple]:
+        """
+        Parse free-text roles & permissions into structured tuples.
+
+        Supports colon-delimited (``Role: perms``),
+        dash-delimited (``Role - perms``), and plain-line
+        fallback formats.
+
+        :param roles_text: Raw roles-and-permissions string.
+        :return: List of (role_name, permission_description) tuples.
+        :requirement: URS-16.6 - System shall transform URS to UR/FR.
+        """
+        import re
+
+        pairs: List[tuple] = []
+        for line in roles_text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # Try "Role: permissions" or "Role - permissions"
+            match = re.match(
+                r"^(.+?)\s*[:]\s+(.+)$", line,
+            )
+            if not match:
+                match = re.match(
+                    r"^(.+?)\s+[-–—]\s+(.+)$", line,
+                )
+            if match:
+                role_name = match.group(1).strip()
+                perms = match.group(2).strip()
+                pairs.append((role_name, perms))
+            else:
+                # Fallback: whole line as role description
+                pairs.append((line, line))
+        return pairs
+
+    @staticmethod
+    def _build_access_control_frs(
+        roles: List[tuple],
+        start_index: int,
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate access-control FRs from parsed role tuples.
+
+        Each role produces one FR that restricts system access
+        to the specified permissions.
+
+        :param roles: List of (role_name, permission_description).
+        :param start_index: FR numbering offset (continues from
+                            existing FRs).
+        :return: List of FR dicts with access-control statements.
+        :requirement: URS-16.6 - System shall transform URS to UR/FR.
+        """
+        frs: List[Dict[str, Any]] = []
+        for i, (role_name, perms) in enumerate(
+            roles, start=start_index,
+        ):
+            fr_id = f"FR-{i}"
+            statement = (
+                f"The system shall restrict {role_name} "
+                f"access to {perms} functions only"
+            )
+            acceptance = [
+                (
+                    f"Given a user with the {role_name} role, "
+                    f"when they attempt to access {perms} "
+                    f"functions, then access is granted "
+                    f"and an audit trail entry is recorded."
+                ),
+                (
+                    f"Given a user with the {role_name} role, "
+                    f"when they attempt to access functions "
+                    f"outside {perms}, then the system "
+                    f"denies access and logs the attempt."
+                ),
+            ]
+            frs.append({
+                "fr_id": fr_id,
+                "parent_ur_id": "UR-1",
+                "statement": statement,
+                "acceptance_criteria": acceptance,
+            })
+        return frs
+
     def transform_urs_to_ur_fr(
         self,
         urs: Dict[str, Any],
@@ -1044,6 +1131,7 @@ class RequirementArchitect:
 
         # ── build UR statement ───────────────────────────────────
         statement = urs["Requirement_Statement"]
+        ctx = additional_context or {}
         # Strip "The system shall " prefix for embedding in UR
         core = statement
         for prefix in (
@@ -1057,6 +1145,23 @@ class RequirementArchitect:
             f"{core.rstrip('.')} so that the requirement "
             f"is fulfilled."
         )
+        # Enrich with system context when available
+        context_parts: List[str] = []
+        if ctx.get("system_description"):
+            context_parts.append(
+                f"System context: "
+                f"{ctx['system_description'].rstrip('.')}."
+            )
+        if ctx.get("workshop_notes"):
+            context_parts.append(
+                f"Workshop decisions: "
+                f"{ctx['workshop_notes'].rstrip('.')}."
+            )
+        if context_parts:
+            ur_statement = (
+                f"{ur_statement} "
+                f"{' '.join(context_parts)}"
+            )
 
         # ── split into FRs ───────────────────────────────────────
         fr_clauses = self._split_requirement_to_frs(statement)
@@ -1074,9 +1179,22 @@ class RequirementArchitect:
                 "acceptance_criteria": acceptance,
             })
 
+        # ── access-control FRs from roles ───────────────────────
+        acl_fr_count = 0
+        if ctx.get("roles_and_permissions"):
+            parsed_roles = self._parse_roles(
+                ctx["roles_and_permissions"],
+            )
+            if parsed_roles:
+                next_idx = len(functional_requirements) + 1
+                acl_frs = self._build_access_control_frs(
+                    parsed_roles, next_idx,
+                )
+                functional_requirements.extend(acl_frs)
+                acl_fr_count = len(acl_frs)
+
         # ── assemble output ──────────────────────────────────────
         reg_versions = urs.get("Reg_Versions_Cited", [])
-        ctx = additional_context or {}
 
         assumptions = [
             "System access and permissions are managed "
@@ -1169,14 +1287,27 @@ class RequirementArchitect:
                     f"Looked up risk level: {risk_level.value}",
                     f"Looked up test strategy: "
                     f"{test_strategy.value}",
+                    (
+                        "Enriched UR with system context"
+                        if context_parts else
+                        "No system context to enrich UR"
+                    ),
                     f"Split requirement into "
                     f"{len(fr_clauses)} FR(s)",
                     "Generated acceptance criteria per FR",
+                    (
+                        f"Generated {acl_fr_count} "
+                        f"access-control FRs from roles"
+                        if acl_fr_count else
+                        "No roles provided for "
+                        "access-control FRs"
+                    ),
                     "Assembled UR/FR output document",
                 ],
                 "outputs": {
                     "ur_id": "UR-1",
                     "fr_count": len(functional_requirements),
+                    "acl_fr_count": acl_fr_count,
                     "risk_level": risk_level.value,
                     "test_strategy": test_strategy.value,
                 },
