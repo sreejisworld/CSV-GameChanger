@@ -968,6 +968,7 @@ class RequirementArchitect:
         category: str = "General",
         risk_assessment: str = "GxP Indirect",
         implementation_method: str = "Configured",
+        additional_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Transform an approved URS dict into a structured UR/FR document.
@@ -987,6 +988,10 @@ class RequirementArchitect:
                                 (default "GxP Indirect").
         :param implementation_method: Implementation method string
                                       (default "Configured").
+        :param additional_context: Optional dict with extra context
+                                   (system_description, workshop_notes,
+                                   roles_and_permissions,
+                                   lucidchart_url, lucidchart_content).
         :return: Structured UR/FR JSON-serialisable dictionary.
         :raises ValueError: If URS is missing required keys or
                             category / risk_assessment /
@@ -1071,6 +1076,48 @@ class RequirementArchitect:
 
         # ── assemble output ──────────────────────────────────────
         reg_versions = urs.get("Reg_Versions_Cited", [])
+        ctx = additional_context or {}
+
+        assumptions = [
+            "System access and permissions are managed "
+            "per site SOP.",
+        ]
+        compliance_notes = [
+            "Cross-reference SOP-436231 for change-control "
+            "procedures.",
+            "All testing evidence must be retained per "
+            "21 CFR Part 11.",
+        ]
+        impl_notes = [
+            f"Implementation method: {implementation_method}.",
+            f"Risk assessment category: {risk_assessment}.",
+        ]
+
+        if ctx.get("system_description"):
+            assumptions.append(
+                f"System Description: "
+                f"{ctx['system_description']}"
+            )
+        if ctx.get("workshop_notes"):
+            assumptions.append(
+                f"Workshop Notes: "
+                f"{ctx['workshop_notes']}"
+            )
+        if ctx.get("roles_and_permissions"):
+            compliance_notes.append(
+                f"User Roles & Permissions: "
+                f"{ctx['roles_and_permissions']}"
+            )
+        if ctx.get("lucidchart_url"):
+            impl_notes.append(
+                f"Diagram Reference: "
+                f"{ctx['lucidchart_url']}"
+            )
+        if ctx.get("lucidchart_content"):
+            impl_notes.append(
+                "Diagram content provided inline."
+            )
+
         result: Dict[str, Any] = {
             "urs_id": urs["URS_ID"],
             "requirement_summary": statement,
@@ -1085,22 +1132,13 @@ class RequirementArchitect:
                 "risk_note": _RISK_NOTE,
             },
             "functional_requirements": functional_requirements,
-            "assumptions_and_dependencies": [
-                "System access and permissions are managed "
-                "per site SOP.",
-            ],
-            "compliance_notes": [
-                "Cross-reference SOP-436231 for change-control "
-                "procedures.",
-                "All testing evidence must be retained per "
-                "21 CFR Part 11.",
-            ],
-            "implementation_notes": [
-                f"Implementation method: {implementation_method}.",
-                f"Risk assessment category: {risk_assessment}.",
-            ],
+            "assumptions_and_dependencies": assumptions,
+            "compliance_notes": compliance_notes,
+            "implementation_notes": impl_notes,
             "reg_versions_cited": reg_versions,
         }
+        if ctx:
+            result["additional_context"] = ctx
 
         # ── audit trail ──────────────────────────────────────────
         _log_integrity_event(
@@ -1120,6 +1158,9 @@ class RequirementArchitect:
                     "category": category,
                     "risk_assessment": risk_assessment,
                     "implementation_method": implementation_method,
+                    "additional_context_keys": (
+                        list(ctx.keys()) if ctx else []
+                    ),
                 },
                 "steps": [
                     "Validated URS contains required keys",

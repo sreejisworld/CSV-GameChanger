@@ -180,7 +180,22 @@ Generates User Requirements Specifications by querying Pinecone for relevant GAM
 |--------|-------|--------|---------|
 | `search()` | query: str, top_k: int, min_score: float | SearchResponse | Queries Pinecone for GAMP 5/CSA chunks |
 | `generate_urs()` | requirement: str, min_score: float | dict | Generates structured URS from natural language |
-| `transform_urs_to_ur_fr()` | urs: dict, role, category, risk_assessment, implementation_method | dict | Transforms URS into UR/FR document (deterministic) |
+| `transform_urs_to_ur_fr()` | urs: dict, role, category, risk_assessment, implementation_method, additional_context | dict | Transforms URS into UR/FR document (deterministic) |
+
+**`additional_context` Parameter (Optional):**
+
+Passed from the Validation Factory UI to enrich the UR/FR output with project-specific context. All keys are optional; the parameter itself defaults to `None`.
+
+| Key | Source (UI) | Incorporated Into |
+|-----|-------------|-------------------|
+| `system_description` | System Description text area | `assumptions_and_dependencies` |
+| `workshop_notes` | Workshop Notes text area | `assumptions_and_dependencies` |
+| `roles_and_permissions` | User Roles & Permissions text area | `compliance_notes` |
+| `lucidchart_url` | Lucidchart / Diagram Link text input | `implementation_notes` |
+| `lucidchart_content` | Diagram file uploader (decoded UTF-8) | `implementation_notes` |
+| `lucidchart_filename` | Diagram file uploader (binary fallback) | `implementation_notes` |
+
+When any context is provided, the raw dict is also stored in the output under the `additional_context` key for downstream consumers (e.g. PDF generator, test scripts).
 
 **UR/FR Risk Matrix (RiskAssessmentCategory x ImplementationMethod → Risk Level):**
 
@@ -267,6 +282,12 @@ ur_fr = architect.transform_urs_to_ur_fr(
     category="General",
     risk_assessment="GxP Indirect",
     implementation_method="Configured",
+    additional_context={
+        "system_description": "LabCore LIMS v4.2 — cloud-hosted",
+        "workshop_notes": "Chain-of-custody is safety-critical",
+        "roles_and_permissions": "Technician: receipt/transfer\nSupervisor: disposal",
+        "lucidchart_url": "https://lucid.app/example",
+    },
 )
 print(ur_fr["user_requirement"]["risk_level"])   # "High"
 print(ur_fr["user_requirement"]["test_strategy"]) # "OQ and/or UAT"
@@ -295,10 +316,17 @@ print(ur_fr["user_requirement"]["test_strategy"]) # "OQ and/or UAT"
             "acceptance_criteria": ["Given/When/Then..."]
         }
     ],
-    "assumptions_and_dependencies": ["..."],
-    "compliance_notes": ["Cross-reference SOP-436231...", "..."],
-    "implementation_notes": ["..."],
-    "reg_versions_cited": ["GAMP5_Rev2"]
+    "assumptions_and_dependencies": ["...", "System Description: ...", "Workshop Notes: ..."],
+    "compliance_notes": ["Cross-reference SOP-436231...", "...", "User Roles & Permissions: ..."],
+    "implementation_notes": ["...", "Diagram Reference: https://...", "Diagram content provided inline."],
+    "reg_versions_cited": ["GAMP5_Rev2"],
+    "additional_context": {
+        "system_description": "...",
+        "workshop_notes": "...",
+        "roles_and_permissions": "...",
+        "lucidchart_url": "...",
+        "lucidchart_content": "..."
+    }
 }
 ```
 

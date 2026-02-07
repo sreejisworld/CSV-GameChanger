@@ -9,6 +9,7 @@ requirements generation, risk assessment, and audit log review.
 """
 import sys
 from pathlib import Path
+from typing import Dict, Any
 
 # Ensure project root is importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -850,6 +851,22 @@ with st.sidebar:
         )
         st.session_state["vf_impl_method"] = "Configured"
         st.session_state["vf_test_type"] = "Informal"
+        st.session_state["vf_system_desc"] = (
+            "LabCore LIMS v4.2 — cloud-hosted laboratory "
+            "information management system with "
+            "bi-directional instrument integration."
+        )
+        st.session_state["vf_workshop_notes"] = (
+            "Stakeholders agreed chain-of-custody is "
+            "patient-safety-critical. Barcode scanning "
+            "required at every handoff point."
+        )
+        st.session_state["vf_roles_permissions"] = (
+            "Lab Technician: sample receipt/transfer\n"
+            "Supervisor: disposal approval\n"
+            "QA Manager: audit trail review"
+        )
+        st.session_state["vf_lucidchart_url"] = ""
         st.session_state["vf_ur_fr"] = (
             DEMO_DATA["ur_fr"]
         )
@@ -1993,6 +2010,53 @@ elif page.startswith("6"):
         key="vf_requirement",
     )
 
+    # ---- Additional context for UR/FR generation ----
+    with st.expander(
+        "Additional Context (optional)", expanded=False,
+    ):
+        ctx_col1, ctx_col2 = st.columns(2)
+        with ctx_col1:
+            vf_system_desc = st.text_area(
+                "System Description",
+                placeholder=(
+                    "Describe the system under validation "
+                    "(e.g. vendor name, version, deployment "
+                    "model, interfaces)."
+                ),
+                height=120,
+                key="vf_system_desc",
+            )
+            vf_workshop_notes = st.text_area(
+                "Workshop Notes",
+                placeholder=(
+                    "Paste stakeholder workshop notes, "
+                    "decisions, or action items."
+                ),
+                height=120,
+                key="vf_workshop_notes",
+            )
+        with ctx_col2:
+            vf_roles_permissions = st.text_area(
+                "User Roles & Permissions",
+                placeholder=(
+                    "List user roles and their permissions "
+                    "(e.g. Admin: full access, Analyst: "
+                    "read/write, Reviewer: read-only)."
+                ),
+                height=120,
+                key="vf_roles_permissions",
+            )
+            vf_lucidchart_url = st.text_input(
+                "Lucidchart / Diagram Link",
+                placeholder="https://lucid.app/...",
+                key="vf_lucidchart_url",
+            )
+            vf_lucidchart_file = st.file_uploader(
+                "Or upload diagram export",
+                type=["txt", "csv", "pdf", "png", "jpg"],
+                key="vf_lucidchart_file",
+            )
+
     pc1, pc2, pc3, pc4, pc5 = st.columns(5)
     with pc1:
         vf_role = st.text_input(
@@ -2050,6 +2114,53 @@ elif page.startswith("6"):
             key="vf_draft_test",
         )
 
+    # ---- Build additional context dict ----
+    _additional_context: Dict[str, Any] = {}
+    _sys_desc = st.session_state.get(
+        "vf_system_desc", ""
+    )
+    _ws_notes = st.session_state.get(
+        "vf_workshop_notes", ""
+    )
+    _roles_perms = st.session_state.get(
+        "vf_roles_permissions", ""
+    )
+    _lc_url = st.session_state.get(
+        "vf_lucidchart_url", ""
+    )
+    _lc_file = st.session_state.get(
+        "vf_lucidchart_file", None
+    )
+
+    if _sys_desc and _sys_desc.strip():
+        _additional_context["system_description"] = (
+            _sys_desc.strip()
+        )
+    if _ws_notes and _ws_notes.strip():
+        _additional_context["workshop_notes"] = (
+            _ws_notes.strip()
+        )
+    if _roles_perms and _roles_perms.strip():
+        _additional_context["roles_and_permissions"] = (
+            _roles_perms.strip()
+        )
+    if _lc_url and _lc_url.strip():
+        _additional_context["lucidchart_url"] = (
+            _lc_url.strip()
+        )
+    if _lc_file is not None:
+        try:
+            _lc_content = _lc_file.read().decode(
+                "utf-8", errors="replace"
+            )
+            _additional_context["lucidchart_content"] = (
+                _lc_content
+            )
+        except Exception:
+            _additional_context["lucidchart_filename"] = (
+                _lc_file.name
+            )
+
     # ---- Generate Requirements logic ----
     if gen_req:
         if _demo_vf:
@@ -2087,6 +2198,11 @@ elif page.startswith("6"):
                                 ),
                                 implementation_method=(
                                     vf_impl_method
+                                ),
+                                additional_context=(
+                                    _additional_context
+                                    if _additional_context
+                                    else None
                                 ),
                             )
                         )
