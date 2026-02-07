@@ -824,6 +824,55 @@ with st.sidebar:
             "Skip doc lookup \u2014 use custom logic"
         )
 
+    # ---- Load Demo Project ----
+    st.markdown("---")
+    if st.button(
+        "Load Demo Project",
+        key="load_demo_project",
+        use_container_width=True,
+    ):
+        st.session_state["demo_mode"] = True
+        st.session_state["vf_requirement"] = (
+            "The LIMS shall maintain a complete, "
+            "immutable chain-of-custody record for "
+            "every laboratory sample from receipt "
+            "through testing, storage, and disposal, "
+            "including custodian identity, timestamp, "
+            "location, and condition at each transfer "
+            "point."
+        )
+        st.session_state["vf_role"] = "Lab Technician"
+        st.session_state["vf_category"] = (
+            "Sample Management"
+        )
+        st.session_state["vf_risk_assessment"] = (
+            "GxP Direct"
+        )
+        st.session_state["vf_impl_method"] = "Configured"
+        st.session_state["vf_test_type"] = "Informal"
+        st.session_state["vf_ur_fr"] = (
+            DEMO_DATA["ur_fr"]
+        )
+        st.session_state["vf_test_script"] = (
+            DEMO_DATA["test_script"]
+        )
+        st.session_state["rtm_result"] = (
+            DEMO_DATA["rtm"]
+        )
+        st.session_state["ingest_result"] = (
+            DEMO_DATA["ingest_result"]
+        )
+        st.session_state["gap_result"] = (
+            DEMO_DATA["gap_result"]
+        )
+        st.session_state["generated_urs"] = (
+            DEMO_DATA["generated_urs"]
+        )
+        st.rerun()
+    st.caption(
+        "Pre-load LIMS demo for walkthrough"
+    )
+
     # ---- Compliance Monitor: Live Audit Feed ----
     st.markdown("---")
     st.caption("Compliance Monitor")
@@ -1829,6 +1878,58 @@ elif page.startswith("6"):
     _page_header(
         "Validation Factory",
         "End-to-end: requirement \u2192 UR/FR \u2192 CSA test script",
+    )
+
+    # ---- Workflow Diagram ----
+    st.markdown(
+        f"""
+        <div style="
+            display:flex; align-items:center;
+            justify-content:center; gap:0;
+            margin:0.6rem 0 1.2rem 0;
+            flex-wrap:wrap;
+        ">
+            <div style="
+                background:{NAVY}; color:#fff;
+                padding:0.45rem 1rem;
+                border-radius:6px; font-size:0.78rem;
+                font-weight:600; white-space:nowrap;
+            ">System Description</div>
+            <span style="font-size:1.2rem; color:{ACCENT};
+                padding:0 0.4rem;">&rarr;</span>
+            <div style="
+                background:{NAVY}; color:#fff;
+                padding:0.45rem 1rem;
+                border-radius:6px; font-size:0.78rem;
+                font-weight:600; white-space:nowrap;
+            ">URS</div>
+            <span style="font-size:1.2rem; color:{ACCENT};
+                padding:0 0.4rem;">&rarr;</span>
+            <div style="
+                background:{NAVY}; color:#fff;
+                padding:0.45rem 1rem;
+                border-radius:6px; font-size:0.78rem;
+                font-weight:600; white-space:nowrap;
+            ">UR / FR</div>
+            <span style="font-size:1.2rem; color:{ACCENT};
+                padding:0 0.4rem;">&rarr;</span>
+            <div style="
+                background:{NAVY}; color:#fff;
+                padding:0.45rem 1rem;
+                border-radius:6px; font-size:0.78rem;
+                font-weight:600; white-space:nowrap;
+            ">Test Script</div>
+            <span style="font-size:1.2rem; color:{ACCENT};
+                padding:0 0.4rem;">&rarr;</span>
+            <div style="
+                background:{ACCENT}; color:#fff;
+                padding:0.45rem 1rem;
+                border-radius:6px; font-size:0.78rem;
+                font-weight:600; white-space:nowrap;
+            ">RTM</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     # ---- CSS for Validation Factory tables ----
