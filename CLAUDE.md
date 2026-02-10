@@ -578,7 +578,7 @@ Generates a Markdown file with:
 **PDF Structure:**
 
 - **Page 1 — URS Document:**
-  - Branded header (TRUSTME AI | CSV Engine)
+  - Branded header (EVOLV | Validation Engine)
   - URS ID and generation timestamp
   - Requirement Statement
   - Criticality (color-coded: High=red, Medium=amber, Low=green)
@@ -909,6 +909,13 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-18.4 | Include regulatory justification page | `utils/pdf_generator.py:generate_validation_report_pdf()` |
 | URS-18.5 | Include Manifestation of Signature page | `utils/pdf_generator.py:generate_validation_report_pdf()` |
 | URS-18.6 | Provide Validation Report download from Streamlit UI | `frontend/app.py` (Page 6) |
+| URS-19.1 | Detect ambiguous language in human-written requirements | `utils/demo_comparison.py:detect_ambiguities()` |
+| URS-19.2 | Detect missing regulatory controls | `utils/demo_comparison.py:detect_regulatory_gaps()` |
+| URS-19.3 | Rewrite requirements to audit-ready format | `utils/demo_comparison.py:rewrite_requirement()` |
+| URS-19.4 | Evaluate and score requirement quality | `utils/demo_comparison.py:evaluate_requirements()` |
+| URS-19.5 | Inject AI output into .docx templates | `utils/demo_comparison.py:inject_into_docx()` |
+| URS-19.6 | Display side-by-side comparison with cost analysis | `frontend/app.py` (Page 8) |
+| URS-19.7 | Provide CSV, PDF, and Word Factory exports | `frontend/app.py` (Page 8) |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

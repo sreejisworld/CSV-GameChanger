@@ -158,7 +158,7 @@ def main() -> None:
 
     logger.info("=" * 60)
     logger.info(
-        "Trustme AI - URS File Monitor Started"
+        "EVOLV - URS File Monitor Started"
     )
     logger.info("Monitoring: %s", URS_DIR)
     logger.info(

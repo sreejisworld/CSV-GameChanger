@@ -2,8 +2,8 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================
-::  Trustme AI - Regulatory Compliance Engine
-::  Full Validation Package Generator
+::  EVOLV - Regulatory Compliance Engine
+::  A WingstarTech Inc. Product
 :: ============================================================
 ::
 ::  Usage:
@@ -13,12 +13,12 @@ setlocal enabledelayedexpansion
 ::
 :: ============================================================
 
-title Trustme AI - Validation Package Generator
+title EVOLV - Validation Package Generator
 
 echo.
 echo ============================================================
-echo   Trustme AI - Regulatory Compliance Engine
-echo   Full Validation Package Generator
+echo   Starting EVOLV Engine...
+echo   A WingstarTech Inc. Product
 echo ============================================================
 echo.
 
@@ -138,11 +138,11 @@ echo ============================================================
 echo.
 echo   Outputs:
 echo     URS documents:      %PROJECT_ROOT%\output\urs\
-echo     Traceability Matrix: %PROJECT_ROOT%\output\Trustme_Traceability_Matrix.csv
-echo     Health Report:       %PROJECT_ROOT%\output\Trustme_Health_Report.txt
+echo     Traceability Matrix: %PROJECT_ROOT%\output\EVOLV_Traceability_Matrix.csv
+echo     Health Report:       %PROJECT_ROOT%\output\EVOLV_Health_Report.txt
 echo     Summary Report:      %PROJECT_ROOT%\output\vsr\
 echo.
-echo   Signed by Trustme AI Regulatory Engine
+echo   Powered by EVOLV | A WingstarTech Inc. Product
 echo ============================================================
 echo.
 

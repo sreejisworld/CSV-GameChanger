@@ -1,7 +1,7 @@
 """
-Trustme AI - CSV-GameChanger Frontend.
+EVOLV - CSV-GameChanger Frontend.
 
-Streamlit dashboard for the GAMP 5 / CSA compliant CSV Engine.
+Streamlit dashboard for the GAMP 5 / CSA compliant EVOLV Engine.
 Provides a professional enterprise UI for document ingestion,
 requirements generation, risk assessment, and audit log review.
 
@@ -22,7 +22,7 @@ from datetime import datetime
 # Page configuration (must be first Streamlit call)
 # -------------------------------------------------------------------
 st.set_page_config(
-    page_title="Trustme AI - CSV Engine",
+    page_title="EVOLV - Validation Engine",
     page_icon="\u2666",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -675,6 +675,23 @@ DEMO_DATA = {
             },
         ],
     },
+    "demo_comparison": {
+        "system_description": (
+            "LabCore LIMS v4.2 is a laboratory information "
+            "management system used across QC and stability "
+            "labs for sample tracking, instrument "
+            "integration, and results reporting in a "
+            "GMP-regulated pharmaceutical environment."
+        ),
+        "human_requirements": [
+            "The system should track all samples quickly "
+            "and easily",
+            "Users need to be able to sign off on results "
+            "in a timely and efficient manner",
+            "The system should store data in a robust and "
+            "seamless way with minimal downtime",
+        ],
+    },
     "audit_df": pd.DataFrame(
         {
             "Timestamp": [
@@ -761,13 +778,13 @@ with st.sidebar:
                 border-radius:12px; margin-bottom:0.6rem;
             ">
                 <span style="font-size:1.6rem;
-                    color:#FFF; font-weight:700;">T</span>
+                    color:#FFF; font-weight:700;">E</span>
             </div>
             <h3 style="margin:0; font-weight:700;
-                letter-spacing:0.5px;">TRUSTME AI</h3>
+                letter-spacing:0.5px;">EVOLV</h3>
             <p style="margin:0; font-size:0.75rem;
                 opacity:0.65; letter-spacing:1px;">
-                CSV ENGINE</p>
+                VALIDATION ENGINE</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -783,8 +800,9 @@ with st.sidebar:
             "3. Risk Assessment (Delta)",
             "4. Gap Analysis",
             "5. Audit Logs",
-            "6. Validation Factory",
+            "6. EVOLV",
             "7. Traceability",
+            "8. Demo Comparison",
         ],
         label_visibility="collapsed",
     )
@@ -868,6 +886,18 @@ with st.sidebar:
         st.session_state["generated_urs"] = (
             DEMO_DATA["generated_urs"]
         )
+        st.session_state["dc_system_desc"] = (
+            DEMO_DATA["demo_comparison"][
+                "system_description"
+            ]
+        )
+        for _i, _req in enumerate(
+            DEMO_DATA["demo_comparison"][
+                "human_requirements"
+            ],
+            1,
+        ):
+            st.session_state[f"dc_req_{_i}"] = _req
         st.rerun()
     st.caption(
         "Pre-load LIMS demo for walkthrough"
@@ -969,7 +999,7 @@ def _build_table_pdf(
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", "B", 14)
     pdf.cell(
-        0, 12, "TRUSTME AI  |  CSV Engine",
+        0, 12, "EVOLV  |  Validation Engine",
         fill=True,
         new_x=XPos.LMARGIN, new_y=YPos.NEXT,
     )
@@ -1047,8 +1077,8 @@ def _build_table_pdf(
     pdf.set_text_color(140, 140, 140)
     pdf.cell(
         0, 5,
-        "21 CFR Part 11 compliant  |  "
-        "GAMP 5 / CSA Validation Engine",
+        "Powered by EVOLV  |  "
+        "A WingstarTech Inc. Product",
         new_x=XPos.LMARGIN, new_y=YPos.NEXT,
     )
 
@@ -1872,11 +1902,11 @@ elif page.startswith("5"):
 
 
 # ===================================================================
-# Page 6 — Validation Factory
+# Page 6 — EVOLV
 # ===================================================================
 elif page.startswith("6"):
     _page_header(
-        "Validation Factory",
+        "EVOLV",
         "End-to-end: requirement \u2192 UR/FR \u2192 CSA test script",
     )
 
@@ -1932,7 +1962,7 @@ elif page.startswith("6"):
         unsafe_allow_html=True,
     )
 
-    # ---- CSS for Validation Factory tables ----
+    # ---- CSS for EVOLV tables ----
     st.markdown(
         """
         <style>
@@ -2645,7 +2675,7 @@ elif page.startswith("7"):
     if not data_ready:
         st.info(
             "Generate requirements **and** test scripts "
-            "in the **Validation Factory** tab first, "
+            "in the **EVOLV** tab first, "
             "then return here to build the RTM."
         )
     else:
@@ -2948,3 +2978,353 @@ elif page.startswith("7"):
 
         with st.expander("RTM Raw JSON"):
             st.json(rtm)
+
+
+# ===================================================================
+# Page 8 — Demo Comparison
+# ===================================================================
+elif page.startswith("8"):
+    from utils.demo_comparison import (
+        COST_PER_POOR_REQUIREMENT,
+    )
+
+    _page_header(
+        "Demo Comparison",
+        "Side-by-side: your draft vs EVOLV "
+        "audit-ready rewrite",
+    )
+
+    # ---- Page-specific CSS ----
+    st.markdown(
+        """
+        <style>
+        .dc-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            margin-top: 0.5rem;
+        }
+        .dc-table th {
+            background-color: #1B2A4A;
+            color: #FFFFFF;
+            padding: 0.55rem 0.7rem;
+            text-align: left;
+        }
+        .dc-table td {
+            padding: 0.55rem 0.7rem;
+            border-bottom: 1px solid #D1D5DB;
+            vertical-align: top;
+        }
+        .dc-table tr:nth-child(even) {
+            background-color: #F8F9FB;
+        }
+        .dc-risk-cell {
+            color: #991B1B;
+            font-size: 0.84rem;
+        }
+        .dc-cost-banner {
+            background: linear-gradient(
+                135deg, #991B1B 0%, #92400E 100%
+            );
+            border-left: 5px solid #991B1B;
+            color: #FFFFFF;
+            padding: 1rem 1.4rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+        .dc-cost-banner strong {
+            font-size: 1.3rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ---- Demo mode auto-populate ----
+    if st.session_state.get("demo_mode", False):
+        st.info(
+            "Demo Mode \u2014 showing sample LIMS data"
+        )
+        demo_dc = DEMO_DATA["demo_comparison"]
+        if not st.session_state.get("dc_system_desc"):
+            st.session_state["dc_system_desc"] = (
+                demo_dc["system_description"]
+            )
+        for _di, _dr in enumerate(
+            demo_dc["human_requirements"], 1,
+        ):
+            key = f"dc_req_{_di}"
+            if not st.session_state.get(key):
+                st.session_state[key] = _dr
+
+    # ---- Input form ----
+    sys_desc = st.text_area(
+        "System Description",
+        key="dc_system_desc",
+        height=100,
+        placeholder=(
+            "e.g. LabCore LIMS v4.2 for sample tracking "
+            "in a GMP-regulated pharma lab"
+        ),
+    )
+
+    rc1, rc2, rc3 = st.columns(3)
+    with rc1:
+        req_1 = st.text_area(
+            "Requirement 1",
+            key="dc_req_1",
+            height=100,
+            placeholder="e.g. The system should track "
+            "all samples quickly and easily",
+        )
+    with rc2:
+        req_2 = st.text_area(
+            "Requirement 2",
+            key="dc_req_2",
+            height=100,
+            placeholder="e.g. Users need to sign off "
+            "on results in a timely manner",
+        )
+    with rc3:
+        req_3 = st.text_area(
+            "Requirement 3",
+            key="dc_req_3",
+            height=100,
+            placeholder="e.g. The system should store "
+            "data in a robust way",
+        )
+
+    # ---- Analyze button ----
+    if st.button(
+        "Analyze & Compare", type="primary",
+    ):
+        if not (sys_desc or "").strip():
+            st.warning(
+                "Please enter a system description."
+            )
+        else:
+            reqs_raw = [
+                r for r in [req_1, req_2, req_3]
+                if (r or "").strip()
+            ]
+            if not reqs_raw:
+                st.warning(
+                    "Please enter at least one "
+                    "requirement."
+                )
+            else:
+                from utils.demo_comparison import (
+                    evaluate_requirements,
+                    rewrite_requirement,
+                )
+
+                results: list = []
+                for raw in reqs_raw:
+                    ai_text, crit = (
+                        rewrite_requirement(raw.strip())
+                    )
+                    ev = evaluate_requirements(
+                        raw.strip(), ai_text, crit,
+                    )
+                    results.append(ev)
+                st.session_state["dc_results"] = results
+
+    # ---- Results display ----
+    dc_results = st.session_state.get(
+        "dc_results", None,
+    )
+    if dc_results:
+        st.markdown("---")
+
+        total_issues = sum(
+            r["issue_count"] for r in dc_results
+        )
+        total_cost = sum(
+            r["cost_of_error"] for r in dc_results
+        )
+
+        # KPI row
+        kc1, kc2, kc3 = st.columns(3)
+        kc1.metric(
+            "Requirements Analyzed",
+            len(dc_results),
+        )
+        kc2.metric("Total Issues Found", total_issues)
+        kc3.metric(
+            "Est. Cost of Error",
+            f"${total_cost:,}",
+        )
+
+        # Cost banner
+        st.markdown(
+            f'<div class="dc-cost-banner">'
+            f"Estimated cost of shipping these "
+            f"requirements as-is: "
+            f"<strong>${total_cost:,}</strong>"
+            f"<br/>"
+            f'<span style="font-size:0.82rem; '
+            f'opacity:0.85;">'
+            f"Based on industry average of "
+            f"${COST_PER_POOR_REQUIREMENT:,} per "
+            f"ambiguous or non-compliant requirement "
+            f"(rework, audit findings, CAPAs)"
+            f"</span></div>",
+            unsafe_allow_html=True,
+        )
+
+        # ---- Side-by-side comparison table ----
+        st.markdown("#### Requirement Comparison")
+
+        table_rows_html = ""
+        for idx, r in enumerate(dc_results, 1):
+            crit_cls = (
+                "badge-high"
+                if r["criticality"].lower() == "high"
+                else "badge-medium"
+                if r["criticality"].lower() == "medium"
+                else "badge-low"
+            )
+            risk_html = ""
+            for b in r["risk_bullets"]:
+                risk_html += (
+                    f"<li>{b}</li>"
+                )
+            if not risk_html:
+                risk_html = "<li>No issues</li>"
+
+            table_rows_html += (
+                f"<tr>"
+                f"<td><strong>Req {idx}</strong>"
+                f"<br/>{r['human_text']}</td>"
+                f'<td>{r["ai_text"]}<br/>'
+                f'<span class="badge {crit_cls}" '
+                f'style="margin-top:0.4rem; '
+                f'display:inline-block;">'
+                f'{r["criticality"]}</span></td>'
+                f'<td class="dc-risk-cell">'
+                f"<ul style=\"margin:0; "
+                f"padding-left:1.1rem;\">"
+                f"{risk_html}</ul>"
+                f"<br/>"
+                f'<span style="font-weight:600;">'
+                f"${r['cost_of_error']:,}</span>"
+                f"</td></tr>"
+            )
+
+        st.markdown(
+            f"""
+            <table class="dc-table">
+                <thead><tr>
+                    <th style="width:33%;">
+                        Your Draft</th>
+                    <th style="width:38%;">
+                        EVOLV (Audit Ready)</th>
+                    <th style="width:29%;">
+                        The Risk</th>
+                </tr></thead>
+                <tbody>{table_rows_html}</tbody>
+            </table>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # ---- Exports ----
+        st.markdown("---")
+        st.markdown("#### Export")
+        ex1, ex2, ex3 = st.columns(3)
+
+        # CSV download
+        with ex1:
+            csv_rows = []
+            for r in dc_results:
+                csv_rows.append({
+                    "Human Draft": r["human_text"],
+                    "AI Rewrite": r["ai_text"],
+                    "Criticality": r["criticality"],
+                    "Issues": r["issue_count"],
+                    "Risk Bullets": "; ".join(
+                        r["risk_bullets"],
+                    ),
+                    "Cost of Error": r["cost_of_error"],
+                })
+            dc_df = pd.DataFrame(csv_rows)
+            st.download_button(
+                "Download CSV",
+                data=dc_df.to_csv(index=False),
+                file_name=(
+                    "demo_comparison_"
+                    f"{datetime.utcnow():%Y%m%d_%H%M%S}"
+                    ".csv"
+                ),
+                mime="text/csv",
+                key="dc_csv_dl",
+            )
+
+        # PDF download
+        with ex2:
+            pdf_cols = [
+                "Req #", "Your Draft",
+                "AI Rewrite", "Criticality",
+                "Issues", "Cost",
+            ]
+            pdf_rows = []
+            for i, r in enumerate(dc_results, 1):
+                pdf_rows.append((
+                    str(i),
+                    r["human_text"],
+                    r["ai_text"],
+                    r["criticality"],
+                    str(r["issue_count"]),
+                    f"${r['cost_of_error']:,}",
+                ))
+            dc_pdf = _build_table_pdf(
+                "Demo Comparison Report",
+                pdf_cols,
+                pdf_rows,
+            )
+            st.download_button(
+                "Download PDF",
+                data=dc_pdf,
+                file_name=(
+                    "demo_comparison_"
+                    f"{datetime.utcnow():%Y%m%d_%H%M%S}"
+                    ".pdf"
+                ),
+                mime="application/pdf",
+                key="dc_pdf_dl",
+            )
+
+        # Word Factory
+        with ex3:
+            docx_file = st.file_uploader(
+                "Upload .docx template",
+                type=["docx"],
+                key="dc_docx_upload",
+            )
+            if docx_file is not None:
+                from utils.demo_comparison import (
+                    inject_into_docx,
+                )
+
+                populated = inject_into_docx(
+                    template_bytes=docx_file.getvalue(),
+                    system_desc=(
+                        sys_desc or ""
+                    ).strip(),
+                    comparisons=dc_results,
+                )
+                st.download_button(
+                    "Download Populated Template",
+                    data=populated,
+                    file_name=(
+                        f"populated_"
+                        f"{docx_file.name}"
+                    ),
+                    mime=(
+                        "application/vnd.openxmlformats"
+                        "-officedocument.wordprocessingml"
+                        ".document"
+                    ),
+                    key="dc_docx_dl",
+                )
