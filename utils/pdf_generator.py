@@ -45,7 +45,7 @@ class _URSPDF(FPDF):
         self.set_text_color(*WHITE)
         self.set_xy(10, 4)
         self.cell(
-            0, 10, "EVOLV  |  Validation Engine", align="L",
+            0, 10, "EVOLV  |  The Validation Factory", align="L",
         )
         self.set_font("Helvetica", "", 9)
         self.set_xy(-60, 4)
@@ -304,7 +304,7 @@ class _ValidationReportPDF(FPDF):
         self.set_text_color(*WHITE)
         self.set_xy(10, 4)
         self.cell(
-            0, 10, "EVOLV  |  Validation Engine",
+            0, 10, "EVOLV  |  The Validation Factory",
             align="L",
         )
         self.set_font("Helvetica", "", 9)

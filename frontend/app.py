@@ -1,7 +1,7 @@
 """
-EVOLV - CSV-GameChanger Frontend.
+EVOLV: The Validation Factory - CSV-GameChanger Frontend.
 
-Streamlit dashboard for the GAMP 5 / CSA compliant EVOLV Engine.
+Streamlit dashboard for the GAMP 5 / CSA compliant Validation Factory.
 Provides a professional enterprise UI for document ingestion,
 requirements generation, risk assessment, and audit log review.
 
@@ -22,7 +22,7 @@ from datetime import datetime
 # Page configuration (must be first Streamlit call)
 # -------------------------------------------------------------------
 st.set_page_config(
-    page_title="EVOLV - Validation Engine",
+    page_title="EVOLV: The Validation Factory",
     page_icon="\u2666",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -784,7 +784,7 @@ with st.sidebar:
                 letter-spacing:0.5px;">EVOLV</h3>
             <p style="margin:0; font-size:0.75rem;
                 opacity:0.65; letter-spacing:1px;">
-                VALIDATION ENGINE</p>
+                THE VALIDATION FACTORY</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -800,7 +800,7 @@ with st.sidebar:
             "3. Risk Assessment (Delta)",
             "4. Gap Analysis",
             "5. Audit Logs",
-            "6. EVOLV",
+            "6. Validation Factory",
             "7. Traceability",
             "8. Demo Comparison",
         ],
@@ -999,7 +999,7 @@ def _build_table_pdf(
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", "B", 14)
     pdf.cell(
-        0, 12, "EVOLV  |  Validation Engine",
+        0, 12, "EVOLV  |  The Validation Factory",
         fill=True,
         new_x=XPos.LMARGIN, new_y=YPos.NEXT,
     )
@@ -1902,11 +1902,11 @@ elif page.startswith("5"):
 
 
 # ===================================================================
-# Page 6 — EVOLV
+# Page 6 — Validation Factory
 # ===================================================================
 elif page.startswith("6"):
     _page_header(
-        "EVOLV",
+        "Validation Factory",
         "End-to-end: requirement \u2192 UR/FR \u2192 CSA test script",
     )
 
@@ -1962,7 +1962,7 @@ elif page.startswith("6"):
         unsafe_allow_html=True,
     )
 
-    # ---- CSS for EVOLV tables ----
+    # ---- CSS for Validation Factory tables ----
     st.markdown(
         """
         <style>
@@ -2675,7 +2675,7 @@ elif page.startswith("7"):
     if not data_ready:
         st.info(
             "Generate requirements **and** test scripts "
-            "in the **EVOLV** tab first, "
+            "in the **Validation Factory** tab first, "
             "then return here to build the RTM."
         )
     else:
@@ -2990,7 +2990,7 @@ elif page.startswith("8"):
 
     _page_header(
         "Demo Comparison",
-        "Side-by-side: your draft vs EVOLV "
+        "Side-by-side: your draft vs Validation Factory "
         "audit-ready rewrite",
     )
 
@@ -3219,7 +3219,7 @@ elif page.startswith("8"):
                     <th style="width:33%;">
                         Your Draft</th>
                     <th style="width:38%;">
-                        EVOLV (Audit Ready)</th>
+                        Validation Factory (Audit Ready)</th>
                     <th style="width:29%;">
                         The Risk</th>
                 </tr></thead>

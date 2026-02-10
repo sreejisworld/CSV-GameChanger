@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================
-::  EVOLV - Regulatory Compliance Engine
+::  EVOLV: The Validation Factory
 ::  A WingstarTech Inc. Product
 :: ============================================================
 ::
@@ -13,11 +13,11 @@ setlocal enabledelayedexpansion
 ::
 :: ============================================================
 
-title EVOLV - Validation Package Generator
+title EVOLV: The Validation Factory
 
 echo.
 echo ============================================================
-echo   Starting EVOLV Engine...
+echo   Starting EVOLV: The Validation Factory...
 echo   A WingstarTech Inc. Product
 echo ============================================================
 echo.

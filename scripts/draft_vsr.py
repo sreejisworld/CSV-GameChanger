@@ -565,7 +565,7 @@ def draft_vsr(
     if verbose:
         print("\n" + "=" * 60)
         print(
-            "EVOLV - Regulatory Compliance Engine"
+            "EVOLV: The Validation Factory"
         )
         print("Validation Summary Report Generator")
         print("=" * 60)

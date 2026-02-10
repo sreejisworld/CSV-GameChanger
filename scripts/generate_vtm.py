@@ -453,7 +453,7 @@ def write_health_report(
 
     lines = [
         divider,
-        "  EVOLV - Regulatory Compliance Engine",
+        "  EVOLV: The Validation Factory",
         "  Health Report",
         divider,
         f"  Generated: {timestamp}",
