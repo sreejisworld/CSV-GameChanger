@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVOLV: The Validation Factory — Pipeline Overview</title>
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #243456;
+    --accent: #3B82F6;
+    --accent-glow: #60A5FA;
+    --bg: #0F172A;
+    --card: #1E293B;
+    --border: #334155;
+    --text: #E2E8F0;
+    --muted: #94A3B8;
+    --green: #22C55E;
+    --amber: #F59E0B;
+    --red: #EF4444;
+    --purple: #A78BFA;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ── Slide container ── */
+  .deck { position: relative; width: 100vw; height: 100vh; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 3rem 5rem;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+  }
+  .slide.active {
+    opacity: 1; transform: translateX(0);
+    pointer-events: all;
+  }
+  .slide.exit {
+    opacity: 0; transform: translateX(-60px);
+  }
+
+  /* ── Typography ── */
+  h1 { font-size: 3rem; font-weight: 700; letter-spacing: -0.5px; }
+  h2 { font-size: 2.2rem; font-weight: 600; margin-bottom: 1.5rem; }
+  h3 { font-size: 1.3rem; font-weight: 600; color: var(--accent-glow); margin-bottom: 0.6rem; }
+  p, li { font-size: 1.05rem; line-height: 1.7; color: var(--muted); }
+  .highlight { color: var(--accent-glow); font-weight: 600; }
+  .tag {
+    display: inline-block; padding: 0.15rem 0.55rem;
+    border-radius: 4px; font-size: 0.8rem; font-weight: 600;
+  }
+  .tag-high { background: rgba(239,68,68,0.2); color: var(--red); }
+  .tag-med  { background: rgba(245,158,11,0.2); color: var(--amber); }
+  .tag-low  { background: rgba(34,197,94,0.2);  color: var(--green); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem;
+  }
+  .card-accent {
+    border-left: 3px solid var(--accent);
+  }
+
+  /* ── Grid layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2rem; width: 100%; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; width: 100%; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.9rem; margin-top: 0.5rem;
+  }
+  th {
+    background: var(--navy); color: #fff;
+    padding: 0.5rem 0.75rem; text-align: left;
+    font-weight: 600; font-size: 0.82rem;
+    letter-spacing: 0.3px;
+  }
+  td {
+    padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border);
+    color: var(--text); font-size: 0.85rem;
+  }
+  tr:hover td { background: rgba(59,130,246,0.05); }
+
+  /* ── Pipeline diagram ── */
+  .pipeline {
+    display: flex; align-items: center; gap: 0;
+    margin: 1.5rem 0; flex-wrap: wrap; justify-content: center;
+  }
+  .pipe-step {
+    background: linear-gradient(135deg, var(--navy), var(--navy-light));
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.4rem;
+    text-align: center; min-width: 150px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .pipe-step:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .pipe-step .icon { font-size: 1.8rem; margin-bottom: 0.3rem; }
+  .pipe-step .label { font-size: 0.85rem; font-weight: 600; color: #fff; }
+  .pipe-step .sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+  .pipe-arrow {
+    font-size: 1.4rem; color: var(--accent); margin: 0 0.3rem;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Flow diagram (ASCII-style but visual) ── */
+  .flow-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.82rem; line-height: 1.6;
+    color: var(--text); white-space: pre; overflow-x: auto;
+  }
+
+  /* ── Navigation ── */
+  .nav {
+    position: fixed; bottom: 1.5rem; right: 2rem;
+    display: flex; gap: 0.5rem; z-index: 100;
+  }
+  .nav button {
+    background: var(--navy); color: #fff;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.5rem 1rem; cursor: pointer;
+    font-size: 0.85rem; font-weight: 500;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .nav button:hover { background: var(--accent); border-color: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; background: var(--navy); border-color: var(--border); }
+
+  .progress {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 3px; background: var(--navy);
+  }
+  .progress-bar {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-glow));
+    transition: width 0.4s ease;
+  }
+
+  .slide-num {
+    position: fixed; bottom: 1.7rem; left: 2rem;
+    font-size: 0.8rem; color: var(--muted); z-index: 100;
+  }
+
+  /* ── Title slide specific ── */
+  .title-slide h1 {
+    background: linear-gradient(135deg, #fff 30%, var(--accent-glow));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-size: 3.5rem; margin-bottom: 0.5rem;
+  }
+  .title-slide .subtitle {
+    font-size: 1.3rem; color: var(--muted); margin-bottom: 2rem;
+  }
+  .title-slide .badge {
+    background: linear-gradient(135deg, var(--accent), #6366F1);
+    color: #fff; padding: 0.4rem 1.2rem; border-radius: 20px;
+    font-size: 0.85rem; font-weight: 600;
+  }
+
+  /* ── Animations ── */
+  .fade-in { animation: fadeIn 0.6s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .stagger > * { opacity: 0; animation: fadeIn 0.5s ease both; }
+  .active .stagger > *:nth-child(1) { animation-delay: 0.1s; }
+  .active .stagger > *:nth-child(2) { animation-delay: 0.2s; }
+  .active .stagger > *:nth-child(3) { animation-delay: 0.3s; }
+  .active .stagger > *:nth-child(4) { animation-delay: 0.4s; }
+  .active .stagger > *:nth-child(5) { animation-delay: 0.5s; }
+  .active .stagger > *:nth-child(6) { animation-delay: 0.6s; }
+
+  /* ── Matrix cell colors ── */
+  .cell-high { background: rgba(239,68,68,0.15); color: var(--red); font-weight: 600; }
+  .cell-med  { background: rgba(245,158,11,0.15); color: var(--amber); font-weight: 600; }
+  .cell-low  { background: rgba(34,197,94,0.15); color: var(--green); font-weight: 600; }
+
+  /* ── Compliance badges ── */
+  .compliance-row {
+    display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;
+  }
+  .compliance-badge {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.8rem 1.2rem;
+    display: flex; align-items: center; gap: 0.6rem;
+    font-size: 0.9rem; flex: 1; min-width: 200px;
+  }
+  .compliance-badge .icon { font-size: 1.4rem; }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 1: Title -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide title-slide active" data-slide="0">
+    <div style="text-align:center;">
+      <div style="margin-bottom:1.5rem;">
+        <div style="display:inline-flex;align-items:center;justify-content:center;
+                    width:72px;height:72px;background:linear-gradient(135deg,var(--accent),#6366F1);
+                    border-radius:16px;margin-bottom:1rem;">
+          <span style="font-size:2.2rem;color:#fff;font-weight:700;">E</span>
+        </div>
+      </div>
+      <h1>EVOLV: The Validation Factory</h1>
+      <p class="subtitle">End-to-end GAMP 5 &amp; CSA compliant validation pipeline</p>
+      <div class="badge">By WingstarTech Inc.</div>
+      <div style="margin-top:3rem; color:var(--muted); font-size:0.85rem;">
+        Use <kbd style="background:var(--navy);padding:0.15rem 0.5rem;border-radius:4px;
+        border:1px solid var(--border);font-size:0.8rem;">&#8592;</kbd>
+        <kbd style="background:var(--navy);padding:0.15rem 0.5rem;border-radius:4px;
+        border:1px solid var(--border);font-size:0.8rem;">&#8594;</kbd> arrow keys to navigate
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 2: Pipeline Overview -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="1">
+    <h2 style="text-align:center;">The Validation Factory Pipeline</h2>
+    <p style="text-align:center;margin-bottom:2rem;">
+      From natural-language requirement to signed validation report in four stages
+    </p>
+
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="icon">&#128221;</div>
+        <div class="label">Generate UR/FR</div>
+        <div class="sub">RequirementArchitect</div>
+      </div>
+      <div class="pipe-arrow">&#10132;</div>
+      <div class="pipe-step">
+        <div class="icon">&#128300;</div>
+        <div class="label">Draft Test Scripts</div>
+        <div class="sub">DeltaAgent</div>
+      </div>
+      <div class="pipe-arrow">&#10132;</div>
+      <div class="pipe-step">
+        <div class="icon">&#128200;</div>
+        <div class="label">Review &amp; Compare</div>
+        <div class="sub">Side-by-Side</div>
+      </div>
+      <div class="pipe-arrow">&#10132;</div>
+      <div class="pipe-step">
+        <div class="icon">&#128196;</div>
+        <div class="label">Validation Report</div>
+        <div class="sub">PDF + Signature</div>
+      </div>
+      <div class="pipe-arrow">&#10132;</div>
+      <div class="pipe-step">
+        <div class="icon">&#9989;</div>
+        <div class="label">Traceability</div>
+        <div class="sub">AuditorAgent RTM</div>
+      </div>
+    </div>
+
+    <div class="grid-3 stagger" style="margin-top:1.5rem;">
+      <div class="card card-accent">
+        <h3>&#9881; Deterministic</h3>
+        <p>Risk matrices, test routing, and UR/FR transforms require <strong>zero LLM calls</strong>. Results are reproducible and audit-ready.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>&#128274; 21 CFR Part 11</h3>
+        <p>Every action logs to an append-only CSV audit trail with SHA-256 hashes. PDFs include a Manifestation of Signature page.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>&#9878; GAMP 5 / CSA</h3>
+        <p>Risk-based testing: High risk gets scripted OQ/UAT, Medium/Low gets unscripted exploratory charters per CSA guidance.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 3: Stage 1 — Generate UR/FR -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="2">
+    <h2><span class="highlight">Stage 1</span> &mdash; Generate Requirements (UR/FR)</h2>
+
+    <div class="grid-2">
+      <div>
+        <div class="card" style="margin-bottom:1rem;">
+          <h3>User Inputs</h3>
+          <table>
+            <tr><td style="font-weight:600;width:40%;">Requirement</td><td>Free-text description</td></tr>
+            <tr><td style="font-weight:600;">Role</td><td>e.g. "Lab Technician"</td></tr>
+            <tr><td style="font-weight:600;">Category</td><td>e.g. "Sample Management"</td></tr>
+            <tr><td style="font-weight:600;">Risk Assessment</td><td>GxP Direct / Indirect / None</td></tr>
+            <tr><td style="font-weight:600;">Implementation</td><td>OOB / Configured / Custom</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Agent Chain</h3>
+          <p style="font-family:monospace;font-size:0.85rem;line-height:2;color:var(--text);">
+            <span style="color:var(--accent-glow);">1.</span> RequirementArchitect.<strong>generate_urs()</strong><br>
+            &nbsp;&nbsp;&nbsp;&#8627; Pinecone lookup &rarr; GAMP 5 context<br>
+            &nbsp;&nbsp;&nbsp;&#8627; Classify criticality (High/Med/Low)<br>
+            &nbsp;&nbsp;&nbsp;&#8627; Build regulatory rationale<br>
+            <span style="color:var(--accent-glow);">2.</span> RequirementArchitect.<strong>transform_urs_to_ur_fr()</strong><br>
+            &nbsp;&nbsp;&nbsp;&#8627; Deterministic matrix &rarr; risk level<br>
+            &nbsp;&nbsp;&nbsp;&#8627; Deterministic matrix &rarr; test strategy<br>
+            &nbsp;&nbsp;&nbsp;&#8627; Decompose into FRs + acceptance criteria
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="height:100%;">
+          <h3>Output: UR/FR Document</h3>
+          <div style="font-family:monospace;font-size:0.78rem;line-height:1.6;
+                      background:var(--bg);padding:1rem;border-radius:8px;
+                      overflow:auto;max-height:360px;">
+<span style="color:var(--muted);">// st.session_state.vf_ur_fr</span>
+{
+  <span style="color:var(--accent-glow);">"urs_id"</span>: "URS-9.1",
+  <span style="color:var(--accent-glow);">"requirement_summary"</span>: "The LIMS shall...",
+  <span style="color:var(--accent-glow);">"user_requirement"</span>: {
+    "ur_id": "UR-1",
+    "risk_assessment": "GxP Direct",
+    "implementation_method": "Configured",
+    <span style="color:var(--red);">"risk_level": "High"</span>,
+    <span style="color:var(--amber);">"test_strategy": "OQ and/or UAT"</span>
+  },
+  <span style="color:var(--accent-glow);">"functional_requirements"</span>: [
+    {
+      "fr_id": "FR-1",
+      "statement": "The system shall...",
+      "acceptance_criteria": [
+        "Given/When/Then..."
+      ]
+    },
+    <span style="color:var(--muted);">// FR-2, FR-3...</span>
+  ]
+}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 4: Risk & Test Strategy Matrices -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="3">
+    <h2><span class="highlight">Matrices</span> &mdash; Risk Level &amp; Test Strategy</h2>
+    <p style="margin-bottom:1.5rem;">Both matrices are deterministic. No AI involved &mdash; pure lookup tables from GAMP 5 guidance.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Risk Level Matrix</h3>
+        <p style="font-size:0.85rem;margin-bottom:0.8rem;">Risk Assessment Category &times; Implementation Method &rarr; Risk Level</p>
+        <table>
+          <thead>
+            <tr><th>IM \ RA</th><th>GxP Direct</th><th>GxP Indirect</th><th>GxP None</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600;">Custom</td>
+              <td class="cell-high">HIGH</td><td class="cell-med">MEDIUM</td><td class="cell-low">LOW</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;">Configured</td>
+              <td class="cell-high">HIGH</td><td class="cell-high">HIGH</td><td class="cell-low">LOW</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;">Out of the Box</td>
+              <td class="cell-med">MEDIUM</td><td class="cell-low">LOW</td><td class="cell-low">LOW</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Test Strategy Matrix</h3>
+        <p style="font-size:0.85rem;margin-bottom:0.8rem;">Risk Level &times; Implementation Method &rarr; CSA Test Strategy</p>
+        <table>
+          <thead>
+            <tr><th>Risk \ IM</th><th>Out of the Box</th><th>Configured</th><th>Custom</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600;" class="cell-high">HIGH</td>
+              <td>OQ and/or UAT</td><td>OQ and/or UAT</td><td>OQ and/or UAT</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;" class="cell-med">MEDIUM</td>
+              <td>Supplier Provided</td><td>Informal</td><td>Informal</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;" class="cell-low">LOW</td>
+              <td>Supplier Provided</td><td>Informal</td><td>Informal</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1.5rem;text-align:center;">
+      <p style="color:var(--text);font-size:0.95rem;">
+        <strong>Example:</strong> GxP Direct + Configured
+        &rarr; Risk = <span class="tag tag-high">HIGH</span>
+        &rarr; Strategy = <span class="highlight">OQ and/or UAT</span>
+        &rarr; DeltaAgent produces <strong>scripted</strong> test with positive + negative + edge-case steps
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 5: Stage 2 — Draft Test Scripts -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="4">
+    <h2><span class="highlight">Stage 2</span> &mdash; Draft CSA Test Scripts</h2>
+
+    <div class="grid-2">
+      <div>
+        <div class="card" style="margin-bottom:1rem;">
+          <h3>DeltaAgent Routing Logic</h3>
+          <table>
+            <thead>
+              <tr><th>Risk Level</th><th>Test Type</th><th>Steps Generated</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="cell-high">HIGH</td><td>Informal</td><td>Setup + Positive + Negative + Edge per FR</td></tr>
+              <tr><td class="cell-high">HIGH</td><td>Formal OQ</td><td>Setup + Positive per FR</td></tr>
+              <tr><td class="cell-high">HIGH</td><td>Formal UAT</td><td>Setup + UAT business-process per FR</td></tr>
+              <tr><td class="cell-med">MED</td><td>Any</td><td>Charter (exploratory) steps</td></tr>
+              <tr><td class="cell-low">LOW</td><td>Any</td><td>Charter (exploratory) steps</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Test Step Types</h3>
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:0.5rem;">
+            <span class="tag" style="background:rgba(59,130,246,0.15);color:var(--accent-glow);">Setup</span>
+            <span class="tag" style="background:rgba(34,197,94,0.15);color:var(--green);">Positive</span>
+            <span class="tag" style="background:rgba(239,68,68,0.15);color:var(--red);">Negative</span>
+            <span class="tag" style="background:rgba(245,158,11,0.15);color:var(--amber);">Edge Case</span>
+            <span class="tag" style="background:rgba(167,139,250,0.15);color:var(--purple);">UAT</span>
+            <span class="tag" style="background:rgba(148,163,184,0.15);color:var(--muted);">Charter</span>
+          </div>
+          <p style="margin-top:0.8rem;font-size:0.88rem;">
+            Each execution step carries a <code>requirement_reference</code>
+            (e.g., <code>"UR-1 / FR-1"</code>) used later for traceability mapping.
+          </p>
+        </div>
+      </div>
+
+      <div class="card" style="height:fit-content;">
+        <h3>Sample Output (High Risk, Informal)</h3>
+        <div style="font-family:monospace;font-size:0.75rem;line-height:1.55;
+                    background:var(--bg);padding:1rem;border-radius:8px;overflow:auto;max-height:350px;">
+<span style="color:var(--muted);">// script_id: "TS-URS-9.1"</span>
+<span style="color:var(--muted);">// risk_level: "High"</span>
+
+<span style="color:var(--accent-glow);">SETUP STEPS:</span>
+ 1. Login as System Owner
+ 2. Navigate to target module
+ 3. Prepare test data
+
+<span style="color:var(--green);">EXECUTION (Positive):</span>
+ 1. Verify FR-1 &mdash; core functionality
+    Expected: System records data correctly
+    Ref: UR-1 / FR-1
+
+<span style="color:var(--red);">EXECUTION (Negative):</span>
+ 2. Verify FR-1 &mdash; invalid input
+    Expected: System rejects with error
+    Ref: UR-1 / FR-1
+
+<span style="color:var(--amber);">EXECUTION (Edge Case):</span>
+ 3. Verify FR-1 &mdash; boundary values
+    Expected: System handles gracefully
+    Ref: UR-1 / FR-1
+
+<span style="color:var(--muted);">// quality_checklist: all checks pass &#9989;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 6: Stage 3 & 4 — Review & Report -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="5">
+    <h2><span class="highlight">Stages 3 &amp; 4</span> &mdash; Review &amp; Validation Report</h2>
+
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <h3>Stage 3: Side-by-Side Review</h3>
+        <div style="display:flex;gap:0.8rem;margin-top:0.5rem;">
+          <div style="flex:1;background:var(--bg);border-radius:8px;padding:0.8rem;">
+            <div style="font-size:0.75rem;color:var(--accent-glow);font-weight:600;margin-bottom:0.4rem;">LEFT PANEL</div>
+            <p style="font-size:0.82rem;">UR/FR Document<br>
+              <span style="font-size:0.75rem;">UR metadata + FR table<br>(ID, Statement, Acceptance Criteria)</span>
+            </p>
+          </div>
+          <div style="flex:1;background:var(--bg);border-radius:8px;padding:0.8rem;">
+            <div style="font-size:0.75rem;color:var(--green);font-weight:600;margin-bottom:0.4rem;">RIGHT PANEL</div>
+            <p style="font-size:0.82rem;">Test Script<br>
+              <span style="font-size:0.75rem;">Steps table<br>(Type, #, Title, Instruction, Expected)</span>
+            </p>
+          </div>
+        </div>
+        <p style="font-size:0.82rem;margin-top:0.8rem;">
+          Downloads: <span class="tag" style="background:rgba(59,130,246,0.15);color:var(--accent-glow);">CSV</span>
+          <span class="tag" style="background:rgba(167,139,250,0.15);color:var(--purple);">PDF</span>
+          <span class="tag" style="background:rgba(148,163,184,0.15);color:var(--muted);">JSON</span>
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Stage 4: Validation Report PDF</h3>
+        <p style="font-size:0.88rem;margin-bottom:0.6rem;">
+          User enters <strong>signer name</strong> &rarr; generates a <span class="highlight">5-page PDF</span>:
+        </p>
+        <div class="stagger">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;
+                        display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">1</span>
+            <span style="font-size:0.85rem;">Cover page &mdash; metadata, summary, compliance notes</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;
+                        display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">2</span>
+            <span style="font-size:0.85rem;">UR/FR table <span class="tag tag-med" style="font-size:0.7rem;">Landscape</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;
+                        display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">3</span>
+            <span style="font-size:0.85rem;">Test script table <span class="tag tag-med" style="font-size:0.7rem;">Landscape</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;
+                        display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">4</span>
+            <span style="font-size:0.85rem;">Regulatory justification (FDA / GAMP 5 / EMA)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;
+                        display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">5</span>
+            <span style="font-size:0.85rem;">Manifestation of Signature (21 CFR Part 11)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="text-align:center;">
+      <p style="color:var(--text);font-size:0.9rem;">
+        &#128196; Generated via <code>generate_validation_report_pdf(ur_fr, test_script, signer_name)</code>
+        &rarr; returns PDF bytes &rarr; Streamlit download button
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 7: Traceability (RTM) -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="6">
+    <h2><span class="highlight">Traceability</span> &mdash; Requirements Traceability Matrix</h2>
+
+    <div class="grid-2">
+      <div>
+        <div class="card" style="margin-bottom:1rem;">
+          <h3>How It Works</h3>
+          <p style="font-size:0.9rem;line-height:1.8;">
+            <strong>AuditorAgent.generate_rtm()</strong> reads:
+          </p>
+          <ul style="margin:0.5rem 0 0.5rem 1.2rem;font-size:0.88rem;">
+            <li><code>vf_ur_fr</code> &mdash; list of FRs with IDs</li>
+            <li><code>vf_test_script</code> &mdash; test steps with <code>requirement_reference</code></li>
+          </ul>
+          <p style="font-size:0.9rem;line-height:1.8;">
+            Matches each FR to test steps by parsing<br>
+            <code style="color:var(--accent-glow);">"UR-1 / FR-1"</code> references.
+            Calculates coverage percentage.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>KPI Dashboard</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.5rem;">
+            <div style="background:var(--bg);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--accent-glow);">3</div>
+              <div style="font-size:0.75rem;color:var(--muted);">Total FRs</div>
+            </div>
+            <div style="background:var(--bg);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--green);">3</div>
+              <div style="font-size:0.75rem;color:var(--muted);">Covered</div>
+            </div>
+            <div style="background:var(--bg);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--red);">0</div>
+              <div style="font-size:0.75rem;color:var(--muted);">Gaps</div>
+            </div>
+            <div style="background:var(--bg);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--green);">100%</div>
+              <div style="font-size:0.75rem;color:var(--muted);">Coverage</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>RTM Table (Example)</h3>
+        <table>
+          <thead>
+            <tr><th>FR</th><th>Requirement</th><th>Test Steps</th><th>Cases</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600;">FR-1</td>
+              <td>Register incoming sample with barcode</td>
+              <td>1, 2, 3</td>
+              <td><span class="tag" style="background:rgba(34,197,94,0.15);color:var(--green);font-size:0.7rem;">+</span>
+                  <span class="tag" style="background:rgba(239,68,68,0.15);color:var(--red);font-size:0.7rem;">&minus;</span>
+                  <span class="tag" style="background:rgba(245,158,11,0.15);color:var(--amber);font-size:0.7rem;">E</span></td>
+              <td><span style="color:var(--green);">&#10004; Covered</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;">FR-2</td>
+              <td>Store sample in chain-of-custody log</td>
+              <td>4, 5</td>
+              <td><span class="tag" style="background:rgba(34,197,94,0.15);color:var(--green);font-size:0.7rem;">+</span>
+                  <span class="tag" style="background:rgba(239,68,68,0.15);color:var(--red);font-size:0.7rem;">&minus;</span></td>
+              <td><span style="color:var(--green);">&#10004; Covered</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;">FR-3</td>
+              <td>Generate audit trail for custody transfers</td>
+              <td>6, 7</td>
+              <td><span class="tag" style="background:rgba(34,197,94,0.15);color:var(--green);font-size:0.7rem;">+</span>
+                  <span class="tag" style="background:rgba(245,158,11,0.15);color:var(--amber);font-size:0.7rem;">E</span></td>
+              <td><span style="color:var(--green);">&#10004; Covered</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:1rem;background:var(--bg);border-radius:8px;padding:0.5rem 0.8rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div style="font-size:0.8rem;color:var(--muted);min-width:70px;">Coverage</div>
+            <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+              <div style="width:100%;height:100%;background:linear-gradient(90deg,var(--green),#4ADE80);border-radius:4px;"></div>
+            </div>
+            <div style="font-size:0.8rem;font-weight:600;color:var(--green);">100%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 8: Architecture -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="7">
+    <h2><span class="highlight">Architecture</span> &mdash; Agent &amp; Data Flow</h2>
+
+    <div class="flow-box" style="width:100%;max-width:900px;margin:0 auto;font-size:0.76rem;">
+ User Input                                        Session State
+ &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+ &#9474; Requirement    &#9474;     &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;      &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+ &#9474; Role           &#9474;&#9472;&#9472;&#9472;&#9658;&#9474; RequirementArchitect &#9474;&#9472;&#9472;&#9472;&#9472;&#9658;&#9474; vf_ur_fr          &#9474;
+ &#9474; Risk Params    &#9474;     &#9474;  .generate_urs()      &#9474;      &#9474; (UR + FRs)        &#9474;
+ &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;     &#9474;  .transform_urs_to_   &#9474;      &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;
+                        &#9474;     ur_fr()              &#9474;              &#9474;
+                        &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;              &#9474;
+                               &#9589;&#9589; Pinecone + OpenAI                &#9474;
+                                                              &#9474;
+ &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;     &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;     &#9474;
+ &#9474; Test Type      &#9474;&#9472;&#9472;&#9472;&#9658;&#9474; DeltaAgent             &#9474;     &#9474;
+ &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;     &#9474;  .generate_csa_test_  &#9474;     &#9474;
+                        &#9474;     from_ur_fr()         &#9474;     &#9474;
+                        &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;     &#9474;
+                               &#9474; 100% deterministic        &#9474;
+                               &#9474;                           &#9474;
+                               &#9660;                           &#9660;
+                        &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+                        &#9474; vf_test_script    &#9474;  &#9474; AuditorAgent      &#9474;
+                        &#9474; (Steps + Refs)    &#9474;&#9472;&#9658;&#9474;  .generate_rtm()   &#9474;
+                        &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;
+                               &#9474;                      &#9474;
+                               &#9660;                      &#9660;
+                        &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+                        &#9474; PDF Generator     &#9474;  &#9474; RTM + Coverage    &#9474;
+                        &#9474;  (5-page report)  &#9474;  &#9474;  KPIs             &#9474;
+                        &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;
+    </div>
+
+    <div style="display:flex;gap:1rem;margin-top:1.5rem;justify-content:center;flex-wrap:wrap;">
+      <div class="card" style="flex:1;max-width:280px;text-align:center;">
+        <h3>&#128202; IntegrityManager</h3>
+        <p style="font-size:0.82rem;">Append-only CSV audit trail<br>+ SHA-256 logic archives</p>
+      </div>
+      <div class="card" style="flex:1;max-width:280px;text-align:center;">
+        <h3>&#128269; VerificationAgent</h3>
+        <p style="font-size:0.82rem;">Criticality alignment<br>+ contradiction scan</p>
+      </div>
+      <div class="card" style="flex:1;max-width:280px;text-align:center;">
+        <h3>&#9878; RiskStrategist</h3>
+        <p style="font-size:0.82rem;">RPN calculation<br>+ ServiceNow integration</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 9: Full Application Map -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="8">
+    <h2><span class="highlight">Application Map</span> &mdash; All 8 Tabs</h2>
+
+    <div class="grid-4 stagger">
+      <div class="card card-accent">
+        <h3>1. Ingest Docs</h3>
+        <p style="font-size:0.82rem;">Upload vendor PDFs &rarr; chunk &rarr; embed into Pinecone vector DB for GAMP 5 context retrieval.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>2. Generate Reqs</h3>
+        <p style="font-size:0.82rem;">Natural language &rarr; structured URS with criticality classification and regulatory rationale.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>3. Risk Assessment</h3>
+        <p style="font-size:0.82rem;">RPN calculation from severity &times; occurrence &times; detectability. CSA testing strategy recommendation.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>4. Gap Analysis</h3>
+        <p style="font-size:0.82rem;">Identify regulatory gaps in vendor documentation against GAMP 5 and 21 CFR Part 11 requirements.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>5. Audit Logs</h3>
+        <p style="font-size:0.82rem;">Immutable CSV audit trail viewer. Every agent action logged with SHA-256 reasoning hashes.</p>
+      </div>
+      <div class="card" style="border:2px solid var(--accent);background:linear-gradient(135deg,var(--navy),var(--navy-light));">
+        <h3 style="color:#fff;">6. Validation Factory</h3>
+        <p style="font-size:0.82rem;color:var(--text);">The core pipeline: UR/FR &rarr; test scripts &rarr; review &rarr; signed validation report PDF.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>7. Traceability</h3>
+        <p style="font-size:0.82rem;">RTM generation mapping every FR to test steps. Coverage metrics and gap identification.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>8. Demo Comparison</h3>
+        <p style="font-size:0.82rem;">Side-by-side: human draft vs Validation Factory audit-ready rewrite with cost analysis.</p>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:1.5rem;">
+      <p style="font-size:0.9rem;">
+        &#128161; <strong>Demo Mode</strong> available &mdash; toggle in sidebar to run the full pipeline with sample LIMS data, no API keys needed.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 10: Compliance Summary -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide" data-slide="9">
+    <h2><span class="highlight">Compliance</span> &mdash; Built for Regulated Environments</h2>
+
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <h3>&#128220; GAMP 5 Alignment</h3>
+        <ul style="margin-left:1rem;font-size:0.88rem;">
+          <li>Risk-based approach to validation</li>
+          <li>Criticality classification (High / Medium / Low)</li>
+          <li>Deterministic risk and test-strategy matrices</li>
+          <li>Regulatory rationale traced to GAMP 5 source pages</li>
+          <li>Reg version tracking across document updates</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>&#128272; 21 CFR Part 11</h3>
+        <ul style="margin-left:1rem;font-size:0.88rem;">
+          <li>Append-only CSV audit trail (immutable)</li>
+          <li>SHA-256 tamper-evident hashes on every record</li>
+          <li>Logic archives for AI reasoning transparency</li>
+          <li>Manifestation of Signature page on all PDFs</li>
+          <li>Electronic signature = legally binding equivalent</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>&#9878; CSA (Computer Software Assurance)</h3>
+        <ul style="margin-left:1rem;font-size:0.88rem;">
+          <li>Risk-proportionate testing strategies</li>
+          <li>High risk &rarr; rigorous scripted (OQ/UAT)</li>
+          <li>Medium/Low &rarr; unscripted exploratory charters</li>
+          <li>FDA, EMA Annex 11 regulatory justifications</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>&#128209; Validation Deliverables</h3>
+        <ul style="margin-left:1rem;font-size:0.88rem;">
+          <li>User Requirement Specification (URS)</li>
+          <li>UR/FR Document with acceptance criteria</li>
+          <li>CSA Test Scripts (scripted or charter)</li>
+          <li>Requirements Traceability Matrix (RTM)</li>
+          <li>Combined Validation Report PDF (5 pages)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:2rem;">
+      <div style="display:inline-flex;align-items:center;gap:0.8rem;
+                  background:linear-gradient(135deg,var(--navy),var(--navy-light));
+                  border:1px solid var(--accent);border-radius:12px;padding:0.8rem 2rem;">
+        <span style="font-size:1.6rem;">E</span>
+        <div style="text-align:left;">
+          <div style="font-weight:700;font-size:1.1rem;">Powered by EVOLV</div>
+          <div style="font-size:0.8rem;color:var(--muted);">A WingstarTech Inc. Product</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Navigation ── -->
+<div class="slide-num" id="slideNum">1 / 10</div>
+<div class="nav">
+  <button id="prevBtn" onclick="navigate(-1)" disabled>&#8592; Prev</button>
+  <button id="nextBtn" onclick="navigate(1)">Next &#8594;</button>
+</div>
+<div class="progress"><div class="progress-bar" id="progressBar" style="width:10%;"></div></div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+
+  function navigate(dir) {
+    if (current + dir < 0 || current + dir >= total) return;
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit');
+    setTimeout(() => slides[current - dir]?.classList.remove('exit'), 500);
+    current += dir;
+    slides[current].classList.remove('exit');
+    slides[current].classList.add('active');
+    update();
+  }
+
+  function update() {
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === total - 1;
+    document.getElementById('slideNum').textContent = `${current + 1} / ${total}`;
+    document.getElementById('progressBar').style.width = `${((current + 1) / total) * 100}%`;
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); navigate(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); navigate(-1); }
+  });
+
+  update();
+</script>
+
+</body>
+</html>
