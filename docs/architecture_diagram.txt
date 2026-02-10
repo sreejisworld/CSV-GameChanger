@@ -1,0 +1,392 @@
+
+ ╔══════════════════════════════════════════════════════════════════════════════════╗
+ ║                     EVOLV: THE VALIDATION FACTORY                              ║
+ ║                     Full Codebase Architecture                                 ║
+ ║                     WingstarTech Inc.                                           ║
+ ╚══════════════════════════════════════════════════════════════════════════════════╝
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  ENTRY POINTS
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+  ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
+  │  frontend/app.py │   │    API/main.py   │   │     main.py      │
+  │  (Streamlit UI)  │   │    (FastAPI)     │   │  (Root FastAPI)  │
+  │                  │   │                  │   │                  │
+  │  8-Tab Dashboard │   │  POST /webhook/  │   │  Standalone URS  │
+  │  Port 8501       │   │  sn-change       │   │  generation      │
+  └────────┬─────────┘   └────────┬─────────┘   └────────┬─────────┘
+           │                      │                       │
+           │                      ▼                       │
+           │             ┌──────────────────┐             │
+           │             │ API/              │             │
+           ├────────────►│ agent_controller  │             │
+           │             │ .py               │             │
+           │             │                   │             │
+           │             │ AgentController   │             │
+           │             │ (Facade Pattern)  │             │
+           │             └────────┬─────────┘             │
+           │                      │                       │
+           ▼                      ▼                       ▼
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  AGENT LAYER  (Agents/)
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │                                                                             │
+  │   ┌───────────────────────┐         ┌───────────────────────┐              │
+  │   │ requirement_architect │         │  verification_agent   │              │
+  │   │ .py                   │         │  .py                  │              │
+  │   │                       │         │                       │              │
+  │   │ RequirementArchitect  │────────►│ VerificationAgent     │              │
+  │   │                       │ URS     │                       │              │
+  │   │ ● generate_urs()      │ dict    │ ● verify_urs()        │              │
+  │   │ ● transform_urs_to_  │         │ ● verify_batch()      │              │
+  │   │   ur_fr()             │         │                       │              │
+  │   │ ● search()            │         │ 3 checks:             │              │
+  │   │                       │         │  - Criticality align  │              │
+  │   │ Risk Matrix:          │         │  - Rationale relevance│              │
+  │   │  RA × IM → Risk Level │         │  - Contradiction scan │              │
+  │   │ Test Matrix:           │         │                       │              │
+  │   │  Risk × IM → Strategy │         └───────────┬───────────┘              │
+  │   └───────────┬───────────┘                     │                          │
+  │               │                                 │                          │
+  │               │ ur_fr dict                      │ Approved / Rejected      │
+  │               ▼                                 ▼                          │
+  │   ┌───────────────────────┐         ┌───────────────────────┐              │
+  │   │    delta_agent.py     │         │   auditor_agent.py    │              │
+  │   │                       │         │                       │              │
+  │   │ DeltaAgent            │         │ AuditorAgent          │              │
+  │   │                       │         │                       │              │
+  │   │ ● generate_csa_test_ │  test   │ ● generate_rtm()      │              │
+  │   │   from_ur_fr()        │─script─►│ ● generate_vtm()      │              │
+  │   │ ● generate_csa_test_ │  dict   │ ● generate_vsr()      │              │
+  │   │   batch()             │         │                       │              │
+  │   │                       │         │ Matches FRs to test   │              │
+  │   │ Routes by risk:       │         │ steps via "UR-1/FR-1" │              │
+  │   │  HIGH → Scripted      │         │ reference field       │              │
+  │   │  MED  → Charter       │         │                       │              │
+  │   │  LOW  → Charter       │         └───────────────────────┘              │
+  │   │                       │                                                │
+  │   │ Uses:                 │                                                │
+  │   │  ● risk_strategist   │                                                │
+  │   │  ● test_generator    │                                                │
+  │   └───────────────────────┘                                                │
+  │                                                                             │
+  │   ┌───────────────────────┐         ┌───────────────────────┐              │
+  │   │  risk_strategist.py   │         │  ingestor_agent.py    │              │
+  │   │                       │         │                       │              │
+  │   │ (Module-level funcs)  │         │ IngestorAgent         │              │
+  │   │                       │         │                       │              │
+  │   │ ● assess_change_     │         │ ● ingest()            │              │
+  │   │   request()           │         │ ● analyze_gaps()      │              │
+  │   │ ● calculate_risk_    │         │                       │              │
+  │   │   score()             │         │ PDF → chunks →        │              │
+  │   │ ● get_csa_testing_   │         │ Pinecone vectors      │              │
+  │   │   strategy()          │         │                       │              │
+  │   │                       │         │ Lazy-loads            │              │
+  │   │ RPN = S × O × D      │         │ RequirementArchitect  │              │
+  │   │ (scale 1-27)          │         │ for gap analysis      │              │
+  │   └───────────────────────┘         └───────────────────────┘              │
+  │                                                                             │
+  │   ┌───────────────────────┐                                                │
+  │   │  test_generator.py    │   Used by DeltaAgent for                       │
+  │   │                       │   LLM-based test generation                    │
+  │   │ TestGenerator         │   (legacy path)                                │
+  │   └───────────────────────┘                                                │
+  │                                                                             │
+  └─────────────────────────────────────────────────────────────────────────────┘
+                           │
+                           │ All agents import log_audit_event()
+                           ▼
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │                      integrity_manager.py                                   │
+  │                      ════════════════════                                   │
+  │                                                                             │
+  │   ● log_audit_event()          Append-only CSV audit trail                 │
+  │   ● _compute_reasoning_hash()  SHA-256 tamper-evident hashes               │
+  │   ● _write_logic_archive()     Hidden JSON reasoning archives              │
+  │   ● _validate_thought_process()                                            │
+  │                                                                             │
+  │   Output:  output/audit_trail.csv   +   output/logic_archives/*.json       │
+  │                                                                             │
+  │   ⚡ Thread-safe via _write_lock                                            │
+  │   ⚡ Cross-references CSV rows ↔ JSON archives via SHA-256                  │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  UTILITIES  (utils/)
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+  ┌───────────────────────┐         ┌───────────────────────┐
+  │  pdf_generator.py     │         │  demo_comparison.py   │
+  │                       │         │                       │
+  │ ● generate_urs_pdf()  │         │ ● detect_ambiguities()│
+  │ ● generate_validation_│         │ ● detect_regulatory_  │
+  │   report_pdf()        │         │   gaps()              │
+  │                       │         │ ● rewrite_requirement│
+  │ URS PDF (2 pages)     │         │ ● evaluate_           │
+  │ Val Report (5 pages)  │         │   requirements()      │
+  │                       │         │ ● inject_into_docx()  │
+  │ Header: "EVOLV |      │         │                       │
+  │  The Validation        │         │ Human draft vs        │
+  │  Factory"              │         │ Audit-ready rewrite   │
+  │                       │         │                       │
+  │ No internal imports   │         │ No internal imports   │
+  └───────────────────────┘         └───────────────────────┘
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  SCRIPTS  (scripts/)  — CLI tools
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+  │ draft_urs.py    │ │ draft_vsr.py    │ │ generate_vtm.py │ │ ingest_docs.py  │
+  │                 │ │                 │ │                 │ │                 │
+  │ Interactive URS │ │ Validation      │ │ Validation      │ │ PDF → Pinecone  │
+  │ generation from │ │ Summary Report  │ │ Traceability    │ │ chunking &      │
+  │ natural lang    │ │ (AI-generated)  │ │ Matrix (VTM)    │ │ embedding       │
+  │                 │ │                 │ │                 │ │                 │
+  │ Uses:           │ │ Uses: OpenAI    │ │ Uses:           │ │ Uses: Pinecone  │
+  │ Requirement     │ │ GPT for report  │ │ integrity_mgr   │ │ + OpenAI        │
+  │ Architect       │ │ writing         │ │                 │ │                 │
+  └─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
+
+  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+  │ sign_off.py     │ │ monitor_        │ │ setup_pinecone_ │
+  │                 │ │ changes.py      │ │ index.py        │
+  │ Digital sign-   │ │                 │ │                 │
+  │ off on health   │ │ Watchdog for    │ │ Create Pinecone │
+  │ reports         │ │ URS file edits  │ │ vector index    │
+  └─────────────────┘ └─────────────────┘ └─────────────────┘
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  EXTERNAL SERVICES
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+  ┌───────────────────────┐         ┌───────────────────────┐
+  │      Pinecone         │         │       OpenAI          │
+  │                       │         │                       │
+  │ csv-knowledge-base    │         │ text-embedding-3-     │
+  │ index                 │         │ small                 │
+  │                       │         │                       │
+  │ Stores GAMP 5, CSA,  │         │ Embeds requirements   │
+  │ FDA, EMA chunks      │         │ and doc chunks for    │
+  │ as vectors            │         │ vector similarity     │
+  │                       │         │                       │
+  │ Used by:              │         │ Used by:              │
+  │ ● RequirementArchitect│         │ ● RequirementArchitect│
+  │ ● VerificationAgent  │         │ ● VerificationAgent  │
+  │ ● IngestorAgent      │         │ ● IngestorAgent      │
+  └───────────────────────┘         └───────────────────────┘
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  DATA FLOW — THE CORE PIPELINE (Page 6: Validation Factory)
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+  User enters requirement text
+          │
+          ▼
+  ┌──────────────────────────────┐
+  │  RequirementArchitect        │
+  │  .generate_urs()             │◄──── Pinecone (GAMP 5 context)
+  │                              │◄──── OpenAI  (embeddings)
+  │  → Criticality: High/Med/Low│
+  │  → Regulatory Rationale      │
+  │  → URS dict                  │
+  └──────────────┬───────────────┘
+                 │
+                 ▼
+  ┌──────────────────────────────┐
+  │  RequirementArchitect        │      ┌──────────────────────────┐
+  │  .transform_urs_to_ur_fr()   │      │  RISK MATRIX             │
+  │                              │◄─────│  GxP Direct + Custom     │
+  │  100% deterministic          │      │    → HIGH                │
+  │  No LLM calls                │      │  GxP Indirect + OOB     │
+  │                              │      │    → LOW                 │
+  │  → UR-1 with risk_level      │      │  ...                     │
+  │  → FR-1, FR-2, FR-3         │      └──────────────────────────┘
+  │  → Acceptance criteria       │
+  └──────────────┬───────────────┘
+                 │
+                 │  st.session_state.vf_ur_fr
+                 ▼
+  ┌──────────────────────────────┐
+  │  DeltaAgent                  │      ┌──────────────────────────┐
+  │  .generate_csa_test_from_    │      │  ROUTING                 │
+  │   ur_fr()                    │      │  HIGH + Informal         │
+  │                              │◄─────│    → +/−/edge per FR    │
+  │  100% deterministic          │      │  HIGH + OQ → +only      │
+  │  No LLM calls                │      │  HIGH + UAT → biz proc  │
+  │                              │      │  MED/LOW → charter      │
+  │  → Setup steps (3)           │      └──────────────────────────┘
+  │  → Execution steps (per FR)  │
+  │  → Quality checklist         │
+  └──────────────┬───────────────┘
+                 │
+                 │  st.session_state.vf_test_script
+                 ▼
+  ┌──────────────────────────────┐
+  │  Side-by-Side Review         │
+  │                              │
+  │  LEFT:  UR/FR table          │
+  │  RIGHT: Test Script table    │
+  │                              │
+  │  Downloads: CSV / PDF / JSON │
+  └──────────────┬───────────────┘
+                 │
+                 │  signer_name
+                 ▼
+  ┌──────────────────────────────┐
+  │  generate_validation_        │
+  │  report_pdf()                │
+  │                              │
+  │  Page 1: Cover               │
+  │  Page 2: UR/FR Table    (L)  │
+  │  Page 3: Test Script    (L)  │
+  │  Page 4: Reg Justification   │
+  │  Page 5: Signature (Part 11) │
+  └──────────────┬───────────────┘
+                 │
+                 ▼
+  ┌──────────────────────────────┐
+  │  AuditorAgent                │
+  │  .generate_rtm()             │
+  │                              │
+  │  FR-1 ←→ Steps 1,2,3        │
+  │  FR-2 ←→ Steps 4,5          │
+  │  FR-3 ←→ Steps 6,7          │
+  │                              │
+  │  Coverage: 100%              │
+  │  Gaps: 0                     │
+  └──────────────────────────────┘
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  FILE TREE
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+  CSV-GameChanger/
+  │
+  ├── frontend/
+  │   └── app.py ·················· Streamlit 8-tab dashboard (main UI)
+  │
+  ├── API/
+  │   ├── main.py ················· FastAPI endpoints (ServiceNow webhook)
+  │   └── agent_controller.py ····· Facade: orchestrates all agents
+  │
+  ├── Agents/
+  │   ├── requirement_architect.py · URS generation + UR/FR transform
+  │   ├── delta_agent.py ·········· CSA test script generation
+  │   ├── verification_agent.py ··· URS verification (3 checks)
+  │   ├── auditor_agent.py ········ RTM, VTM, VSR generation
+  │   ├── risk_strategist.py ······ RPN calculation + CSA strategy
+  │   ├── ingestor_agent.py ······· PDF ingestion + gap analysis
+  │   ├── test_generator.py ······· Legacy LLM-based test gen
+  │   ├── integrity_manager.py ···· Audit trail + logic archives
+  │   └── __init__.py
+  │
+  ├── utils/
+  │   ├── pdf_generator.py ········ URS PDF + Validation Report PDF
+  │   ├── demo_comparison.py ······ Human vs AI requirement comparison
+  │   └── __init__.py
+  │
+  ├── scripts/
+  │   ├── draft_urs.py ············ CLI: generate URS documents
+  │   ├── draft_vsr.py ············ CLI: generate validation summary
+  │   ├── generate_vtm.py ········· CLI: validation traceability matrix
+  │   ├── ingest_docs.py ·········· CLI: PDF → Pinecone ingestion
+  │   ├── setup_pinecone_index.py · CLI: create Pinecone index
+  │   ├── sign_off.py ············· CLI: digital sign-off
+  │   └── monitor_changes.py ······ CLI: watchdog for URS file edits
+  │
+  ├── templates/enterprise_standards/
+  │   ├── lab_systems.json ········ Lab enterprise config
+  │   ├── medtech_standard.json ··· MedTech enterprise config
+  │   └── pharma_standard.json ···· Pharma enterprise config
+  │
+  ├── docs/
+  │   ├── evolv_pipeline_slides.html  Interactive slide deck
+  │   └── raw/ ···················· Regulatory reference PDFs
+  │       ├── GAMP AI Guide.pdf
+  │       ├── GAMP DI Guide.pdf
+  │       ├── FDA AI discussion paper.pdf
+  │       ├── General Principles of Software Validation.pdf
+  │       ├── EudraLex Vol 4 GMP Annex 11.pdf
+  │       ├── Part 11 Electronic Records.pdf
+  │       ├── PIC/S Recommendation Computerised Systems.pdf
+  │       ├── EU AI Act Guide.pdf
+  │       ├── Predetermined Change Control Plans.pdf
+  │       ├── Guiding Principles Good AI Practice.pdf
+  │       └── Validating AI Systems in GMP.pdf
+  │
+  ├── output/                         (generated at runtime)
+  │   ├── audit_trail.csv ············ 21 CFR Part 11 audit log
+  │   ├── logic_archives/ ············ Hidden JSON reasoning files
+  │   └── urs/ ······················· Generated URS Markdown/PDF
+  │
+  ├── main.py ························ Root FastAPI app
+  ├── run_trustme.bat ················ Windows batch runner
+  ├── CLAUDE.md ······················ AI coding instructions
+  └── README.md
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  DEPENDENCY GRAPH (internal imports only)
+ ═══════════════════════════════════════════════════════════════════════════════════
+
+                    ┌─────────────────┐
+                    │  frontend/app   │
+                    └───┬──┬──┬──┬────┘
+                        │  │  │  │
+          ┌─────────────┘  │  │  └────────────────┐
+          ▼                │  │                    ▼
+  ┌───────────────┐       │  │         ┌──────────────────┐
+  │ agent_         │       │  │         │ utils/           │
+  │ controller    │       │  │         │ pdf_generator    │
+  └──┬─┬─┬─┬─┬───┘       │  │         │ demo_comparison  │
+     │ │ │ │ │            │  │         └──────────────────┘
+     │ │ │ │ │            │  │
+     │ │ │ │ └──────┐     │  │
+     │ │ │ │        │     │  │
+     ▼ ▼ ▼ ▼        ▼     ▼  ▼
+  ┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐
+  │RA  ││VA  ││DA  ││AA  ││IA  ││RS  │
+  └─┬──┘└─┬──┘└┬┬──┘└─┬──┘└─┬──┘└─┬──┘
+    │      │    ││      │     │     │
+    │      │    │└──┐   │     │     │
+    │      │    │   │   │     │     │
+    │      │    ▼   │   ▼     │     │
+    │      │  ┌──┐  │ ┌────┐  │     │
+    │      │  │TG│  │ │VTM │  │     │
+    │      │  └──┘  │ │VSR │  │     │
+    │      │        │ └────┘  │     │
+    │      │        ▼         │     │
+    │      │      ┌──┐        │     │
+    │      │      │RS│        │     │
+    │      │      └──┘        │     │
+    │      │                  │     │
+    ▼      ▼        ▼         ▼     ▼
+  ╔══════════════════════════════════════╗
+  ║       integrity_manager.py          ║
+  ║  (ALL agents log here)              ║
+  ║                                      ║
+  ║  → output/audit_trail.csv            ║
+  ║  → output/logic_archives/*.json      ║
+  ╚══════════════════════════════════════╝
+
+  Legend:
+    RA = RequirementArchitect    VA = VerificationAgent
+    DA = DeltaAgent              AA = AuditorAgent
+    IA = IngestorAgent           RS = RiskStrategist
+    TG = TestGenerator           VTM/VSR = scripts
+
+
+ ═══════════════════════════════════════════════════════════════════════════════════
+  Powered by EVOLV | A WingstarTech Inc. Product
+ ═══════════════════════════════════════════════════════════════════════════════════
