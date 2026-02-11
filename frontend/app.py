@@ -1367,6 +1367,10 @@ elif page.startswith("2"):
         "and the engine produces a GAMP 5 compliant URS",
     )
 
+    _expert_p2 = st.session_state.get(
+        "expert_mode", False,
+    )
+
     if st.session_state.get("demo_mode", False):
         st.info(
             "Demo Mode \u2014 showing sample LIMS data"
@@ -1375,28 +1379,43 @@ elif page.startswith("2"):
             DEMO_DATA["generated_urs"]
         )
 
+    if _expert_p2 and not st.session_state.get(
+        "demo_mode", False
+    ):
+        st.info(
+            "Expert Mode \u2014 skipping external "
+            "document lookup; using deterministic "
+            "GAMP 5 / CSA logic"
+        )
+
     requirement = st.text_area(
         "Requirement description",
         placeholder="e.g. The system shall monitor warehouse "
                     "temperature in real time.",
         height=120,
     )
-    min_score = st.slider(
-        "Minimum similarity score",
-        min_value=0.20,
-        max_value=0.80,
-        value=0.35,
-        step=0.05,
-        help="Lower values return more results but may "
-             "reduce relevance.",
-    )
+
+    if not _expert_p2:
+        min_score = st.slider(
+            "Minimum similarity score",
+            min_value=0.20,
+            max_value=0.80,
+            value=0.35,
+            step=0.05,
+            help="Lower values return more results but "
+                 "may reduce relevance.",
+        )
+    else:
+        min_score = 0.35  # default; unused in expert mode
 
     if "generated_urs" not in st.session_state:
         st.session_state.generated_urs = None
 
     if st.button("Generate URS", type="primary"):
         if not requirement.strip():
-            st.warning("Please enter a requirement description.")
+            st.warning(
+                "Please enter a requirement description."
+            )
         else:
             with st.spinner("Generating URS..."):
                 try:
@@ -1405,10 +1424,13 @@ elif page.startswith("2"):
                         ctrl.generate_urs(
                             requirement=requirement.strip(),
                             min_score=min_score,
+                            expert_mode=_expert_p2,
                         )
                     )
                 except Exception as exc:
-                    st.error(f"URS generation failed: {exc}")
+                    st.error(
+                        f"URS generation failed: {exc}"
+                    )
 
     urs = st.session_state.generated_urs
     if urs is not None:

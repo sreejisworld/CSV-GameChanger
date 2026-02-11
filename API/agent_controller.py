@@ -150,12 +150,15 @@ class AgentController:
         self,
         requirement: str,
         min_score: float = 0.35,
+        expert_mode: bool = False,
     ) -> Dict[str, Any]:
         """
         Generate a URS document from a natural-language requirement.
 
         :param requirement: Plain-English requirement statement.
         :param min_score: Minimum Pinecone similarity score.
+        :param expert_mode: When *True*, skip external document
+                            lookup and use deterministic logic.
         :return: Structured URS dictionary.
         :requirement: URS-6.1 - Generate URS from natural language.
         """
@@ -164,6 +167,7 @@ class AgentController:
         return architect.generate_urs(
             requirement=requirement,
             min_score=min_score,
+            expert_mode=expert_mode,
         )
 
     def search_knowledge_base(

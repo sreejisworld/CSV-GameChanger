@@ -10,6 +10,7 @@ import os
 import json
 from enum import Enum
 from pathlib import Path
+from collections import namedtuple
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 
@@ -35,6 +36,17 @@ TOP_K_RESULTS = 5
 MIN_SIMILARITY_SCORE = 0.5
 
 _KNOWN_REG_VERSIONS: set = set()
+
+CriticalityResult = namedtuple(
+    "CriticalityResult",
+    ["criticality", "matched_keywords", "source"],
+)
+"""Result of keyword-based criticality classification.
+
+:param criticality: The determined ``Criticality`` enum value.
+:param matched_keywords: All keywords that triggered the match.
+:param source: ``"requirement_text"`` or ``"context_text"``.
+"""
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "enterprise_standards"
 
@@ -571,9 +583,13 @@ class RequirementArchitect:
         self,
         requirement: str,
         search_results: List[SearchResult]
-    ) -> Criticality:
+    ) -> CriticalityResult:
         """
         Determine requirement criticality based on content analysis.
+
+        Scans the requirement text *and* any retrieved GAMP 5 context
+        for keyword matches and returns a ``CriticalityResult`` that
+        includes every matched keyword and where it was found.
 
         High criticality indicators:
         - Patient safety impact
@@ -593,53 +609,89 @@ class RequirementArchitect:
 
         :param requirement: The original requirement text.
         :param search_results: Retrieved GAMP 5 search results.
-        :return: Criticality classification.
-        :requirement: URS-6.9 - System shall assess requirement criticality.
+        :return: CriticalityResult with criticality, matched
+                 keywords, and match source.
+        :requirement: URS-6.9 - System shall assess requirement
+                      criticality.
         """
         requirement_lower = requirement.lower()
 
         # Use template keywords if available, otherwise defaults
         if self._template:
-            high_keywords = self._template.criticality_keywords.get(
-                "high", []
+            high_keywords = (
+                self._template.criticality_keywords.get(
+                    "high", []
+                )
             )
-            medium_keywords = self._template.criticality_keywords.get(
-                "medium", []
+            medium_keywords = (
+                self._template.criticality_keywords.get(
+                    "medium", []
+                )
             )
         else:
             # High criticality keywords
             high_keywords = [
-                "patient", "safety", "critical", "gxp", "compliance",
-                "validation", "sterile", "batch", "release", "adverse",
-                "pharmacovigilance", "clinical", "regulatory",
-                "fda", "ema"
+                "patient", "safety", "critical", "gxp",
+                "compliance", "validation", "sterile",
+                "batch", "release", "adverse",
+                "pharmacovigilance", "clinical",
+                "regulatory", "fda", "ema",
             ]
 
             # Medium criticality keywords
             medium_keywords = [
-                "quality", "audit", "traceability", "calibration",
-                "deviation", "capa", "change control", "training",
-                "document", "sop", "warehouse", "inventory",
-                "temperature"
+                "quality", "audit", "traceability",
+                "calibration", "deviation", "capa",
+                "change control", "training", "document",
+                "sop", "warehouse", "inventory",
+                "temperature",
             ]
 
-        # Check for high criticality
-        for keyword in high_keywords:
-            if keyword in requirement_lower:
-                return Criticality.HIGH
+        # Collect ALL matches from the requirement text
+        high_req = [
+            kw for kw in high_keywords
+            if kw in requirement_lower
+        ]
+        med_req = [
+            kw for kw in medium_keywords
+            if kw in requirement_lower
+        ]
 
-        # Check context for regulatory references
-        context_text = " ".join([r.text.lower() for r in search_results if r.text])
-        for keyword in high_keywords:
-            if keyword in context_text:
-                return Criticality.HIGH
+        if high_req:
+            return CriticalityResult(
+                criticality=Criticality.HIGH,
+                matched_keywords=high_req,
+                source="requirement_text",
+            )
 
-        # Check for medium criticality
-        for keyword in medium_keywords:
-            if keyword in requirement_lower:
-                return Criticality.MEDIUM
+        # Check context for high-criticality references
+        context_text = " ".join(
+            [r.text.lower() for r in search_results if r.text]
+        )
+        high_ctx = [
+            kw for kw in high_keywords
+            if kw in context_text
+        ]
+        if high_ctx:
+            return CriticalityResult(
+                criticality=Criticality.HIGH,
+                matched_keywords=high_ctx,
+                source="context_text",
+            )
 
-        return Criticality.LOW
+        # Check for medium criticality in requirement
+        if med_req:
+            return CriticalityResult(
+                criticality=Criticality.MEDIUM,
+                matched_keywords=med_req,
+                source="requirement_text",
+            )
+
+        return CriticalityResult(
+            criticality=Criticality.LOW,
+            matched_keywords=[],
+            source="requirement_text",
+        )
 
     def _generate_urs_id(self) -> str:
         """
@@ -695,6 +747,219 @@ class RequirementArchitect:
                     )
 
         return " | ".join(rationale_parts)
+
+    @staticmethod
+    def _build_deterministic_rationale(
+        criticality: Criticality,
+        matched_keywords: List[str],
+    ) -> str:
+        """
+        Build an audit-ready regulatory rationale without external APIs.
+
+        Maps matched keywords to hard-coded GAMP 5 / CSA regulatory
+        principles so the output is professional and traceable even
+        when Pinecone is unavailable.
+
+        :param criticality: Determined criticality level.
+        :param matched_keywords: Keywords that triggered the
+                                 classification.
+        :return: Multi-sentence rationale string.
+        :requirement: URS-6.11 - System shall provide regulatory
+                      justification.
+        """
+        _KEYWORD_RATIONALE: Dict[str, str] = {
+            # Patient safety
+            "patient": (
+                "Per ISPE GAMP 5 (Section 4): Patient safety "
+                "is the primary consideration in determining "
+                "the level of testing effort. Systems that "
+                "directly affect patient safety require "
+                "rigorous scripted testing."
+            ),
+            "safety": (
+                "Per ISPE GAMP 5 (Section 4): Patient safety "
+                "is the primary consideration in determining "
+                "the level of testing effort."
+            ),
+            "clinical": (
+                "Per ISPE GAMP 5 (Section 4): Clinical "
+                "systems that affect patient outcomes "
+                "require comprehensive validation evidence."
+            ),
+            "adverse": (
+                "Per ISPE GAMP 5 (Section 4): Adverse-event "
+                "reporting systems are safety-critical and "
+                "demand rigorous validation."
+            ),
+            "pharmacovigilance": (
+                "Per ISPE GAMP 5 (Section 4): "
+                "Pharmacovigilance systems are classified as "
+                "safety-critical, requiring full scripted "
+                "testing."
+            ),
+            # Data integrity / compliance
+            "audit": (
+                "Per 21 CFR Part 11 and GAMP 5 "
+                "Appendix M4: Systems managing electronic "
+                "records must ensure data integrity through "
+                "audit trails and access controls."
+            ),
+            "traceability": (
+                "Per 21 CFR Part 11 and GAMP 5 "
+                "Appendix M4: Traceability of electronic "
+                "records is a regulatory requirement for "
+                "GxP systems."
+            ),
+            "21 cfr": (
+                "Per 21 CFR Part 11: Electronic records and "
+                "signatures must meet specific requirements "
+                "for authenticity, integrity, and "
+                "confidentiality."
+            ),
+            "compliance": (
+                "Per GAMP 5 (Section 3): Compliance with "
+                "applicable regulations must be demonstrated "
+                "through documented validation activities."
+            ),
+            "validation": (
+                "Per GAMP 5 (Section 5): Validation "
+                "activities must be commensurate with the "
+                "risk to patient safety, product quality, "
+                "and data integrity."
+            ),
+            # GxP process
+            "gxp": (
+                "Per GAMP 5 (Section 5): GxP-regulated "
+                "processes require documented evidence of "
+                "validation proportional to their risk."
+            ),
+            "sterile": (
+                "Per GAMP 5 (Section 5): Sterile "
+                "manufacturing systems are classified as "
+                "high-impact and require rigorous testing."
+            ),
+            "batch": (
+                "Per GAMP 5 (Section 5): Batch-record "
+                "systems directly support product release "
+                "decisions and require validated controls."
+            ),
+            "release": (
+                "Per GAMP 5 (Section 5): Systems involved "
+                "in product release decisions must be "
+                "validated to ensure data integrity."
+            ),
+            "regulatory": (
+                "Per GAMP 5 (Section 3): Regulatory "
+                "submissions and reporting systems require "
+                "validated data sources."
+            ),
+            "fda": (
+                "Per GAMP 5 (Section 3): Systems subject "
+                "to FDA oversight must comply with "
+                "applicable predicate rules and 21 CFR "
+                "Part 11."
+            ),
+            "ema": (
+                "Per GAMP 5 (Section 3): Systems subject "
+                "to EMA oversight must comply with "
+                "Annex 11 and applicable EU GMP guidelines."
+            ),
+            "critical": (
+                "Per GAMP 5 (Section 4): Critical systems "
+                "require a risk-based approach to determine "
+                "appropriate validation effort."
+            ),
+            # Quality system
+            "quality": (
+                "Per GAMP 5 (Section 3): Quality management "
+                "systems supporting GxP operations require "
+                "appropriate validation commensurate with "
+                "their impact."
+            ),
+            "calibration": (
+                "Per GAMP 5 (Section 3): Calibration "
+                "management systems support data integrity "
+                "and require validated controls."
+            ),
+            "deviation": (
+                "Per GAMP 5 (Section 3): Deviation "
+                "management systems are quality-critical "
+                "and require documented validation."
+            ),
+            "capa": (
+                "Per GAMP 5 (Section 3): CAPA systems "
+                "must be validated to ensure corrective "
+                "actions are tracked and effective."
+            ),
+            "change control": (
+                "Per GAMP 5 (Section 3): Change control "
+                "systems must be validated to maintain "
+                "the qualified state of GxP systems."
+            ),
+            "sop": (
+                "Per GAMP 5 (Section 3): SOP management "
+                "systems support regulatory compliance and "
+                "require documented validation."
+            ),
+            "training": (
+                "Per CSA guidance: Training management "
+                "systems should be validated commensurate "
+                "with their risk to ensure personnel "
+                "competency records are reliable."
+            ),
+            "document": (
+                "Per GAMP 5 (Section 3): Document "
+                "management systems that control GxP "
+                "documents require appropriate validation."
+            ),
+            # Operational
+            "warehouse": (
+                "Per CSA guidance: Warehouse management "
+                "systems supporting GxP storage conditions "
+                "should be validated commensurate with "
+                "their risk."
+            ),
+            "inventory": (
+                "Per CSA guidance: Inventory systems that "
+                "track GxP materials should be validated "
+                "to ensure material traceability."
+            ),
+            "temperature": (
+                "Per CSA guidance: Temperature monitoring "
+                "systems supporting storage-condition "
+                "compliance should be validated to ensure "
+                "data reliability."
+            ),
+        }
+
+        # Collect unique rationale sentences for matched keywords
+        seen: set = set()
+        rationale_parts: List[str] = []
+        for kw in matched_keywords:
+            text = _KEYWORD_RATIONALE.get(kw)
+            if text and text not in seen:
+                seen.add(text)
+                rationale_parts.append(text)
+
+        # Opening sentence: classification reason
+        kw_list = ", ".join(matched_keywords) if matched_keywords else "general"
+        opening = (
+            f"Expert-Defined Logic: Requirement classified as "
+            f"{criticality.value} criticality based on "
+            f"keyword analysis ({kw_list})."
+        )
+
+        # Risk-based justification closing
+        closing = (
+            "Per GAMP 5 risk-based approach and CSA principles, "
+            "the testing effort shall be commensurate with the "
+            f"assessed {criticality.value} risk level."
+        )
+
+        parts = [opening]
+        parts.extend(rationale_parts[:3])  # cap at 3 citations
+        parts.append(closing)
+        return " ".join(parts)
 
     def _format_requirement_statement(self, requirement: str) -> str:
         """
@@ -792,9 +1057,10 @@ class RequirementArchitect:
 
         # Step 2: Determine criticality (works with or
         #         without GAMP 5 context — keyword-based)
-        criticality = self._determine_criticality(
+        crit_result = self._determine_criticality(
             requirement, search_results,
         )
+        criticality = crit_result.criticality
 
         # Step 3: Generate URS ID
         urs_id = self._generate_urs_id()
@@ -819,15 +1085,14 @@ class RequirementArchitect:
                 if r.reg_version
             })
         else:
-            # No GAMP 5 match — use expert-defined logic
-            rationale = (
-                "Expert-Defined Logic: Requirement "
-                "classified as "
-                f"{criticality.value} criticality "
-                "based on proprietary risk assessment "
-                "criteria and industry best practices."
+            # No GAMP 5 match — use deterministic rationale
+            rationale = self._build_deterministic_rationale(
+                criticality,
+                crit_result.matched_keywords,
             )
-            reg_versions_cited = []
+            reg_versions_cited = [
+                "GAMP5_Guide", "CSA_2022",
+            ]
 
         # Create URS document
         urs = URSDocument(
