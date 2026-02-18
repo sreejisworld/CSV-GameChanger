@@ -267,6 +267,621 @@ URFR_CATEGORIES: List[str] = [
     "Non-functional",
 ]
 
+# ── Regulatory Fingerprint map ────────────────────────────────
+# Domain priority (highest first): Patient Safety > Data
+# Integrity > GxP Compliance > Quality System > Operational
+
+_DOMAIN_PRIORITY: List[str] = [
+    "Patient Safety",
+    "Data Integrity",
+    "GxP Compliance",
+    "Quality System",
+    "Operational",
+]
+
+_REGULATORY_FINGERPRINT_MAP: Dict[str, Dict[str, Any]] = {
+    # ── Patient Safety ────────────────────────────────────
+    "patient": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 820.30(g)",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "ISPE GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Design validation shall ensure the device "
+            "conforms to defined user needs and intended "
+            "uses. Patient-facing systems require rigorous "
+            "scripted testing per GAMP 5 risk-based "
+            "approach."
+        ),
+        "expert_advice": (
+            "I've seen FDA 483s issued solely because a "
+            "firm couldn't demonstrate that patient-"
+            "facing software was validated to the level "
+            "the risk demanded. Don't short-cut this — "
+            "scripted IQ/OQ/PQ with documented expected "
+            "results is the only defensible path."
+        ),
+    },
+    "safety": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 820.30(g)",
+            "ISPE GAMP 5, Section 4.3",
+            "ICH Q9 — Quality Risk Management",
+        ],
+        "source": "ISPE GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Safety-critical functions must be identified "
+            "through risk assessment and validated with "
+            "evidence proportional to the risk."
+        ),
+        "expert_advice": (
+            "I've seen FDA 483s issued solely because a "
+            "firm couldn't demonstrate that patient-"
+            "facing software was validated to the level "
+            "the risk demanded. Don't short-cut this — "
+            "scripted IQ/OQ/PQ with documented expected "
+            "results is the only defensible path."
+        ),
+    },
+    "clinical": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "ICH E6(R2) — GCP",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "ICH E6(R2) and GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Clinical systems affecting patient outcomes "
+            "require comprehensive validation evidence "
+            "per GCP and GAMP 5."
+        ),
+        "expert_advice": (
+            "I've reviewed Warning Letters where clinical "
+            "data integrity failures led to study "
+            "invalidation. Treat every clinical system as "
+            "high-risk until a documented risk assessment "
+            "proves otherwise."
+        ),
+    },
+    "adverse": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 314.80",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "21 CFR 314.80 and GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Adverse-event reporting systems are safety-"
+            "critical and demand rigorous validation to "
+            "ensure timely and accurate reporting."
+        ),
+        "expert_advice": (
+            "I've seen firms receive Warning Letters for "
+            "late adverse-event submissions traced back "
+            "to unvalidated reporting tools. Validate the "
+            "end-to-end workflow, not just the database."
+        ),
+    },
+    "pharmacovigilance": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 314.80",
+            "EudraVigilance requirements",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "21 CFR 314.80 and GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Pharmacovigilance systems are classified as "
+            "safety-critical, requiring full scripted "
+            "testing and documented evidence."
+        ),
+        "expert_advice": (
+            "I've seen firms receive Warning Letters for "
+            "late adverse-event submissions traced back "
+            "to unvalidated reporting tools. Validate the "
+            "end-to-end workflow, not just the database."
+        ),
+    },
+    # ── Data Integrity ────────────────────────────────────
+    "audit": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR 11.10(e)",
+            "ISPE GAMP 5, Appendix M4",
+        ],
+        "source": "21 CFR Part 11 and GAMP 5, Appendix M4",
+        "compliance_mapping": (
+            "Systems managing electronic records must "
+            "maintain audit trails that record the date, "
+            "time, operator, and nature of every change."
+        ),
+        "expert_advice": (
+            "I've reviewed dozens of 483s citing audit-"
+            "trail gaps. The FDA expects every create, "
+            "modify, and delete to be captured with a "
+            "timestamp and user ID — no exceptions, no "
+            "'we'll add it later'."
+        ),
+    },
+    "traceability": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR 11.10(e)",
+            "ISPE GAMP 5, Appendix M4",
+        ],
+        "source": "21 CFR Part 11 and GAMP 5, Appendix M4",
+        "compliance_mapping": (
+            "Traceability of electronic records is a "
+            "regulatory requirement for GxP systems to "
+            "ensure data integrity."
+        ),
+        "expert_advice": (
+            "I've reviewed dozens of 483s citing audit-"
+            "trail gaps. The FDA expects every create, "
+            "modify, and delete to be captured with a "
+            "timestamp and user ID — no exceptions, no "
+            "'we'll add it later'."
+        ),
+    },
+    "compliance": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Compliance with applicable regulations must "
+            "be demonstrated through documented "
+            "validation activities."
+        ),
+        "expert_advice": (
+            "I've seen companies pass audits simply "
+            "because they could show a clear line from "
+            "requirement to test to evidence. Build "
+            "traceability from day one — retrofitting "
+            "is ten times the cost."
+        ),
+    },
+    "validation": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 5",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "GAMP 5, Section 5 and CSA Guidance",
+        "compliance_mapping": (
+            "Validation activities must be commensurate "
+            "with the risk to patient safety, product "
+            "quality, and data integrity."
+        ),
+        "expert_advice": (
+            "I've seen companies pass audits simply "
+            "because they could show a clear line from "
+            "requirement to test to evidence. Build "
+            "traceability from day one — retrofitting "
+            "is ten times the cost."
+        ),
+    },
+    "21 cfr": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "FDA Guidance on Part 11 Scope and "
+            "Application (2003)",
+        ],
+        "source": "21 CFR Part 11",
+        "compliance_mapping": (
+            "Electronic records and signatures must meet "
+            "requirements for authenticity, integrity, "
+            "and confidentiality."
+        ),
+        "expert_advice": (
+            "I've reviewed dozens of 483s citing Part 11 "
+            "deficiencies. Focus on audit trails, access "
+            "controls, and electronic signatures — these "
+            "three areas account for most observations."
+        ),
+    },
+    # ── GxP Compliance ────────────────────────────────────
+    "gxp": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 5",
+            "EU GMP Annex 11",
+        ],
+        "source": "GAMP 5, Section 5",
+        "compliance_mapping": (
+            "GxP-regulated processes require documented "
+            "evidence of validation proportional to "
+            "their risk."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    "sterile": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR 211.42",
+            "ISPE GAMP 5, Section 5",
+        ],
+        "source": "21 CFR 211.42 and GAMP 5, Section 5",
+        "compliance_mapping": (
+            "Sterile manufacturing systems are high-"
+            "impact and require rigorous testing to "
+            "ensure product sterility assurance."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    "batch": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR 211.188",
+            "ISPE GAMP 5, Section 5",
+        ],
+        "source": "21 CFR 211.188 and GAMP 5, Section 5",
+        "compliance_mapping": (
+            "Batch-record systems directly support "
+            "product release decisions and require "
+            "validated controls."
+        ),
+        "expert_advice": (
+            "I've seen batch-record errors lead to "
+            "product recalls. Validate every calculation, "
+            "every limit check, and every signature "
+            "workflow — there is zero tolerance for "
+            "error in release decisions."
+        ),
+    },
+    "release": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR 211.188",
+            "ISPE GAMP 5, Section 5",
+        ],
+        "source": "21 CFR 211.188 and GAMP 5, Section 5",
+        "compliance_mapping": (
+            "Systems involved in product release "
+            "decisions must be validated to ensure "
+            "data integrity."
+        ),
+        "expert_advice": (
+            "I've seen batch-record errors lead to "
+            "product recalls. Validate every calculation, "
+            "every limit check, and every signature "
+            "workflow — there is zero tolerance for "
+            "error in release decisions."
+        ),
+    },
+    "regulatory": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 3",
+            "21 CFR Part 11",
+        ],
+        "source": "GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Regulatory submissions and reporting "
+            "systems require validated data sources."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    "fda": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "FDA CSA Guidance (2022)",
+        "compliance_mapping": (
+            "Systems subject to FDA oversight must "
+            "comply with applicable predicate rules "
+            "and 21 CFR Part 11."
+        ),
+        "expert_advice": (
+            "I've sat across the table from FDA "
+            "investigators. They check three things "
+            "first: audit trails, access controls, and "
+            "change management. Nail those and the rest "
+            "of the inspection goes smoothly."
+        ),
+    },
+    "ema": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "EU GMP Annex 11",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "EU GMP Annex 11 and GAMP 5",
+        "compliance_mapping": (
+            "Systems subject to EMA oversight must "
+            "comply with Annex 11 and applicable EU "
+            "GMP guidelines."
+        ),
+        "expert_advice": (
+            "I've worked with both FDA and EMA "
+            "inspectors. Annex 11 demands the same "
+            "rigour as Part 11 but adds explicit "
+            "requirements for supplier assessments — "
+            "don't forget the vendor audit."
+        ),
+    },
+    "critical": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 4",
+            "ICH Q9 — Quality Risk Management",
+        ],
+        "source": "GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Critical systems require a risk-based "
+            "approach to determine appropriate "
+            "validation effort."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    # ── Quality System ────────────────────────────────────
+    "quality": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 820.20",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Quality management systems supporting GxP "
+            "operations require appropriate validation "
+            "commensurate with their impact."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "calibration": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.68",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.68 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Calibration management systems support "
+            "data integrity and require validated "
+            "controls."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "deviation": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.192",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.192 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Deviation management systems are quality-"
+            "critical and require documented validation."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "capa": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 820.90",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 820.90 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "CAPA systems must be validated to ensure "
+            "corrective actions are tracked and "
+            "effective."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "change control": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.100",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.100 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Change control systems must be validated "
+            "to maintain the qualified state of GxP "
+            "systems."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "sop": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.100",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.100 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "SOP management systems support regulatory "
+            "compliance and require documented "
+            "validation."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "training": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.25",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "21 CFR 211.25 and CSA Guidance",
+        "compliance_mapping": (
+            "Training management systems should be "
+            "validated to ensure personnel competency "
+            "records are reliable."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "document": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR Part 11 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Document management systems that control "
+            "GxP documents require appropriate "
+            "validation."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    # ── Operational ───────────────────────────────────────
+    "warehouse": {
+        "domain": "Operational",
+        "regulatory_citations": [
+            "21 CFR 211.142",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "21 CFR 211.142 and CSA Guidance",
+        "compliance_mapping": (
+            "Warehouse management systems supporting "
+            "GxP storage conditions should be validated "
+            "to ensure product integrity."
+        ),
+        "expert_advice": (
+            "I've audited warehouses where a missed "
+            "temperature excursion ruined an entire "
+            "shipment. Validate the monitoring system, "
+            "the alerting logic, and the escalation "
+            "workflow — all three, not just the sensor."
+        ),
+    },
+    "inventory": {
+        "domain": "Operational",
+        "regulatory_citations": [
+            "21 CFR 211.142",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "21 CFR 211.142 and CSA Guidance",
+        "compliance_mapping": (
+            "Inventory systems that track GxP materials "
+            "should be validated to ensure material "
+            "traceability."
+        ),
+        "expert_advice": (
+            "I've audited warehouses where a missed "
+            "temperature excursion ruined an entire "
+            "shipment. Validate the monitoring system, "
+            "the alerting logic, and the escalation "
+            "workflow — all three, not just the sensor."
+        ),
+    },
+    "temperature": {
+        "domain": "Operational",
+        "regulatory_citations": [
+            "21 CFR 211.142",
+            "WHO TRS 961 Annex 9",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": (
+            "21 CFR 211.142, WHO TRS 961, "
+            "and CSA Guidance"
+        ),
+        "compliance_mapping": (
+            "Temperature monitoring systems supporting "
+            "storage-condition compliance should be "
+            "validated to ensure data reliability."
+        ),
+        "expert_advice": (
+            "I've audited warehouses where a missed "
+            "temperature excursion ruined an entire "
+            "shipment. Validate the monitoring system, "
+            "the alerting logic, and the escalation "
+            "workflow — all three, not just the sensor."
+        ),
+    },
+}
+
 _RISK_NOTE: str = (
     "Final Risk Profiling will be decided with stakeholders "
     "as part of the Risk Assessment process."
