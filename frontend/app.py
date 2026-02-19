@@ -15,9 +15,18 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
+
+from frontend.components.theme import load_theme
+from frontend.components.header import breadcrumb, page_header
+from frontend.components.data_grid import toolbar, empty_state, skeleton_table
+from frontend.components.sidebar import render_sidebar
+
+try:
+    from API.agent_controller import AgentController
+except Exception:
+    AgentController = None  # type: ignore[assignment,misc]
 
 # -------------------------------------------------------------------
 # Page configuration (must be first Streamlit call)
@@ -30,44 +39,9 @@ st.set_page_config(
 )
 
 # -------------------------------------------------------------------
-# Infor SOHO Design System — load external theme
+# Infor SOHO Design System — load external theme + keyboard shortcuts
 # -------------------------------------------------------------------
-INFOR_BLUE = "#056696"
-INFOR_SLATE = "#54585A"
-
-_css_path = PROJECT_ROOT / "frontend" / "infor_soho_theme.css"
-if _css_path.exists():
-    st.markdown(
-        f"<style>{_css_path.read_text(encoding='utf-8')}"
-        f"</style>",
-        unsafe_allow_html=True,
-    )
-
-# -------------------------------------------------------------------
-# Keyboard shortcuts (Ctrl+S → download, Esc → close expanders)
-# -------------------------------------------------------------------
-components.html(
-    """
-    <script>
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.key === 's') {
-            e.preventDefault();
-            var btn = parent.document.querySelector(
-                '[data-testid="stDownloadButton"] button'
-            );
-            if (btn) btn.click();
-        }
-        if (e.key === 'Escape') {
-            parent.document.querySelectorAll('details[open]')
-                .forEach(function(el) {
-                    el.removeAttribute('open');
-                });
-        }
-    });
-    </script>
-    """,
-    height=0,
-)
+load_theme(PROJECT_ROOT)
 
 # -------------------------------------------------------------------
 # Paths
@@ -775,287 +749,9 @@ if st.session_state.get("_load_demo_requested"):
 
 
 # -------------------------------------------------------------------
-# Sidebar: Logo + Navigation
+# Sidebar: Logo + Grouped Navigation + Status + Audit Feed
 # -------------------------------------------------------------------
-with st.sidebar:
-    # Logo block — Infor SOHO style
-    st.markdown(
-        """
-        <div class="sidebar-logo">
-            <div class="sidebar-logo-icon">
-                <span>E</span>
-            </div>
-            <h3>EVOLV</h3>
-            <p>THE VALIDATION FACTORY</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("---")
-
-    page = st.radio(
-        "Navigation",
-        [
-            "\U0001f4c4  1. Ingest Vendor Docs",
-            "\U0001f4dd  2. Generate Requirements",
-            "\u2696\ufe0f  3. Risk Assessment (Delta)",
-            "\U0001f50d  4. Gap Analysis",
-            "\U0001f4cb  5. Audit Logs",
-            "\U0001f3ed  6. Validation Factory",
-            "\U0001f517  7. Traceability",
-            "\U0001f4ca  8. Demo Comparison",
-        ],
-        label_visibility="collapsed",
-    )
-
-    # Normalise page label → "1. ...", "2. ..." so
-    # existing page.startswith("N") routing still works.
-    import re as _re
-    _m = _re.search(r"(\d)", page or "")
-    page = f"{_m.group(1)}" if _m else page
-
-    st.markdown("---")
-
-    # Environment status
-    st.caption("System Status")
-    api_ok = True
-    try:
-        from API.agent_controller import AgentController
-    except Exception:
-        api_ok = False
-
-    st.markdown(
-        f"API Controller: &ensp;"
-        f"{'**Online**' if api_ok else '**Offline**'}"
-    )
-    st.markdown(
-        f"Audit Trail: &ensp;"
-        f"{'**Active**' if AUDIT_CSV.exists() else '**Missing**'}"
-    )
-    st.caption("v0.1.0")
-
-    # ---- Demo Mode Toggle ----
-    st.markdown("---")
-    demo_on = st.toggle("Demo Mode", key="demo_mode")
-    if demo_on:
-        st.caption("Showing sample LIMS data")
-
-    # ---- Expert Mode Toggle ----
-    expert_on = st.toggle(
-        "Expert Mode", key="expert_mode",
-    )
-    if expert_on:
-        st.caption(
-            "Skip doc lookup \u2014 use custom logic"
-        )
-
-    # ---- Load Demo Project ----
-    st.markdown("---")
-    if st.button(
-        "Load Demo Project",
-        key="load_demo_project",
-        use_container_width=True,
-    ):
-        st.session_state["_load_demo_requested"] = True
-        st.rerun()
-    st.caption(
-        "Pre-load LIMS demo for walkthrough"
-    )
-
-    # ---- Compliance Monitor: Live Audit Feed ----
-    st.markdown("---")
-    st.caption("Compliance Monitor")
-    st.markdown(
-        '<p style="font-size:0.7rem; opacity:0.55; '
-        'margin:0 0 0.4rem 0;">'
-        "21 CFR Part 11 &bull; Live Audit Feed</p>",
-        unsafe_allow_html=True,
-    )
-
-    if AUDIT_CSV.exists():
-        try:
-            _audit_df = pd.read_csv(AUDIT_CSV)
-            _latest = _audit_df.tail(5).iloc[::-1]
-            for _, _row in _latest.iterrows():
-                _ts = str(
-                    _row.get("Timestamp", "")
-                )[:19]
-                _agent = _row.get("Agent_Name", "-")
-                _action = _row.get(
-                    "Action_Performed", "-"
-                )
-                st.markdown(
-                    f'<div class="audit-feed-item">'
-                    f"<strong>{_action}</strong><br/>"
-                    f'<span class="feed-meta">'
-                    f"{_agent} &bull; {_ts}</span>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-        except Exception:
-            st.markdown(
-                '<span style="font-size:0.75rem; '
-                'opacity:0.6;">Unable to read audit trail'
-                "</span>",
-                unsafe_allow_html=True,
-            )
-    else:
-        st.markdown(
-            '<span style="font-size:0.75rem; '
-            'opacity:0.6;">No entries yet</span>',
-            unsafe_allow_html=True,
-        )
-
-
-# -------------------------------------------------------------------
-# Helper: page header
-# -------------------------------------------------------------------
-def _breadcrumb(stages: list) -> None:
-    """Render Infor SOHO breadcrumb trail."""
-    crumbs = (
-        ' <span class="breadcrumb-sep">\u203a</span> '
-        .join(
-            f'<span class="breadcrumb-item">{s}</span>'
-            for s in stages
-        )
-    )
-    st.markdown(
-        f'<div class="breadcrumb">{crumbs}</div>',
-        unsafe_allow_html=True,
-    )
-
-
-def _page_header(title: str, subtitle: str) -> None:
-    st.markdown(
-        f"""
-        <div class="soho-header">
-            <h2>{title}</h2>
-            <p>{subtitle}</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def _toolbar(
-    title: str = "",
-    buttons: list | None = None,
-) -> None:
-    """Render a SOHO toolbar above a data grid.
-
-    :param title: Optional section label.
-    :param buttons: List of dicts with 'label' key.
-    """
-    btns = buttons or []
-    btn_html = ""
-    _icons = {
-        "Export": (
-            '<svg viewBox="0 0 24 24">'
-            '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0'
-            ' 01-2-2v-4"/>'
-            '<polyline points="7 10 12 15 17 10"/>'
-            '<line x1="12" y1="15" x2="12" y2="3"/>'
-            '</svg>'
-        ),
-        "Filter": (
-            '<svg viewBox="0 0 24 24">'
-            '<polygon points="22 3 2 3 10 12.46'
-            ' 10 19 14 21 14 12.46 22 3"/>'
-            '</svg>'
-        ),
-    }
-    for b in btns:
-        lbl = b.get("label", "")
-        icon = _icons.get(lbl, "")
-        btn_html += (
-            f'<span class="toolbar-btn">'
-            f'{icon}{lbl}</span>'
-        )
-    title_html = (
-        f'<span class="toolbar-title">{title}</span>'
-        if title else ""
-    )
-    st.markdown(
-        f'<div class="soho-toolbar">'
-        f'<div class="toolbar-left">{title_html}'
-        f'{btn_html}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-
-_EMPTY_ICONS = {
-    "document": (
-        '<svg width="56" height="56" viewBox="0 0 56 56"'
-        ' fill="none" stroke="#CCCCCC" stroke-width="1.5"'
-        ' stroke-linecap="round" stroke-linejoin="round">'
-        '<path d="M14 7h20l10 10v32a2 2 0 01-2 2H14a2'
-        ' 2 0 01-2-2V9a2 2 0 012-2z"/>'
-        '<polyline points="34 7 34 17 44 17"/>'
-        '<line x1="20" y1="27" x2="36" y2="27"/>'
-        '<line x1="20" y1="33" x2="36" y2="33"/>'
-        '<line x1="20" y1="39" x2="28" y2="39"/>'
-        '</svg>'
-    ),
-    "table": (
-        '<svg width="56" height="56" viewBox="0 0 56 56"'
-        ' fill="none" stroke="#CCCCCC" stroke-width="1.5"'
-        ' stroke-linecap="round" stroke-linejoin="round">'
-        '<rect x="8" y="10" width="40" height="36"'
-        ' rx="2"/>'
-        '<line x1="8" y1="20" x2="48" y2="20"/>'
-        '<line x1="8" y1="30" x2="48" y2="30"/>'
-        '<line x1="8" y1="40" x2="48" y2="40"/>'
-        '<line x1="24" y1="10" x2="24" y2="46"/>'
-        '</svg>'
-    ),
-    "search": (
-        '<svg width="56" height="56" viewBox="0 0 56 56"'
-        ' fill="none" stroke="#CCCCCC" stroke-width="1.5"'
-        ' stroke-linecap="round" stroke-linejoin="round">'
-        '<circle cx="24" cy="24" r="14"/>'
-        '<line x1="34" y1="34" x2="46" y2="46"/>'
-        '</svg>'
-    ),
-}
-
-
-def _empty_state(
-    title: str,
-    description: str,
-    icon: str = "document",
-    action_label: str = "",
-) -> None:
-    """Render a centered empty-state placeholder."""
-    svg = _EMPTY_ICONS.get(icon, _EMPTY_ICONS["document"])
-    action = (
-        f'<span class="soho-btn-primary">'
-        f'{action_label}</span>'
-        if action_label else ""
-    )
-    st.markdown(
-        f'<div class="soho-empty-state">'
-        f'{svg}'
-        f'<p class="empty-title">{title}</p>'
-        f'<p class="empty-desc">{description}</p>'
-        f'{action}'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
-
-def _skeleton_table(rows: int = 5) -> None:
-    """Show animated skeleton loading placeholder."""
-    row_html = "".join(
-        '<div class="skeleton-row"></div>'
-        for _ in range(rows)
-    )
-    st.markdown(
-        f'<div class="skeleton-table">'
-        f'<div class="skeleton-header"></div>'
-        f'{row_html}</div>',
-        unsafe_allow_html=True,
-    )
+page = render_sidebar(audit_csv=AUDIT_CSV)
 
 
 # -------------------------------------------------------------------
@@ -1176,8 +872,8 @@ def _build_table_pdf(
 # Page 1 — Ingest Vendor Docs
 # ===================================================================
 if page.startswith("1"):
-    _breadcrumb(["Home", "Ingest Vendor Docs"])
-    _page_header(
+    breadcrumb(["Home", "Ingest Vendor Docs"])
+    page_header(
         "Ingest Vendor Documents",
         "Upload vendor documentation for GAMP 5 gap analysis",
     )
@@ -1435,8 +1131,8 @@ if page.startswith("1"):
 # Page 2 — Generate Requirements
 # ===================================================================
 elif page.startswith("2"):
-    _breadcrumb(["Home", "Requirements", "Generate URS"])
-    _page_header(
+    breadcrumb(["Home", "Requirements", "Generate URS"])
+    page_header(
         "Generate Requirements (URS)",
         "Describe a requirement in plain English "
         "and the engine produces a GAMP 5 compliant URS",
@@ -1578,8 +1274,8 @@ elif page.startswith("2"):
 # Page 3 — Risk Assessment (Delta)
 # ===================================================================
 elif page.startswith("3"):
-    _breadcrumb(["Home", "Risk Assessment"])
-    _page_header(
+    breadcrumb(["Home", "Risk Assessment"])
+    page_header(
         "Risk Assessment (Delta Agent)",
         "GAMP 5 risk evaluation with CSA testing strategy",
     )
@@ -1716,8 +1412,8 @@ elif page.startswith("3"):
 # Page 4 — Gap Analysis Dashboard
 # ===================================================================
 elif page.startswith("4"):
-    _breadcrumb(["Home", "Gap Analysis"])
-    _page_header(
+    breadcrumb(["Home", "Gap Analysis"])
+    page_header(
         "Gap Analysis Dashboard",
         "Vendor document compliance review against GAMP 5",
     )
@@ -1733,7 +1429,7 @@ elif page.startswith("4"):
     gap = st.session_state.get("gap_result")
 
     if gap is None:
-        _empty_state(
+        empty_state(
             "No Gap Analysis Results",
             "Upload a vendor document on the Ingest "
             "Vendor Docs page and run Gap Analysis "
@@ -1824,7 +1520,7 @@ elif page.startswith("4"):
                     f"</tr>"
                 )
 
-            _toolbar(
+            toolbar(
                 "Compliance Findings",
                 [{"label": "Export"}],
             )
@@ -1887,8 +1583,8 @@ elif page.startswith("4"):
 # Page 5 — Audit Logs
 # ===================================================================
 elif page.startswith("5"):
-    _breadcrumb(["Home", "Audit Logs"])
-    _page_header(
+    breadcrumb(["Home", "Audit Logs"])
+    page_header(
         "Audit Trail",
         "21 CFR Part 11 compliant, append-only audit log",
     )
@@ -1978,8 +1674,8 @@ elif page.startswith("5"):
 # Page 6 — Validation Factory
 # ===================================================================
 elif page.startswith("6"):
-    _breadcrumb(["Home", "Validation Factory"])
-    _page_header(
+    breadcrumb(["Home", "Validation Factory"])
+    page_header(
         "Validation Factory",
         "End-to-end: requirement \u2192 UR/FR \u2192 CSA test script",
     )
@@ -2604,8 +2300,8 @@ elif page.startswith("6"):
 # Page 7 — Traceability
 # ===================================================================
 elif page.startswith("7"):
-    _breadcrumb(["Home", "Traceability"])
-    _page_header(
+    breadcrumb(["Home", "Traceability"])
+    page_header(
         "Requirements Traceability Matrix",
         "End-to-end mapping from Functional Requirements "
         "to Test Steps",
@@ -2636,7 +2332,7 @@ elif page.startswith("7"):
     data_ready = (has_ur_fr and has_test) or _demo_rtm
 
     if not data_ready:
-        _empty_state(
+        empty_state(
             "No Traceability Data",
             "Generate requirements and test scripts "
             "in the Validation Factory tab first, "
@@ -2806,7 +2502,7 @@ elif page.startswith("7"):
                     f"</tr>"
                 )
 
-            _toolbar(
+            toolbar(
                 "Traceability Matrix",
                 [{"label": "Export"}, {"label": "Filter"}],
             )
@@ -2944,8 +2640,8 @@ elif page.startswith("8"):
         COST_PER_POOR_REQUIREMENT,
     )
 
-    _breadcrumb(["Home", "Demo Comparison"])
-    _page_header(
+    breadcrumb(["Home", "Demo Comparison"])
+    page_header(
         "Demo Comparison",
         "Side-by-side: your draft vs Validation Factory "
         "audit-ready rewrite",
