@@ -47,6 +47,8 @@
 /* ── Global Resets ─────────────────────────────────────────────── */
 html, body, [data-testid="stAppViewContainer"] {
     font-family: var(--font-stack) !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
     color: var(--infor-slate);
 }
 
@@ -57,6 +59,26 @@ html, body, [data-testid="stAppViewContainer"] {
 h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-stack) !important;
     color: var(--infor-slate) !important;
+}
+
+/* Streamlit text elements — readable base */
+[data-testid="stAppViewContainer"] p,
+[data-testid="stAppViewContainer"] li,
+[data-testid="stAppViewContainer"] span,
+[data-testid="stAppViewContainer"] label,
+[data-testid="stAppViewContainer"] div {
+    font-size: inherit;
+    line-height: 1.6;
+}
+[data-testid="stMarkdownContainer"] p {
+    font-size: 0.95rem !important;
+    line-height: 1.65 !important;
+}
+[data-testid="stMarkdownContainer"] h3 {
+    font-size: 1.25rem !important;
+}
+[data-testid="stMarkdownContainer"] h5 {
+    font-size: 1.05rem !important;
 }
 
 /* ── Holy Grail Flex Layout ────────────────────────────────────── */
@@ -127,7 +149,7 @@ section[data-testid="stSidebar"] hr {
 }
 .sidebar-logo p {
     margin: 0 !important;
-    font-size: 0.7rem;
+    font-size: 0.78rem;
     opacity: 0.6;
     letter-spacing: 1.2px;
     color: #FFF !important;
@@ -138,7 +160,7 @@ section[data-testid="stSidebar"] hr {
     padding: 0;
 }
 .nav-group-label {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -152,7 +174,7 @@ section[data-testid="stSidebar"] hr {
     gap: 0.65rem;
     padding: 0.55rem 1.2rem;
     color: #CCCCCC !important;
-    font-size: 0.88rem;
+    font-size: 0.95rem;
     cursor: pointer;
     border-left: 3px solid transparent;
     transition: all 0.15s;
@@ -186,8 +208,8 @@ section[data-testid="stSidebar"] hr {
     border-radius: 3px;
     padding: 0.35rem 0.55rem;
     margin-bottom: 0.35rem;
-    font-size: 0.72rem;
-    line-height: 1.35;
+    font-size: 0.82rem;
+    line-height: 1.4;
 }
 .audit-feed-item strong {
     color: #FFF !important;
@@ -209,17 +231,17 @@ section[data-testid="stSidebar"] hr {
     color: var(--infor-slate) !important;
     margin: 0 !important;
     font-weight: 600;
-    font-size: 1.35rem;
+    font-size: 1.5rem;
 }
 .soho-header p {
     color: var(--infor-slate-light) !important;
     margin: 0.25rem 0 0 0 !important;
-    font-size: 0.88rem;
+    font-size: 1rem;
 }
 
 /* ── Breadcrumb ────────────────────────────────────────────────── */
 .breadcrumb {
-    font-size: 0.82rem;
+    font-size: 0.92rem;
     color: var(--infor-slate-light);
     margin-bottom: 0.5rem;
     display: flex;
@@ -255,7 +277,7 @@ section[data-testid="stSidebar"] hr {
     display: inline-block;
     padding: 0.2rem 0.7rem;
     border-radius: 12px;
-    font-size: 0.78rem;
+    font-size: 0.88rem;
     font-weight: 600;
     letter-spacing: 0.01em;
     line-height: 1.4;
@@ -287,7 +309,7 @@ section[data-testid="stSidebar"] hr {
 .soho-grid {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     background: var(--infor-bg);
 }
 .soho-grid thead {
@@ -303,14 +325,14 @@ section[data-testid="stSidebar"] hr {
     font-weight: 600;
     border-bottom: 2px solid var(--infor-border);
     white-space: nowrap;
-    font-size: 0.82rem;
+    font-size: 0.92rem;
     letter-spacing: 0.01em;
     user-select: none;
 }
 .soho-grid th::after {
     content: ' \21C5';
     opacity: 0.2;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     margin-left: 0.3rem;
 }
 .soho-grid th.no-sort::after {
@@ -364,7 +386,7 @@ section[data-testid="stSidebar"] hr {
     gap: 0.4rem;
 }
 .toolbar-title {
-    font-size: 0.88rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--infor-slate);
     margin-right: 0.75rem;
@@ -373,7 +395,7 @@ section[data-testid="stSidebar"] hr {
     background: var(--infor-bg);
     border: 1px solid var(--infor-border);
     padding: 0.3rem 0.7rem;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     border-radius: 3px;
     cursor: pointer;
     color: var(--infor-slate);
@@ -412,13 +434,13 @@ section[data-testid="stSidebar"] hr {
     opacity: 0.45;
 }
 .soho-empty-state .empty-title {
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 600;
     color: var(--infor-slate);
     margin: 0 0 0.3rem 0;
 }
 .soho-empty-state .empty-desc {
-    font-size: 0.88rem;
+    font-size: 1rem;
     margin: 0 0 1.25rem 0;
     max-width: 420px;
     margin-left: auto;
@@ -432,7 +454,7 @@ section[data-testid="stSidebar"] hr {
     border: none;
     padding: 0.55rem 1.4rem;
     border-radius: 4px;
-    font-size: 0.88rem;
+    font-size: 1rem;
     font-weight: 600;
     font-family: var(--font-stack);
     cursor: pointer;
@@ -489,7 +511,7 @@ section[data-testid="stSidebar"] hr {
     line-height: 1.2;
 }
 .soho-kpi .kpi-label {
-    font-size: 0.78rem;
+    font-size: 0.88rem;
     color: var(--infor-slate-light);
     margin-top: 0.25rem;
     text-transform: uppercase;
@@ -506,7 +528,7 @@ div[data-testid="stMetric"] {
 }
 div[data-testid="stMetric"] label {
     color: var(--infor-slate-light) !important;
-    font-size: 0.78rem !important;
+    font-size: 0.88rem !important;
     text-transform: uppercase;
     letter-spacing: 0.03em;
 }
@@ -529,7 +551,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     color: var(--infor-blue);
     padding: 0.4rem 0.9rem;
     border-radius: 4px;
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     font-weight: 600;
     white-space: nowrap;
     background: var(--infor-bg);
@@ -547,7 +569,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
 
 /* ── Section Title ─────────────────────────────────────────────── */
 .section-title {
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 600;
     color: var(--infor-slate);
     margin: 0.8rem 0 0.4rem 0;
@@ -561,7 +583,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-left: 3px solid var(--infor-blue);
     padding: 0.75rem 1rem;
     border-radius: 0 4px 4px 0;
-    font-size: 0.88rem;
+    font-size: 1rem;
     line-height: 1.5;
     color: var(--infor-slate);
     margin: 0.5rem 0;
@@ -582,7 +604,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     color: var(--infor-red);
 }
 .soho-alert-banner .alert-label {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     color: var(--infor-slate);
 }
 
@@ -656,6 +678,22 @@ div[data-baseweb="select"] > div:focus-within {
 .stTextInput input:focus {
     border-color: var(--infor-blue) !important;
     box-shadow: 0 0 0 1px var(--infor-blue) !important;
+}
+
+/* ── Streamlit Form Controls — readable sizes ────────────────── */
+.stTextInput input,
+.stTextArea textarea,
+div[data-baseweb="select"] span,
+div[data-baseweb="select"] input {
+    font-size: 0.95rem !important;
+}
+button[kind="primary"],
+button[kind="secondary"],
+.stDownloadButton > button {
+    font-size: 0.95rem !important;
+}
+.stCaption, [data-testid="stCaptionContainer"] {
+    font-size: 0.85rem !important;
 }
 
 /* ── Scrollbar (subtle) ────────────────────────────────────────── */
