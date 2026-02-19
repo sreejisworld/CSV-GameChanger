@@ -1,0 +1,603 @@
+/* =================================================================
+   EVOLV: The Validation Factory — Infor SOHO Design System Theme
+   =================================================================
+   Neutral palette · Subtle borders · High-density enterprise layout
+   ================================================================= */
+
+/* ── CSS Custom Properties ─────────────────────────────────────── */
+:root {
+    --infor-blue:   #056696;
+    --infor-blue-light: #0A7EB5;
+    --infor-blue-bg: #E8F4F8;
+    --infor-slate:  #54585A;
+    --infor-slate-light: #6E7275;
+    --infor-border: #E0E0E0;
+    --infor-bg:     #FFFFFF;
+    --infor-bg-alt: #F7F7F7;
+    --infor-bg-page: #F4F5F6;
+    --infor-green:  #488421;
+    --infor-green-bg: #E8F5E9;
+    --infor-red:    #B94E4E;
+    --infor-red-bg: #FDEAEA;
+    --infor-amber:  #D17D00;
+    --infor-amber-bg: #FFF4E6;
+    --infor-sidebar: #1E2D3D;
+    --infor-sidebar-hover: #2A3D50;
+    --font-stack: 'Source Sans Pro', -apple-system, BlinkMacSystemFont,
+                  'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+/* ── Global Resets ─────────────────────────────────────────────── */
+html, body, [data-testid="stAppViewContainer"] {
+    font-family: var(--font-stack) !important;
+    color: var(--infor-slate);
+}
+
+[data-testid="stAppViewContainer"] > section > div {
+    background-color: var(--infor-bg-page);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-stack) !important;
+    color: var(--infor-slate) !important;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background-color: var(--infor-sidebar) !important;
+}
+section[data-testid="stSidebar"] * {
+    color: #FFFFFF !important;
+    font-family: var(--font-stack) !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: rgba(255,255,255,0.12) !important;
+}
+section[data-testid="stSidebar"]
+    div[data-testid="stRadio"] label {
+    font-size: 0.9rem;
+    letter-spacing: 0.01em;
+}
+section[data-testid="stSidebar"]
+    div[data-testid="stRadio"]
+    div[role="radiogroup"] label[data-baseweb="radio"]
+    div:first-child {
+    background-color: var(--infor-sidebar-hover) !important;
+    border-color: rgba(255,255,255,0.25) !important;
+}
+section[data-testid="stSidebar"]
+    div[data-testid="stRadio"]
+    div[role="radiogroup"] label[data-baseweb="radio"]:hover {
+    background-color: var(--infor-sidebar-hover);
+    border-radius: 4px;
+}
+
+/* Sidebar logo block */
+.sidebar-logo {
+    text-align: center;
+    padding: 1.2rem 0 0.6rem 0;
+}
+.sidebar-logo-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    background: var(--infor-blue);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+}
+.sidebar-logo-icon span {
+    font-size: 1.5rem;
+    color: #FFF !important;
+    font-weight: 700;
+}
+.sidebar-logo h3 {
+    margin: 0 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+    color: #FFF !important;
+    font-size: 1.15rem;
+}
+.sidebar-logo p {
+    margin: 0 !important;
+    font-size: 0.7rem;
+    opacity: 0.6;
+    letter-spacing: 1.2px;
+    color: #FFF !important;
+}
+
+/* Sidebar audit feed item */
+.audit-feed-item {
+    background: rgba(255,255,255,0.06);
+    border-left: 2px solid var(--infor-blue);
+    border-radius: 3px;
+    padding: 0.35rem 0.55rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+.audit-feed-item strong {
+    color: #FFF !important;
+}
+.audit-feed-item .feed-meta {
+    opacity: 0.6;
+}
+
+/* ── Page Header (soho-header) ─────────────────────────────────── */
+.soho-header {
+    background: var(--infor-bg);
+    border: 1px solid var(--infor-border);
+    border-top: 2px solid var(--infor-blue);
+    border-radius: 0 0 4px 4px;
+    padding: 1.1rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+.soho-header h2 {
+    color: var(--infor-slate) !important;
+    margin: 0 !important;
+    font-weight: 600;
+    font-size: 1.35rem;
+}
+.soho-header p {
+    color: var(--infor-slate-light) !important;
+    margin: 0.25rem 0 0 0 !important;
+    font-size: 0.88rem;
+}
+
+/* ── Breadcrumb ────────────────────────────────────────────────── */
+.breadcrumb {
+    font-size: 0.82rem;
+    color: var(--infor-slate-light);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+}
+.breadcrumb-item {
+    opacity: 0.65;
+}
+.breadcrumb-item:last-child {
+    opacity: 1;
+    font-weight: 600;
+    color: var(--infor-slate);
+}
+.breadcrumb-sep {
+    margin: 0 0.4rem;
+    opacity: 0.35;
+    font-size: 0.9rem;
+}
+
+/* ── Container (soho-container) ────────────────────────────────── */
+.soho-container {
+    background: var(--infor-bg);
+    border: 1px solid var(--infor-border);
+    border-top: 2px solid var(--infor-blue);
+    border-radius: 0 0 4px 4px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* ── Status Badges (pill-shaped) ───────────────────────────────── */
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+}
+.badge-high, .badge-error {
+    background-color: var(--infor-red-bg);
+    color: var(--infor-red);
+}
+.badge-medium, .badge-warning {
+    background-color: var(--infor-amber-bg);
+    color: var(--infor-amber);
+}
+.badge-low, .badge-success {
+    background-color: var(--infor-green-bg);
+    color: var(--infor-green);
+}
+.badge-info {
+    background-color: var(--infor-blue-bg);
+    color: var(--infor-blue);
+}
+
+/* ── Data Grid (soho-grid) ─────────────────────────────────────── */
+.soho-grid-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--infor-border);
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+}
+.soho-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: var(--infor-bg);
+}
+.soho-grid thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.soho-grid th {
+    background-color: #F5F5F5;
+    color: var(--infor-slate);
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--infor-border);
+    white-space: nowrap;
+    font-size: 0.82rem;
+    letter-spacing: 0.01em;
+    user-select: none;
+}
+.soho-grid th::after {
+    content: ' \21C5';
+    opacity: 0.2;
+    font-size: 0.65rem;
+    margin-left: 0.3rem;
+}
+.soho-grid th.no-sort::after {
+    content: '';
+}
+.soho-grid td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #F0F0F0;
+    vertical-align: top;
+    color: var(--infor-slate);
+    line-height: 1.4;
+}
+.soho-grid tbody tr:nth-child(even) {
+    background-color: var(--infor-bg-alt);
+}
+.soho-grid tbody tr:hover {
+    background-color: var(--infor-blue-bg);
+}
+
+/* Row-status modifiers (semantic) */
+.soho-grid tbody tr.row-covered {
+    background-color: var(--infor-green-bg) !important;
+}
+.soho-grid tbody tr.row-partial {
+    background-color: var(--infor-amber-bg) !important;
+}
+.soho-grid tbody tr.row-missing,
+.soho-grid tbody tr.row-gap {
+    background-color: var(--infor-red-bg) !important;
+}
+
+/* ── Toolbar (soho-toolbar) ────────────────────────────────────── */
+.soho-toolbar {
+    background: #FAFAFA;
+    border: 1px solid var(--infor-border);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    padding: 0.45rem 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+.soho-toolbar + .soho-grid-wrap {
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+.toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.toolbar-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--infor-slate);
+    margin-right: 0.75rem;
+}
+.toolbar-btn {
+    background: var(--infor-bg);
+    border: 1px solid var(--infor-border);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--infor-slate);
+    font-family: var(--font-stack);
+    transition: background 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.toolbar-btn:hover {
+    background: #F0F0F0;
+    border-color: #CCCCCC;
+}
+.toolbar-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: var(--infor-slate);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ── Empty State ───────────────────────────────────────────────── */
+.soho-empty-state {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    color: var(--infor-slate-light);
+    background: var(--infor-bg);
+    border: 1px dashed var(--infor-border);
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+.soho-empty-state svg {
+    margin-bottom: 1rem;
+    opacity: 0.45;
+}
+.soho-empty-state .empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--infor-slate);
+    margin: 0 0 0.3rem 0;
+}
+.soho-empty-state .empty-desc {
+    font-size: 0.88rem;
+    margin: 0 0 1.25rem 0;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+}
+.soho-empty-state .soho-btn-primary {
+    display: inline-block;
+    background: var(--infor-blue);
+    color: #FFFFFF;
+    border: none;
+    padding: 0.55rem 1.4rem;
+    border-radius: 4px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: var(--font-stack);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.soho-empty-state .soho-btn-primary:hover {
+    background: var(--infor-blue-light);
+}
+
+/* ── Skeleton Loading ──────────────────────────────────────────── */
+.skeleton-table {
+    padding: 0.5rem 0;
+}
+.skeleton-header {
+    height: 36px;
+    background: #EBEBEB;
+    border-radius: 3px;
+    margin-bottom: 6px;
+}
+.skeleton-row {
+    height: 38px;
+    background: linear-gradient(
+        90deg,
+        #F0F0F0 25%,
+        #E4E4E4 50%,
+        #F0F0F0 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    margin-bottom: 4px;
+    border-radius: 3px;
+}
+.skeleton-row:nth-child(even) {
+    animation-delay: 0.15s;
+}
+@keyframes skeleton-pulse {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── KPI / Metric Card ─────────────────────────────────────────── */
+.soho-kpi {
+    background: var(--infor-bg);
+    border: 1px solid var(--infor-border);
+    border-radius: 4px;
+    padding: 1rem 1.1rem;
+    text-align: center;
+}
+.soho-kpi .kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--infor-slate);
+    line-height: 1.2;
+}
+.soho-kpi .kpi-label {
+    font-size: 0.78rem;
+    color: var(--infor-slate-light);
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Override Streamlit metric cards */
+div[data-testid="stMetric"] {
+    background-color: var(--infor-bg) !important;
+    border: 1px solid var(--infor-border) !important;
+    border-radius: 4px !important;
+    padding: 0.9rem 1rem !important;
+    box-shadow: none !important;
+}
+div[data-testid="stMetric"] label {
+    color: var(--infor-slate-light) !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: var(--infor-slate) !important;
+    font-weight: 700 !important;
+}
+
+/* ── Workflow Diagram (Page 6) ─────────────────────────────────── */
+.workflow-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 0.5rem 0 1.25rem 0;
+    flex-wrap: wrap;
+}
+.workflow-step {
+    border: 1px solid var(--infor-blue);
+    color: var(--infor-blue);
+    padding: 0.4rem 0.9rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--infor-bg);
+}
+.workflow-step.active {
+    background: var(--infor-blue);
+    color: #FFFFFF;
+}
+.workflow-arrow {
+    font-size: 1rem;
+    color: var(--infor-blue);
+    padding: 0 0.35rem;
+    opacity: 0.5;
+}
+
+/* ── Section Title ─────────────────────────────────────────────── */
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--infor-slate);
+    margin: 0.8rem 0 0.4rem 0;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--infor-border);
+}
+
+/* ── Info / Justification Box ──────────────────────────────────── */
+.soho-info-box {
+    background: var(--infor-blue-bg);
+    border-left: 3px solid var(--infor-blue);
+    padding: 0.75rem 1rem;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--infor-slate);
+    margin: 0.5rem 0;
+}
+
+/* ── Cost / Alert Banner ───────────────────────────────────────── */
+.soho-alert-banner {
+    background: var(--infor-red-bg);
+    border: 1px solid var(--infor-red);
+    border-left: 4px solid var(--infor-red);
+    border-radius: 0 4px 4px 0;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+}
+.soho-alert-banner .alert-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--infor-red);
+}
+.soho-alert-banner .alert-label {
+    font-size: 0.85rem;
+    color: var(--infor-slate);
+}
+
+/* ── Progress Bar Override ─────────────────────────────────────── */
+.soho-progress {
+    background: var(--infor-border);
+    border-radius: 3px;
+    height: 8px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+.soho-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+.soho-progress-fill.green  { background: var(--infor-green); }
+.soho-progress-fill.amber  { background: var(--infor-amber); }
+.soho-progress-fill.red    { background: var(--infor-red); }
+
+/* ── Streamlit Primary Button Override ─────────────────────────── */
+button[kind="primary"],
+.stDownloadButton > button {
+    background-color: var(--infor-blue) !important;
+    border-color: var(--infor-blue) !important;
+    color: #FFFFFF !important;
+    border-radius: 4px !important;
+    font-family: var(--font-stack) !important;
+    font-weight: 600 !important;
+    transition: background 0.15s !important;
+}
+button[kind="primary"]:hover,
+.stDownloadButton > button:hover {
+    background-color: var(--infor-blue-light) !important;
+    border-color: var(--infor-blue-light) !important;
+}
+
+/* Secondary buttons */
+button[kind="secondary"] {
+    border-color: var(--infor-border) !important;
+    color: var(--infor-slate) !important;
+    border-radius: 4px !important;
+    font-family: var(--font-stack) !important;
+}
+button[kind="secondary"]:hover {
+    border-color: #CCCCCC !important;
+    background: #F5F5F5 !important;
+}
+
+/* ── Streamlit Expander Override ────────────────────────────────── */
+details[data-testid="stExpander"] {
+    border: 1px solid var(--infor-border) !important;
+    border-radius: 4px !important;
+    background: var(--infor-bg) !important;
+}
+details[data-testid="stExpander"] summary {
+    font-weight: 600 !important;
+    color: var(--infor-slate) !important;
+}
+
+/* ── Streamlit Selectbox / Input Override ───────────────────────── */
+div[data-baseweb="select"] > div {
+    border-color: var(--infor-border) !important;
+    border-radius: 4px !important;
+}
+div[data-baseweb="select"] > div:focus-within {
+    border-color: var(--infor-blue) !important;
+    box-shadow: 0 0 0 1px var(--infor-blue) !important;
+}
+.stTextArea textarea:focus,
+.stTextInput input:focus {
+    border-color: var(--infor-blue) !important;
+    box-shadow: 0 0 0 1px var(--infor-blue) !important;
+}
+
+/* ── Scrollbar (subtle) ────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #CCC;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #AAA;
+}

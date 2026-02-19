@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 
@@ -29,88 +30,43 @@ st.set_page_config(
 )
 
 # -------------------------------------------------------------------
-# Enterprise theme CSS
+# Infor SOHO Design System — load external theme
 # -------------------------------------------------------------------
-NAVY = "#1B2A4A"
-NAVY_LIGHT = "#2C3E6B"
-ACCENT = "#3B82F6"
-BORDER = "#D1D5DB"
-BG_CARD = "#F8F9FB"
+INFOR_BLUE = "#056696"
+INFOR_SLATE = "#54585A"
 
-st.markdown(
-    f"""
-    <style>
-    /* ---- Sidebar ---- */
-    section[data-testid="stSidebar"] {{
-        background-color: {NAVY};
-    }}
-    section[data-testid="stSidebar"] * {{
-        color: #FFFFFF !important;
-    }}
-    section[data-testid="stSidebar"] hr {{
-        border-color: rgba(255,255,255,0.15);
-    }}
-    section[data-testid="stSidebar"]
-        div[data-testid="stRadio"] label {{
-        font-size: 0.95rem;
-    }}
-    section[data-testid="stSidebar"]
-        div[data-testid="stRadio"]
-        div[role="radiogroup"] label[data-baseweb="radio"]
-        div:first-child {{
-        background-color: {NAVY_LIGHT};
-        border-color: rgba(255,255,255,0.3);
-    }}
+_css_path = PROJECT_ROOT / "frontend" / "infor_soho_theme.css"
+if _css_path.exists():
+    st.markdown(
+        f"<style>{_css_path.read_text(encoding='utf-8')}"
+        f"</style>",
+        unsafe_allow_html=True,
+    )
 
-    /* ---- Main content cards ---- */
-    div.stMetric {{
-        background-color: {BG_CARD};
-        border: 1px solid {BORDER};
-        border-radius: 8px;
-        padding: 1rem;
-    }}
-
-    /* ---- Header bar ---- */
-    .main-header {{
-        background: linear-gradient(135deg, {NAVY}, {NAVY_LIGHT});
-        padding: 1.2rem 1.6rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-    }}
-    .main-header h2 {{
-        color: #FFFFFF;
-        margin: 0;
-        font-weight: 600;
-    }}
-    .main-header p {{
-        color: rgba(255,255,255,0.75);
-        margin: 0.3rem 0 0 0;
-        font-size: 0.9rem;
-    }}
-
-    /* ---- Status badges ---- */
-    .badge {{
-        display: inline-block;
-        padding: 0.2rem 0.65rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }}
-    .badge-high {{
-        background-color: #FEE2E2;
-        color: #991B1B;
-    }}
-    .badge-medium {{
-        background-color: #FEF3C7;
-        color: #92400E;
-    }}
-    .badge-low {{
-        background-color: #D1FAE5;
-        color: #065F46;
-    }}
-    </style>
+# -------------------------------------------------------------------
+# Keyboard shortcuts (Ctrl+S → download, Esc → close expanders)
+# -------------------------------------------------------------------
+components.html(
+    """
+    <script>
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            var btn = parent.document.querySelector(
+                '[data-testid="stDownloadButton"] button'
+            );
+            if (btn) btn.click();
+        }
+        if (e.key === 'Escape') {
+            parent.document.querySelectorAll('details[open]')
+                .forEach(function(el) {
+                    el.removeAttribute('open');
+                });
+        }
+    });
+    </script>
     """,
-    unsafe_allow_html=True,
+    height=0,
 )
 
 # -------------------------------------------------------------------
@@ -765,26 +721,15 @@ DEMO_DATA = {
 # Sidebar: Logo + Navigation
 # -------------------------------------------------------------------
 with st.sidebar:
-    # Logo block
+    # Logo block — Infor SOHO style
     st.markdown(
-        f"""
-        <div style="text-align:center; padding:1.2rem 0 0.6rem 0;">
-            <div style="
-                display:inline-flex; align-items:center;
-                justify-content:center;
-                width:56px; height:56px;
-                background:linear-gradient(135deg,
-                    {ACCENT}, {NAVY_LIGHT});
-                border-radius:12px; margin-bottom:0.6rem;
-            ">
-                <span style="font-size:1.6rem;
-                    color:#FFF; font-weight:700;">E</span>
+        """
+        <div class="sidebar-logo">
+            <div class="sidebar-logo-icon">
+                <span>E</span>
             </div>
-            <h3 style="margin:0; font-weight:700;
-                letter-spacing:0.5px;">EVOLV</h3>
-            <p style="margin:0; font-size:0.75rem;
-                opacity:0.65; letter-spacing:1px;">
-                THE VALIDATION FACTORY</p>
+            <h3>EVOLV</h3>
+            <p>THE VALIDATION FACTORY</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -795,17 +740,23 @@ with st.sidebar:
     page = st.radio(
         "Navigation",
         [
-            "1. Ingest Vendor Docs",
-            "2. Generate Requirements",
-            "3. Risk Assessment (Delta)",
-            "4. Gap Analysis",
-            "5. Audit Logs",
-            "6. Validation Factory",
-            "7. Traceability",
-            "8. Demo Comparison",
+            "\U0001f4c4  1. Ingest Vendor Docs",
+            "\U0001f4dd  2. Generate Requirements",
+            "\u2696\ufe0f  3. Risk Assessment (Delta)",
+            "\U0001f50d  4. Gap Analysis",
+            "\U0001f4cb  5. Audit Logs",
+            "\U0001f3ed  6. Validation Factory",
+            "\U0001f517  7. Traceability",
+            "\U0001f4ca  8. Demo Comparison",
         ],
         label_visibility="collapsed",
     )
+
+    # Normalise page label → "1. ...", "2. ..." so
+    # existing page.startswith("N") routing still works.
+    import re as _re
+    _m = _re.search(r"(\d)", page or "")
+    page = f"{_m.group(1)}" if _m else page
 
     st.markdown("---")
 
@@ -926,17 +877,9 @@ with st.sidebar:
                     "Action_Performed", "-"
                 )
                 st.markdown(
-                    f'<div style="'
-                    f"background:rgba(255,255,255,0.07);"
-                    f"border-left:3px solid "
-                    f"rgba(59,130,246,0.6);"
-                    f"border-radius:4px;"
-                    f"padding:0.35rem 0.5rem;"
-                    f"margin-bottom:0.35rem;"
-                    f"font-size:0.72rem;"
-                    f'">'
+                    f'<div class="audit-feed-item">'
                     f"<strong>{_action}</strong><br/>"
-                    f'<span style="opacity:0.7;">'
+                    f'<span class="feed-meta">'
                     f"{_agent} &bull; {_ts}</span>"
                     f"</div>",
                     unsafe_allow_html=True,
@@ -959,14 +902,149 @@ with st.sidebar:
 # -------------------------------------------------------------------
 # Helper: page header
 # -------------------------------------------------------------------
+def _breadcrumb(stages: list) -> None:
+    """Render Infor SOHO breadcrumb trail."""
+    crumbs = (
+        ' <span class="breadcrumb-sep">\u203a</span> '
+        .join(
+            f'<span class="breadcrumb-item">{s}</span>'
+            for s in stages
+        )
+    )
+    st.markdown(
+        f'<div class="breadcrumb">{crumbs}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _page_header(title: str, subtitle: str) -> None:
     st.markdown(
         f"""
-        <div class="main-header">
+        <div class="soho-header">
             <h2>{title}</h2>
             <p>{subtitle}</p>
         </div>
         """,
+        unsafe_allow_html=True,
+    )
+
+
+def _toolbar(
+    title: str = "",
+    buttons: list | None = None,
+) -> None:
+    """Render a SOHO toolbar above a data grid.
+
+    :param title: Optional section label.
+    :param buttons: List of dicts with 'label' key.
+    """
+    btns = buttons or []
+    btn_html = ""
+    _icons = {
+        "Export": (
+            '<svg viewBox="0 0 24 24">'
+            '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0'
+            ' 01-2-2v-4"/>'
+            '<polyline points="7 10 12 15 17 10"/>'
+            '<line x1="12" y1="15" x2="12" y2="3"/>'
+            '</svg>'
+        ),
+        "Filter": (
+            '<svg viewBox="0 0 24 24">'
+            '<polygon points="22 3 2 3 10 12.46'
+            ' 10 19 14 21 14 12.46 22 3"/>'
+            '</svg>'
+        ),
+    }
+    for b in btns:
+        lbl = b.get("label", "")
+        icon = _icons.get(lbl, "")
+        btn_html += (
+            f'<span class="toolbar-btn">'
+            f'{icon}{lbl}</span>'
+        )
+    title_html = (
+        f'<span class="toolbar-title">{title}</span>'
+        if title else ""
+    )
+    st.markdown(
+        f'<div class="soho-toolbar">'
+        f'<div class="toolbar-left">{title_html}'
+        f'{btn_html}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+_EMPTY_ICONS = {
+    "document": (
+        '<svg width="56" height="56" viewBox="0 0 56 56"'
+        ' fill="none" stroke="#CCCCCC" stroke-width="1.5"'
+        ' stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M14 7h20l10 10v32a2 2 0 01-2 2H14a2'
+        ' 2 0 01-2-2V9a2 2 0 012-2z"/>'
+        '<polyline points="34 7 34 17 44 17"/>'
+        '<line x1="20" y1="27" x2="36" y2="27"/>'
+        '<line x1="20" y1="33" x2="36" y2="33"/>'
+        '<line x1="20" y1="39" x2="28" y2="39"/>'
+        '</svg>'
+    ),
+    "table": (
+        '<svg width="56" height="56" viewBox="0 0 56 56"'
+        ' fill="none" stroke="#CCCCCC" stroke-width="1.5"'
+        ' stroke-linecap="round" stroke-linejoin="round">'
+        '<rect x="8" y="10" width="40" height="36"'
+        ' rx="2"/>'
+        '<line x1="8" y1="20" x2="48" y2="20"/>'
+        '<line x1="8" y1="30" x2="48" y2="30"/>'
+        '<line x1="8" y1="40" x2="48" y2="40"/>'
+        '<line x1="24" y1="10" x2="24" y2="46"/>'
+        '</svg>'
+    ),
+    "search": (
+        '<svg width="56" height="56" viewBox="0 0 56 56"'
+        ' fill="none" stroke="#CCCCCC" stroke-width="1.5"'
+        ' stroke-linecap="round" stroke-linejoin="round">'
+        '<circle cx="24" cy="24" r="14"/>'
+        '<line x1="34" y1="34" x2="46" y2="46"/>'
+        '</svg>'
+    ),
+}
+
+
+def _empty_state(
+    title: str,
+    description: str,
+    icon: str = "document",
+    action_label: str = "",
+) -> None:
+    """Render a centered empty-state placeholder."""
+    svg = _EMPTY_ICONS.get(icon, _EMPTY_ICONS["document"])
+    action = (
+        f'<span class="soho-btn-primary">'
+        f'{action_label}</span>'
+        if action_label else ""
+    )
+    st.markdown(
+        f'<div class="soho-empty-state">'
+        f'{svg}'
+        f'<p class="empty-title">{title}</p>'
+        f'<p class="empty-desc">{description}</p>'
+        f'{action}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _skeleton_table(rows: int = 5) -> None:
+    """Show animated skeleton loading placeholder."""
+    row_html = "".join(
+        '<div class="skeleton-row"></div>'
+        for _ in range(rows)
+    )
+    st.markdown(
+        f'<div class="skeleton-table">'
+        f'<div class="skeleton-header"></div>'
+        f'{row_html}</div>',
         unsafe_allow_html=True,
     )
 
@@ -1089,6 +1167,7 @@ def _build_table_pdf(
 # Page 1 — Ingest Vendor Docs
 # ===================================================================
 if page.startswith("1"):
+    _breadcrumb(["Home", "Ingest Vendor Docs"])
     _page_header(
         "Ingest Vendor Documents",
         "Upload vendor documentation for GAMP 5 gap analysis",
@@ -1261,33 +1340,19 @@ if page.startswith("1"):
         # Coverage bar
         if total_cat > 0:
             pct = int((covered / total_cat) * 100)
-            bar_color = (
-                "#065F46" if pct >= 80
-                else "#92400E" if pct >= 50
-                else "#991B1B"
+            bar_cls = (
+                "green" if pct >= 80
+                else "amber" if pct >= 50
+                else "red"
             )
             st.markdown(
-                f"""
-                <div style="
-                    background:{BORDER};
-                    border-radius:6px;
-                    height:24px;
-                    margin:0.5rem 0 1rem 0;
-                    overflow:hidden;">
-                    <div style="
-                        width:{pct}%;
-                        height:100%;
-                        background:{bar_color};
-                        border-radius:6px;
-                        text-align:center;
-                        color:#FFF;
-                        font-size:0.75rem;
-                        line-height:24px;
-                        font-weight:600;">
-                        {pct}% covered
-                    </div>
-                </div>
-                """,
+                f'<div class="soho-progress">'
+                f'<div class="soho-progress-fill {bar_cls}"'
+                f' style="width:{pct}%;"></div></div>'
+                f'<p style="font-size:0.8rem;'
+                f'color:var(--infor-slate-light);'
+                f'margin:0.2rem 0 0.8rem 0;">'
+                f'{pct}% covered</p>',
                 unsafe_allow_html=True,
             )
 
@@ -1361,6 +1426,7 @@ if page.startswith("1"):
 # Page 2 — Generate Requirements
 # ===================================================================
 elif page.startswith("2"):
+    _breadcrumb(["Home", "Requirements", "Generate URS"])
     _page_header(
         "Generate Requirements (URS)",
         "Describe a requirement in plain English "
@@ -1503,6 +1569,7 @@ elif page.startswith("2"):
 # Page 3 — Risk Assessment (Delta)
 # ===================================================================
 elif page.startswith("3"):
+    _breadcrumb(["Home", "Risk Assessment"])
     _page_header(
         "Risk Assessment (Delta Agent)",
         "GAMP 5 risk evaluation with CSA testing strategy",
@@ -1640,6 +1707,7 @@ elif page.startswith("3"):
 # Page 4 — Gap Analysis Dashboard
 # ===================================================================
 elif page.startswith("4"):
+    _breadcrumb(["Home", "Gap Analysis"])
     _page_header(
         "Gap Analysis Dashboard",
         "Vendor document compliance review against GAMP 5",
@@ -1653,47 +1721,16 @@ elif page.startswith("4"):
             DEMO_DATA["gap_result"]
         )
 
-    # Additional CSS for color-coded gap table
-    st.markdown(
-        """
-        <style>
-        .gap-row-missing {
-            background-color: #FEE2E2 !important;
-        }
-        .gap-row-partial {
-            background-color: #FEF3C7 !important;
-        }
-        .gap-row-covered {
-            background-color: #D1FAE5 !important;
-        }
-        .gap-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
-        }
-        .gap-table th {
-            background-color: #1B2A4A;
-            color: #FFFFFF;
-            padding: 0.6rem 0.8rem;
-            text-align: left;
-            font-weight: 600;
-        }
-        .gap-table td {
-            padding: 0.55rem 0.8rem;
-            border-bottom: 1px solid #E5E7EB;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
     gap = st.session_state.get("gap_result")
 
     if gap is None:
-        st.info(
-            "No gap analysis results available. "
-            "Upload a vendor document on the **Ingest Vendor "
-            "Docs** page and run **Gap Analysis** first."
+        _empty_state(
+            "No Gap Analysis Results",
+            "Upload a vendor document on the Ingest "
+            "Vendor Docs page and run Gap Analysis "
+            "first.",
+            icon="search",
+            action_label="Go to Ingest",
         )
     else:
         findings = gap.get("findings", [])
@@ -1753,11 +1790,11 @@ elif page.startswith("4"):
                 if s_lower in (
                     "missing", "gap", "fail", "not met"
                 ):
-                    row_cls = "gap-row-missing"
+                    row_cls = "row-missing"
                 elif s_lower in ("partial", "warning"):
-                    row_cls = "gap-row-partial"
+                    row_cls = "row-partial"
                 else:
-                    row_cls = "gap-row-covered"
+                    row_cls = "row-covered"
 
                 category = f.get("category", "-")
                 vendor_ev = f.get(
@@ -1778,9 +1815,13 @@ elif page.startswith("4"):
                     f"</tr>"
                 )
 
+            _toolbar(
+                "Compliance Findings",
+                [{"label": "Export"}],
+            )
             st.markdown(
                 f"""
-                <table class="gap-table">
+                <div class="soho-grid-wrap"><table class="soho-grid">
                     <thead>
                         <tr>
                             <th>Category</th>
@@ -1793,7 +1834,7 @@ elif page.startswith("4"):
                     <tbody>
                         {rows_html}
                     </tbody>
-                </table>
+                </table></div>
                 """,
                 unsafe_allow_html=True,
             )
@@ -1837,6 +1878,7 @@ elif page.startswith("4"):
 # Page 5 — Audit Logs
 # ===================================================================
 elif page.startswith("5"):
+    _breadcrumb(["Home", "Audit Logs"])
     _page_header(
         "Audit Trail",
         "21 CFR Part 11 compliant, append-only audit log",
@@ -1927,95 +1969,27 @@ elif page.startswith("5"):
 # Page 6 — Validation Factory
 # ===================================================================
 elif page.startswith("6"):
+    _breadcrumb(["Home", "Validation Factory"])
     _page_header(
         "Validation Factory",
         "End-to-end: requirement \u2192 UR/FR \u2192 CSA test script",
     )
 
-    # ---- Workflow Diagram ----
-    st.markdown(
-        f"""
-        <div style="
-            display:flex; align-items:center;
-            justify-content:center; gap:0;
-            margin:0.6rem 0 1.2rem 0;
-            flex-wrap:wrap;
-        ">
-            <div style="
-                background:{NAVY}; color:#fff;
-                padding:0.45rem 1rem;
-                border-radius:6px; font-size:0.78rem;
-                font-weight:600; white-space:nowrap;
-            ">System Description</div>
-            <span style="font-size:1.2rem; color:{ACCENT};
-                padding:0 0.4rem;">&rarr;</span>
-            <div style="
-                background:{NAVY}; color:#fff;
-                padding:0.45rem 1rem;
-                border-radius:6px; font-size:0.78rem;
-                font-weight:600; white-space:nowrap;
-            ">URS</div>
-            <span style="font-size:1.2rem; color:{ACCENT};
-                padding:0 0.4rem;">&rarr;</span>
-            <div style="
-                background:{NAVY}; color:#fff;
-                padding:0.45rem 1rem;
-                border-radius:6px; font-size:0.78rem;
-                font-weight:600; white-space:nowrap;
-            ">UR / FR</div>
-            <span style="font-size:1.2rem; color:{ACCENT};
-                padding:0 0.4rem;">&rarr;</span>
-            <div style="
-                background:{NAVY}; color:#fff;
-                padding:0.45rem 1rem;
-                border-radius:6px; font-size:0.78rem;
-                font-weight:600; white-space:nowrap;
-            ">Test Script</div>
-            <span style="font-size:1.2rem; color:{ACCENT};
-                padding:0 0.4rem;">&rarr;</span>
-            <div style="
-                background:{ACCENT}; color:#fff;
-                padding:0.45rem 1rem;
-                border-radius:6px; font-size:0.78rem;
-                font-weight:600; white-space:nowrap;
-            ">RTM</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # ---- CSS for Validation Factory tables ----
+    # ---- Workflow Diagram (Infor SOHO) ----
     st.markdown(
         """
-        <style>
-        .vf-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        .vf-table th {
-            background-color: #1B2A4A;
-            color: #FFFFFF;
-            padding: 0.55rem 0.7rem;
-            text-align: left;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .vf-table td {
-            padding: 0.5rem 0.7rem;
-            border-bottom: 1px solid #E5E7EB;
-            vertical-align: top;
-        }
-        .vf-table tr:nth-child(even) {
-            background-color: #F8F9FB;
-        }
-        .vf-section-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: #1B2A4A;
-            margin: 0.8rem 0 0.4rem 0;
-        }
-        </style>
+        <div class="workflow-bar">
+            <span class="workflow-step">
+                System Description</span>
+            <span class="workflow-arrow">&rarr;</span>
+            <span class="workflow-step">URS</span>
+            <span class="workflow-arrow">&rarr;</span>
+            <span class="workflow-step">UR / FR</span>
+            <span class="workflow-arrow">&rarr;</span>
+            <span class="workflow-step">Test Script</span>
+            <span class="workflow-arrow">&rarr;</span>
+            <span class="workflow-step active">RTM</span>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -2197,7 +2171,7 @@ elif page.startswith("6"):
         ur_fr = st.session_state.vf_ur_fr
         if ur_fr is not None:
             st.markdown(
-                '<p class="vf-section-title">'
+                '<p class="section-title">'
                 "User Requirement / Functional Requirements"
                 "</p>",
                 unsafe_allow_html=True,
@@ -2215,7 +2189,7 @@ elif page.startswith("6"):
 
             # UR summary table
             ur_html = f"""
-            <table class="vf-table">
+            <div class="soho-grid-wrap"><table class="soho-grid">
                 <thead><tr>
                     <th>Field</th><th>Value</th>
                 </tr></thead>
@@ -2254,7 +2228,7 @@ elif page.startswith("6"):
                     )}</td>
                 </tr>
                 </tbody>
-            </table>
+            </table></div>
             """
             st.markdown(ur_html, unsafe_allow_html=True)
             st.markdown("")
@@ -2280,14 +2254,14 @@ elif page.startswith("6"):
                     )
 
                 fr_html = f"""
-                <table class="vf-table">
+                <div class="soho-grid-wrap"><table class="soho-grid">
                     <thead><tr>
                         <th>FR ID</th>
                         <th>Statement</th>
                         <th>Acceptance Criteria</th>
                     </tr></thead>
                     <tbody>{fr_rows}</tbody>
-                </table>
+                </table></div>
                 """
                 st.markdown(
                     fr_html, unsafe_allow_html=True
@@ -2402,7 +2376,7 @@ elif page.startswith("6"):
         ts = st.session_state.vf_test_script
         if ts is not None:
             st.markdown(
-                '<p class="vf-section-title">'
+                '<p class="section-title">'
                 "CSA Test Script</p>",
                 unsafe_allow_html=True,
             )
@@ -2439,16 +2413,7 @@ elif page.startswith("6"):
                 )
                 if just_text:
                     st.markdown(
-                        f'<div style="'
-                        f"background:#F0F4FF;"
-                        f"border-left:4px solid "
-                        f"{ACCENT};"
-                        f"border-radius:6px;"
-                        f"padding:0.7rem 1rem;"
-                        f"margin-bottom:0.8rem;"
-                        f"font-size:0.85rem;"
-                        f"color:#1B2A4A;"
-                        f'">'
+                        f'<div class="soho-info-box">'
                         f"<strong>Regulatory "
                         f"Justification</strong>"
                         f"<br/>{just_text}</div>",
@@ -2493,7 +2458,7 @@ elif page.startswith("6"):
                     )
 
                 ts_html = f"""
-                <table class="vf-table">
+                <div class="soho-grid-wrap"><table class="soho-grid">
                     <thead><tr>
                         <th>Type</th>
                         <th>#</th>
@@ -2504,7 +2469,7 @@ elif page.startswith("6"):
                         <th>Ref</th>
                     </tr></thead>
                     <tbody>{step_rows}</tbody>
-                </table>
+                </table></div>
                 """
                 st.markdown(
                     ts_html, unsafe_allow_html=True
@@ -2630,47 +2595,14 @@ elif page.startswith("6"):
 # Page 7 — Traceability
 # ===================================================================
 elif page.startswith("7"):
+    _breadcrumb(["Home", "Traceability"])
     _page_header(
         "Requirements Traceability Matrix",
         "End-to-end mapping from Functional Requirements "
         "to Test Steps",
     )
 
-    # ---- CSS for RTM table ----
-    st.markdown(
-        """
-        <style>
-        .rtm-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        .rtm-table th {
-            background-color: #1B2A4A;
-            color: #FFFFFF;
-            padding: 0.55rem 0.7rem;
-            text-align: left;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .rtm-table td {
-            padding: 0.5rem 0.7rem;
-            border-bottom: 1px solid #E5E7EB;
-            vertical-align: top;
-        }
-        .rtm-table tr:nth-child(even) {
-            background-color: #F8F9FB;
-        }
-        .rtm-covered {
-            background-color: #D1FAE5 !important;
-        }
-        .rtm-gap {
-            background-color: #FEE2E2 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # RTM table styles provided by infor_soho_theme.css
 
     _demo_rtm = st.session_state.get(
         "demo_mode", False,
@@ -2695,10 +2627,13 @@ elif page.startswith("7"):
     data_ready = (has_ur_fr and has_test) or _demo_rtm
 
     if not data_ready:
-        st.info(
-            "Generate requirements **and** test scripts "
-            "in the **Validation Factory** tab first, "
-            "then return here to build the RTM."
+        _empty_state(
+            "No Traceability Data",
+            "Generate requirements and test scripts "
+            "in the Validation Factory tab first, "
+            "then return here to build the RTM.",
+            icon="table",
+            action_label="Go to Validation Factory",
         )
     else:
         gen_rtm = st.button(
@@ -2768,33 +2703,19 @@ elif page.startswith("7"):
 
         # ---- Coverage progress bar ----
         pct_int = int(cov_pct)
-        bar_color = (
-            "#065F46" if pct_int >= 80
-            else "#92400E" if pct_int >= 50
-            else "#991B1B"
+        bar_cls = (
+            "green" if pct_int >= 80
+            else "amber" if pct_int >= 50
+            else "red"
         )
         st.markdown(
-            f"""
-            <div style="
-                background:{BORDER};
-                border-radius:6px;
-                height:24px;
-                margin:0.5rem 0 1rem 0;
-                overflow:hidden;">
-                <div style="
-                    width:{pct_int}%;
-                    height:100%;
-                    background:{bar_color};
-                    border-radius:6px;
-                    text-align:center;
-                    color:#FFF;
-                    font-size:0.75rem;
-                    line-height:24px;
-                    font-weight:600;">
-                    {pct_int}% covered
-                </div>
-            </div>
-            """,
+            f'<div class="soho-progress">'
+            f'<div class="soho-progress-fill {bar_cls}"'
+            f' style="width:{pct_int}%;"></div></div>'
+            f'<p style="font-size:0.8rem;'
+            f'color:var(--infor-slate-light);'
+            f'margin:0.2rem 0 0.8rem 0;">'
+            f'{pct_int}% covered</p>',
             unsafe_allow_html=True,
         )
 
@@ -2828,9 +2749,9 @@ elif page.startswith("7"):
                     "coverage_status", "-",
                 )
                 row_cls = (
-                    "rtm-covered"
+                    "row-covered"
                     if status == "Covered"
-                    else "rtm-gap"
+                    else "row-gap"
                 )
                 status_icon = (
                     "&#9989;"
@@ -2876,9 +2797,13 @@ elif page.startswith("7"):
                     f"</tr>"
                 )
 
+            _toolbar(
+                "Traceability Matrix",
+                [{"label": "Export"}, {"label": "Filter"}],
+            )
             st.markdown(
                 f"""
-                <table class="rtm-table">
+                <div class="soho-grid-wrap"><table class="soho-grid">
                     <thead><tr>
                         <th>FR ID</th>
                         <th>Requirement</th>
@@ -2888,7 +2813,7 @@ elif page.startswith("7"):
                         <th>Status</th>
                     </tr></thead>
                     <tbody>{rtm_rows_html}</tbody>
-                </table>
+                </table></div>
                 """,
                 unsafe_allow_html=True,
             )
@@ -3010,58 +2935,14 @@ elif page.startswith("8"):
         COST_PER_POOR_REQUIREMENT,
     )
 
+    _breadcrumb(["Home", "Demo Comparison"])
     _page_header(
         "Demo Comparison",
         "Side-by-side: your draft vs Validation Factory "
         "audit-ready rewrite",
     )
 
-    # ---- Page-specific CSS ----
-    st.markdown(
-        """
-        <style>
-        .dc-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
-            margin-top: 0.5rem;
-        }
-        .dc-table th {
-            background-color: #1B2A4A;
-            color: #FFFFFF;
-            padding: 0.55rem 0.7rem;
-            text-align: left;
-        }
-        .dc-table td {
-            padding: 0.55rem 0.7rem;
-            border-bottom: 1px solid #D1D5DB;
-            vertical-align: top;
-        }
-        .dc-table tr:nth-child(even) {
-            background-color: #F8F9FB;
-        }
-        .dc-risk-cell {
-            color: #991B1B;
-            font-size: 0.84rem;
-        }
-        .dc-cost-banner {
-            background: linear-gradient(
-                135deg, #991B1B 0%, #92400E 100%
-            );
-            border-left: 5px solid #991B1B;
-            color: #FFFFFF;
-            padding: 1rem 1.4rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-            font-size: 0.95rem;
-        }
-        .dc-cost-banner strong {
-            font-size: 1.3rem;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Demo Comparison styles provided by infor_soho_theme.css
 
     # ---- Demo mode auto-populate ----
     if st.session_state.get("demo_mode", False):
@@ -3180,7 +3061,7 @@ elif page.startswith("8"):
 
         # Cost banner
         st.markdown(
-            f'<div class="dc-cost-banner">'
+            f'<div class="soho-alert-banner">'
             f"Estimated cost of shipping these "
             f"requirements as-is: "
             f"<strong>${total_cost:,}</strong>"
@@ -3224,7 +3105,7 @@ elif page.startswith("8"):
                 f'style="margin-top:0.4rem; '
                 f'display:inline-block;">'
                 f'{r["criticality"]}</span></td>'
-                f'<td class="dc-risk-cell">'
+                f'<td class="badge-error">'
                 f"<ul style=\"margin:0; "
                 f"padding-left:1.1rem;\">"
                 f"{risk_html}</ul>"
@@ -3236,7 +3117,7 @@ elif page.startswith("8"):
 
         st.markdown(
             f"""
-            <table class="dc-table">
+            <div class="soho-grid-wrap"><table class="soho-grid">
                 <thead><tr>
                     <th style="width:33%;">
                         Your Draft</th>
@@ -3246,7 +3127,7 @@ elif page.startswith("8"):
                         The Risk</th>
                 </tr></thead>
                 <tbody>{table_rows_html}</tbody>
-            </table>
+            </table></div>
             """,
             unsafe_allow_html=True,
         )
