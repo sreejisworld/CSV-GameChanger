@@ -116,6 +116,10 @@ section[data-testid="stSidebar"] * {
     color: #FFFFFF !important;
     font-family: var(--font-stack) !important;
 }
+/* Hide the sidebar collapse arrow that leaks "keyboard..." text */
+[data-testid="stSidebar"] button[data-testid="stBaseButton-headerNoPadding"] {
+    display: none !important;
+}
 section[data-testid="stSidebar"] hr {
     border-color: rgba(255,255,255,0.12) !important;
 }
