@@ -4,7 +4,6 @@
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
 from pathlib import Path
 
 # ── Colour constants ─────────────────────────────────────────────
@@ -26,8 +25,10 @@ def load_theme(project_root: Path) -> None:
         )
 
     # Keyboard shortcuts: Ctrl+S → download, Esc → close expanders
-    components.html(
+    # Use a bare <script> inside a hidden div so no iframe text leaks.
+    st.markdown(
         """
+        <div style="display:none;">
         <script>
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 's') {
@@ -45,6 +46,7 @@ def load_theme(project_root: Path) -> None:
             }
         });
         </script>
+        </div>
         """,
-        height=0,
+        unsafe_allow_html=True,
     )
