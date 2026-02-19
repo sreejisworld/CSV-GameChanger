@@ -7,6 +7,7 @@ context retrieved from Pinecone vector store.
 :requirement: URS-6.1 - System shall generate URS from natural language input.
 """
 import os
+import re
 import json
 from enum import Enum
 from pathlib import Path
@@ -36,6 +37,57 @@ TOP_K_RESULTS = 5
 MIN_SIMILARITY_SCORE = 0.5
 
 _KNOWN_REG_VERSIONS: set = set()
+
+# ── PDF watermark / metadata cleaning ────────────────────────────
+_WATERMARK_RE = re.compile(
+    r"Downloaded\s+from\s+.*?(?:without|only)\s*\.?",
+    re.IGNORECASE | re.DOTALL,
+)
+_PERSONAL_USE_RE = re.compile(
+    r"[Ff]or\s+personal\s+use\s+only\.?",
+)
+_BY_NAME_RE = re.compile(
+    r"\bby\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}\b"
+)
+_DATE_RE = re.compile(
+    r"\b(?:January|February|March|April|May|June|July|August"
+    r"|September|October|November|December)"
+    r"\s+\d{1,2},?\s+\d{4}\b",
+    re.IGNORECASE,
+)
+
+
+def _clean_chunk_text(text: str) -> str:
+    """Strip PDF watermark metadata from chunk text.
+
+    Removes 'Downloaded from ...', 'by [Name]', dates, and
+    'For personal use only' stamps that leak from source PDFs.
+
+    :param text: Raw text from Pinecone chunk.
+    :return: Cleaned text with only document content.
+    """
+    text = _WATERMARK_RE.sub("", text)
+    text = _PERSONAL_USE_RE.sub("", text)
+    text = _DATE_RE.sub("", text)
+    # Collapse whitespace left behind
+    text = re.sub(r"\s{2,}", " ", text).strip()
+    return text
+
+
+def _clean_source_document(source: str) -> str:
+    """Extract only the document title from a source filename.
+
+    :param source: Raw source_document string (e.g. PDF filename).
+    :return: Clean document title.
+    """
+    # Remove file extension
+    title = re.sub(r"\.\w{2,4}$", "", source)
+    # Remove 'Downloaded from ...' suffix if embedded in filename
+    title = _WATERMARK_RE.sub("", title)
+    title = _PERSONAL_USE_RE.sub("", title)
+    # Replace underscores with spaces for readability
+    title = title.replace("_", " ").strip()
+    return title
 
 CriticalityResult = namedtuple(
     "CriticalityResult",
@@ -1093,9 +1145,13 @@ class RequirementArchitect:
             if match.score >= min_score:
                 matches.append({
                     "chunk_id": match.id,
-                    "text": match.metadata.get("text", ""),
-                    "source_document": match.metadata.get(
-                        "source_document", ""
+                    "text": _clean_chunk_text(
+                        match.metadata.get("text", "")
+                    ),
+                    "source_document": _clean_source_document(
+                        match.metadata.get(
+                            "source_document", ""
+                        )
                     ),
                     "page_number": match.metadata.get(
                         "page_number", 0
@@ -1342,9 +1398,12 @@ class RequirementArchitect:
             prefix = self._template.rationale_prefix
 
         for result in search_results[:3]:  # Use top 3 matches
-            source = result.source_document or "Unknown"
+            source = _clean_source_document(
+                result.source_document or "Unknown"
+            )
             page = result.page_number or 0
-            text = result.text[:200] if result.text else ""
+            raw_text = result.text[:200] if result.text else ""
+            text = _clean_chunk_text(raw_text)
             ver = result.reg_version or ""
 
             source_key = f"{source}:p{page}"
