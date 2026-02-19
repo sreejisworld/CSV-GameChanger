@@ -28,6 +28,7 @@ NAV_GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
         ("6", "fa-industry",    "Validation Factory"),
         ("7", "fa-link",        "Traceability"),
         ("8", "fa-chart-bar",   "Demo Comparison"),
+        ("9", "fa-shield-halved", "Command Center"),
     ]),
 ]
 
@@ -35,7 +36,7 @@ NAV_GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
 def _build_nav_html(active_page: str) -> str:
     """Build the full HTML block for grouped navigation.
 
-    :param active_page: The page id string ("1"–"8").
+    :param active_page: The page id string ("1"–"9").
     :return: HTML string.
     """
     html_parts: list[str] = []
@@ -63,7 +64,7 @@ def render_sidebar(
     """Render the complete sidebar and return the active page id.
 
     :param audit_csv: Path to the audit trail CSV file.
-    :return: Active page id string ("1"–"8").
+    :return: Active page id string ("1"–"9").
     """
     # ---- Handle nav click via query param ----
     if "nav" in st.query_params:

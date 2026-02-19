@@ -2936,3 +2936,49 @@ elif page.startswith("8"):
                     ),
                     key="dc_docx_dl",
                 )
+
+elif page.startswith("9"):
+    from frontend.components.compliance_command_center import (
+        render_compliance_command_center,
+    )
+
+    breadcrumb(["Home", "Command Center"])
+    page_header(
+        "Compliance Command Center",
+        "Risk exposure calculator and EVOLV vs Legacy "
+        "benchmark dashboard",
+    )
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        gap_count = st.number_input(
+            "Compliance Gaps",
+            min_value=0,
+            value=5,
+            step=1,
+            key="ccc_gaps",
+        )
+    with c2:
+        avg_fine = st.number_input(
+            "Avg Audit Fine ($)",
+            min_value=0.0,
+            value=50000.0,
+            step=5000.0,
+            format="%.0f",
+            key="ccc_fine",
+        )
+    with c3:
+        delay_cost = st.number_input(
+            "Delay Cost / Week ($)",
+            min_value=0.0,
+            value=15000.0,
+            step=1000.0,
+            format="%.0f",
+            key="ccc_delay",
+        )
+
+    render_compliance_command_center(
+        gap_count=int(gap_count),
+        avg_audit_fine=float(avg_fine),
+        delay_cost_per_week=float(delay_cost),
+    )
