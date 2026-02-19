@@ -718,6 +718,63 @@ DEMO_DATA = {
 }
 
 # -------------------------------------------------------------------
+# Pre-widget: handle demo load request (must run before
+# toggle widgets claim their session-state keys)
+# -------------------------------------------------------------------
+if st.session_state.get("_load_demo_requested"):
+    st.session_state["_load_demo_requested"] = False
+    st.session_state["demo_mode"] = True
+    st.session_state["vf_requirement"] = (
+        "The LIMS shall maintain a complete, "
+        "immutable chain-of-custody record for "
+        "every laboratory sample from receipt "
+        "through testing, storage, and disposal, "
+        "including custodian identity, timestamp, "
+        "location, and condition at each transfer "
+        "point."
+    )
+    st.session_state["vf_role"] = "Lab Technician"
+    st.session_state["vf_category"] = (
+        "Sample Management"
+    )
+    st.session_state["vf_risk_assessment"] = (
+        "GxP Direct"
+    )
+    st.session_state["vf_impl_method"] = "Configured"
+    st.session_state["vf_test_type"] = "Informal"
+    st.session_state["vf_ur_fr"] = (
+        DEMO_DATA["ur_fr"]
+    )
+    st.session_state["vf_test_script"] = (
+        DEMO_DATA["test_script"]
+    )
+    st.session_state["rtm_result"] = (
+        DEMO_DATA["rtm"]
+    )
+    st.session_state["ingest_result"] = (
+        DEMO_DATA["ingest_result"]
+    )
+    st.session_state["gap_result"] = (
+        DEMO_DATA["gap_result"]
+    )
+    st.session_state["generated_urs"] = (
+        DEMO_DATA["generated_urs"]
+    )
+    st.session_state["dc_system_desc"] = (
+        DEMO_DATA["demo_comparison"][
+            "system_description"
+        ]
+    )
+    for _i, _req in enumerate(
+        DEMO_DATA["demo_comparison"][
+            "human_requirements"
+        ],
+        1,
+    ):
+        st.session_state[f"dc_req_{_i}"] = _req
+
+
+# -------------------------------------------------------------------
 # Sidebar: Logo + Navigation
 # -------------------------------------------------------------------
 with st.sidebar:
@@ -800,55 +857,7 @@ with st.sidebar:
         key="load_demo_project",
         use_container_width=True,
     ):
-        st.session_state["demo_mode"] = True
-        st.session_state["vf_requirement"] = (
-            "The LIMS shall maintain a complete, "
-            "immutable chain-of-custody record for "
-            "every laboratory sample from receipt "
-            "through testing, storage, and disposal, "
-            "including custodian identity, timestamp, "
-            "location, and condition at each transfer "
-            "point."
-        )
-        st.session_state["vf_role"] = "Lab Technician"
-        st.session_state["vf_category"] = (
-            "Sample Management"
-        )
-        st.session_state["vf_risk_assessment"] = (
-            "GxP Direct"
-        )
-        st.session_state["vf_impl_method"] = "Configured"
-        st.session_state["vf_test_type"] = "Informal"
-        st.session_state["vf_ur_fr"] = (
-            DEMO_DATA["ur_fr"]
-        )
-        st.session_state["vf_test_script"] = (
-            DEMO_DATA["test_script"]
-        )
-        st.session_state["rtm_result"] = (
-            DEMO_DATA["rtm"]
-        )
-        st.session_state["ingest_result"] = (
-            DEMO_DATA["ingest_result"]
-        )
-        st.session_state["gap_result"] = (
-            DEMO_DATA["gap_result"]
-        )
-        st.session_state["generated_urs"] = (
-            DEMO_DATA["generated_urs"]
-        )
-        st.session_state["dc_system_desc"] = (
-            DEMO_DATA["demo_comparison"][
-                "system_description"
-            ]
-        )
-        for _i, _req in enumerate(
-            DEMO_DATA["demo_comparison"][
-                "human_requirements"
-            ],
-            1,
-        ):
-            st.session_state[f"dc_req_{_i}"] = _req
+        st.session_state["_load_demo_requested"] = True
         st.rerun()
     st.caption(
         "Pre-load LIMS demo for walkthrough"
