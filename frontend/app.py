@@ -271,7 +271,7 @@ DEMO_DATA = {
         ),
         "Criticality": "High",
         "Regulatory_Rationale": (
-            "Per GAMP5_Guide.pdf [GAMP5_Rev2] (p.38): "
+            "Per GAMP5 Guide [GAMP5_Rev2] (p.38): "
             "'Records that support product quality decisions "
             "shall be controlled to ensure integrity and "
             "traceability.' Chain-of-custody is a patient-"
