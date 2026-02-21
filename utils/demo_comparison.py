@@ -214,7 +214,7 @@ def rewrite_requirement(
     criticality = arch._determine_criticality(
         human_text, search_results=[],
     )
-    crit_str = criticality.value  # "High" / "Medium" / "Low"
+    crit_str = criticality.criticality.value  # "High" / "Medium" / "Low"
 
     # Append up to 2 missing regulatory clauses
     gaps = detect_regulatory_gaps(human_text)
