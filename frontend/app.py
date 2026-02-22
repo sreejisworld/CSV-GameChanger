@@ -39,7 +39,7 @@ st.set_page_config(
 )
 
 # -------------------------------------------------------------------
-# Infor SOHO Design System — load external theme + keyboard shortcuts
+# SOHO Design System — load external theme + keyboard shortcuts
 # -------------------------------------------------------------------
 load_theme(PROJECT_ROOT)
 
@@ -871,7 +871,7 @@ def _build_table_pdf(
 # ===================================================================
 # Page 1 — Ingest Vendor Docs
 # ===================================================================
-if page.startswith("1"):
+if page == "1":
     breadcrumb(["Home", "Ingest Vendor Docs"])
     page_header(
         "Ingest Vendor Documents",
@@ -1055,7 +1055,7 @@ if page.startswith("1"):
                 f'<div class="soho-progress-fill {bar_cls}"'
                 f' style="width:{pct}%;"></div></div>'
                 f'<p style="font-size:0.8rem;'
-                f'color:var(--infor-slate-light);'
+                f'color:var(--ev-slate-light);'
                 f'margin:0.2rem 0 0.8rem 0;">'
                 f'{pct}% covered</p>',
                 unsafe_allow_html=True,
@@ -1680,7 +1680,7 @@ elif page.startswith("6"):
         "End-to-end: requirement \u2192 UR/FR \u2192 CSA test script",
     )
 
-    # ---- Workflow Diagram (Infor SOHO) ----
+    # ---- Workflow Diagram (SOHO) ----
     st.markdown(
         """
         <div class="workflow-bar">
@@ -2307,7 +2307,7 @@ elif page.startswith("7"):
         "to Test Steps",
     )
 
-    # RTM table styles provided by infor_soho_theme.css
+    # RTM table styles provided by soho_theme.css
 
     _demo_rtm = st.session_state.get(
         "demo_mode", False,
@@ -2418,7 +2418,7 @@ elif page.startswith("7"):
             f'<div class="soho-progress-fill {bar_cls}"'
             f' style="width:{pct_int}%;"></div></div>'
             f'<p style="font-size:0.8rem;'
-            f'color:var(--infor-slate-light);'
+            f'color:var(--ev-slate-light);'
             f'margin:0.2rem 0 0.8rem 0;">'
             f'{pct_int}% covered</p>',
             unsafe_allow_html=True,
@@ -2631,6 +2631,47 @@ elif page.startswith("7"):
         with st.expander("RTM Raw JSON"):
             st.json(rtm)
 
+        # ---- Compile Record of Assurance CTA ----
+        st.markdown("---")
+        _cta_l, _cta_r = st.columns([2, 3])
+        with _cta_l:
+            st.markdown(
+                """<style>
+                div:has(#vsr-cta-anchor)
+                ~ div[data-testid="stButton"] button {
+                    background-color: #056696 !important;
+                    border-color: #056696 !important;
+                    color: #fff !important;
+                    font-weight: 700;
+                    font-size: 0.95rem;
+                }
+                div:has(#vsr-cta-anchor)
+                ~ div[data-testid="stButton"] button:hover {
+                    background-color: #044e73 !important;
+                }
+                </style>
+                <span id="vsr-cta-anchor"
+                 style="display:none;"></span>""",
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "Compile Record of Assurance",
+                key="compile_vsr_btn",
+                use_container_width=True,
+            ):
+                st.session_state["page"] = "10"
+                st.rerun()
+        with _cta_r:
+            st.markdown(
+                "<p style='font-size:0.82rem;"
+                "color:#7a9ab0;padding-top:0.55rem;"
+                "margin:0;'>"
+                "Aggregate Validation Factory &amp; "
+                "Traceability data into a "
+                "GxP-ready Validation Summary Report.</p>",
+                unsafe_allow_html=True,
+            )
+
 
 # ===================================================================
 # Page 8 — Demo Comparison
@@ -2647,7 +2688,7 @@ elif page.startswith("8"):
         "audit-ready rewrite",
     )
 
-    # Demo Comparison styles provided by infor_soho_theme.css
+    # Demo Comparison styles provided by soho_theme.css
 
     # ---- Demo mode auto-populate ----
     if st.session_state.get("demo_mode", False):
@@ -2982,3 +3023,1305 @@ elif page.startswith("9"):
         avg_audit_fine=float(avg_fine),
         delay_cost_per_week=float(delay_cost),
     )
+
+
+# ===================================================================
+# Page 10 — Validation Summary Report (VSR)
+# ===================================================================
+elif page.startswith("10"):
+
+    # ── Inline GxP PDF generator ─────────────────────────────────
+    def _generate_vsr_pdf(
+        vsr_ur_fr: dict,
+        vsr_ts: dict,
+        vsr_rtm: dict,
+    ) -> bytes:
+        """Generate paginated GxP VSR PDF with e-sig placeholders.
+
+        :requirement: URS-20.1 - Generate Validation Summary
+        Report as GxP-compliant PDF.
+        """
+        from fpdf import FPDF
+        from fpdf.enums import XPos, YPos
+
+        _risk = (
+            (vsr_ur_fr or {})
+            .get("user_requirement", {})
+            .get("risk_level", "Unknown")
+        )
+        _urs_id = (vsr_ur_fr or {}).get("urs_id", "—")
+        _ts_now = datetime.utcnow().strftime(
+            "%Y-%m-%d %H:%M UTC"
+        )
+
+        class _VSRPDF(FPDF):
+            def header(self):
+                _eff = self.w - self.l_margin - self.r_margin
+                _hw = _eff / 2
+                _hy = self.get_y()
+                self.set_font("Helvetica", "B", 8)
+                self.set_text_color(5, 102, 150)
+                self.set_xy(self.l_margin, _hy)
+                self.cell(
+                    _hw, 6,
+                    "EVOLV | The Validation Factory",
+                    new_x=XPos.RIGHT, new_y=YPos.TOP,
+                )
+                self.set_font("Helvetica", "", 8)
+                self.set_text_color(120, 120, 120)
+                self.set_xy(self.l_margin + _hw, _hy)
+                self.cell(
+                    _hw, 6,
+                    f"VSR - {_urs_id} | {_ts_now}",
+                    align="R",
+                    new_x=XPos.LMARGIN, new_y=YPos.NEXT,
+                )
+                self.set_draw_color(5, 102, 150)
+                self.line(
+                    self.l_margin,
+                    self.get_y(),
+                    self.w - self.r_margin,
+                    self.get_y(),
+                )
+                self.ln(3)
+
+            def footer(self):
+                self.set_y(-12)
+                self.set_font("Helvetica", "", 7)
+                self.set_text_color(150, 150, 150)
+                self.cell(
+                    0, 8,
+                    f"Page {self.page_no()} | EVOLV | "
+                    "A WingstarTech Inc. Product | "
+                    "CONFIDENTIAL",
+                    align="C",
+                )
+
+        pdf = _VSRPDF(
+            orientation="P", unit="mm", format="A4"
+        )
+        pdf.set_margins(18, 24, 18)
+        pdf.set_auto_page_break(True, margin=18)
+
+        def _h1(txt: str) -> None:
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.set_text_color(5, 102, 150)
+            pdf.cell(
+                0, 8, txt,
+                new_x="LMARGIN", new_y="NEXT",
+            )
+            pdf.set_draw_color(5, 102, 150)
+            pdf.line(
+                pdf.l_margin, pdf.get_y(),
+                pdf.w - pdf.r_margin, pdf.get_y(),
+            )
+            pdf.ln(3)
+            pdf.set_text_color(30, 30, 30)
+            pdf.set_font("Helvetica", "", 10)
+
+        def _h2(txt: str) -> None:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(60, 60, 60)
+            pdf.cell(
+                0, 6, txt,
+                new_x="LMARGIN", new_y="NEXT",
+            )
+            pdf.set_text_color(30, 30, 30)
+            pdf.set_font("Helvetica", "", 9)
+
+        def _sanitize(txt: str) -> str:
+            """Replace non-Latin-1 chars so Helvetica core font survives."""
+            return (
+                str(txt)
+                .replace("\u2022", "-")   # bullet •
+                .replace("\u2013", "-")   # en dash
+                .replace("\u2014", "-")   # em dash
+                .replace("\u2018", "'")   # left single quote
+                .replace("\u2019", "'")   # right single quote
+                .replace("\u201c", '"')   # left double quote
+                .replace("\u201d", '"')   # right double quote
+                .replace("\u2026", "...")  # ellipsis
+            )
+
+        def _kv(k: str, v: str) -> None:
+            _kw = 52
+            _vw = (
+                pdf.w - pdf.l_margin - pdf.r_margin - _kw
+            )
+            _x0 = pdf.l_margin
+            _y0 = pdf.get_y()
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_xy(_x0, _y0)
+            pdf.multi_cell(_kw, 5.5, _sanitize(k + ":"))
+            _y1 = pdf.get_y()
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_xy(_x0 + _kw, _y0)
+            pdf.multi_cell(_vw, 5.5, _sanitize(v))
+            _y2 = pdf.get_y()
+            pdf.set_y(max(_y1, _y2))
+
+        def _body(txt: str) -> None:
+            pdf.set_font("Helvetica", "", 8)
+            pdf.multi_cell(0, 5, _sanitize(txt))
+            pdf.ln(1)
+
+        # — Cover ——————————————————————————————————————————————————
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 20)
+        pdf.set_text_color(5, 102, 150)
+        pdf.ln(12)
+        pdf.cell(
+            0, 11,
+            "Validation Summary Report",
+            align="C", new_x="LMARGIN", new_y="NEXT",
+        )
+        pdf.set_font("Helvetica", "", 12)
+        pdf.set_text_color(90, 90, 90)
+        pdf.cell(
+            0, 7, "Record of Assurance",
+            align="C", new_x="LMARGIN", new_y="NEXT",
+        )
+        pdf.ln(8)
+        pdf.set_draw_color(5, 102, 150)
+        pdf.set_line_width(0.5)
+        pdf.line(
+            pdf.l_margin, pdf.get_y(),
+            pdf.w - pdf.r_margin, pdf.get_y(),
+        )
+        pdf.set_line_width(0.2)
+        pdf.ln(7)
+        pdf.set_text_color(30, 30, 30)
+        _kv("URS ID", _urs_id)
+        _kv("Risk Level", _risk)
+        _kv(
+            "Regulatory Framework",
+            "GAMP 5 Rev 2 | 21 CFR Part 11 | CSA",
+        )
+        _kv("Generated", _ts_now)
+        _kv("Compiled By", "EVOLV Validation Factory v0.1.0")
+
+        # — Validation Summary —————————————————————————————————————
+        pdf.add_page()
+        _h1("1. Validation Summary")
+        if vsr_ur_fr:
+            _ur = vsr_ur_fr.get("user_requirement", {})
+            _kv("UR ID", _ur.get("ur_id", "—"))
+            _kv("Risk Assessment",
+                _ur.get("risk_assessment", "—"))
+            _kv("Implementation",
+                _ur.get("implementation_method", "—"))
+            _kv("Test Strategy",
+                _ur.get("test_strategy", "—"))
+            pdf.ln(2)
+            _h2("Requirement Statement")
+            _body(_ur.get("statement", "—"))
+            _frs = vsr_ur_fr.get(
+                "functional_requirements", []
+            )
+            if _frs:
+                pdf.ln(1)
+                _h2("Functional Requirements")
+                for _f in _frs:
+                    _body(
+                        f"• {_f.get('fr_id','')}: "
+                        f"{_f.get('statement','')}"
+                    )
+            _cn = vsr_ur_fr.get("compliance_notes", [])
+            if _cn:
+                pdf.ln(1)
+                _h2("Compliance Notes")
+                for _n in _cn:
+                    _body(f"• {_n}")
+        else:
+            _body("No Validation Factory data available.")
+
+        # — Traceability Coverage ——————————————————————————————————
+        pdf.add_page()
+        _h1("2. Traceability Coverage")
+        if vsr_rtm:
+            _kv("RTM ID", vsr_rtm.get("rtm_id", "—"))
+            _kv(
+                "Coverage",
+                f"{vsr_rtm.get('coverage_percentage',0)}%",
+            )
+            _kv(
+                "Total FRs",
+                str(vsr_rtm.get("total_requirements", 0)),
+            )
+            _kv(
+                "Covered",
+                str(vsr_rtm.get(
+                    "covered_requirements", 0
+                )),
+            )
+            _kv(
+                "Gaps",
+                str(vsr_rtm.get("gap_requirements", 0)),
+            )
+        else:
+            _body("Generate the RTM in the Traceability "
+                  "tab to populate this section.")
+
+        # — Performance Baseline ———————————————————————————————————
+        pdf.add_page()
+        _h1("3. Performance Baseline")
+        if vsr_ts:
+            _steps = vsr_ts.get("steps", [])
+            _pos = sum(
+                1 for s in _steps
+                if s.get("test_case_type") == "Positive"
+            )
+            _neg = sum(
+                1 for s in _steps
+                if s.get("test_case_type") == "Negative"
+            )
+            _edge = sum(
+                1 for s in _steps
+                if s.get("test_case_type") == "Edge_Case"
+            )
+            _setup = sum(
+                1 for s in _steps
+                if s.get("step_type") == "Setup"
+            )
+            _exec_c = len(_steps) - _setup
+            _adv_r = round(
+                (_neg + _edge) / max(_exec_c, 1) * 100
+            )
+            _kv("Script ID",
+                vsr_ts.get("script_id", "—"))
+            _kv("Test Type",
+                vsr_ts.get("test_type", "—"))
+            _kv("Total Steps", str(len(_steps)))
+            _kv("Setup Steps", str(_setup))
+            _kv("Positive Cases", str(_pos))
+            _kv("Negative Cases", str(_neg))
+            _kv("Edge Cases", str(_edge))
+            _kv("Adversarial Coverage", f"{_adv_r}%")
+            _qc = vsr_ts.get("quality_checklist", {})
+            if _qc:
+                pdf.ln(2)
+                _h2("Quality Checklist")
+                for _qk, _qv in _qc.items():
+                    _m = "PASS" if _qv else "FAIL"
+                    _body(
+                        f"[{_m}] "
+                        f"{_qk.replace('_', ' ').title()}"
+                    )
+        else:
+            _body("No test script data available.")
+
+        # — Drift Thresholds ———————————————————————————————————————
+        pdf.add_page()
+        _h1("4. Drift Thresholds")
+        _body(
+            "Acceptable drift limits per GAMP 5 risk "
+            "classification. Active row reflects current "
+            "document risk level."
+        )
+        pdf.ln(3)
+        _thresh = [
+            ("High",   "≤ 5%",  "90 days",  "Rigorous Scripted"),
+            ("Medium", "≤ 10%", "180 days", "Hybrid"),
+            ("Low",    "≤ 20%", "365 days", "Unscripted"),
+        ]
+        _cw = [28, 28, 30, 54]
+        _hdrs = [
+            "Risk Level", "Drift Limit",
+            "Re-validate", "Strategy",
+        ]
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_fill_color(225, 238, 248)
+        for _i, _hh in enumerate(_hdrs):
+            pdf.cell(
+                _cw[_i], 6, _hh,
+                border=1, fill=True,
+            )
+        pdf.ln()
+        pdf.set_font("Helvetica", "", 8)
+        for _rl, _dl, _rv, _st_s in _thresh:
+            _hl = _rl.lower() == _risk.lower()
+            if _hl:
+                pdf.set_fill_color(195, 228, 248)
+            else:
+                pdf.set_fill_color(255, 255, 255)
+            for _i, _cv in enumerate(
+                [_rl, _dl, _rv, _st_s]
+            ):
+                pdf.cell(
+                    _cw[_i], 6, _cv,
+                    border=1, fill=True,
+                )
+            pdf.ln()
+
+        # — PCCP Roadmap ———————————————————————————————————————————
+        pdf.add_page()
+        _h1("5. PCCP Roadmap")
+        _body(
+            f"Post-Correction & Change of Practice roadmap "
+            f"for {_risk} Risk classification."
+        )
+        pdf.ln(2)
+        _milestones = [
+            ("Q1 — Month 1",
+             "Initial baseline validation, IQ/OQ, "
+             "UAT sign-off"),
+        ]
+        if _risk.lower() == "high":
+            _milestones.append((
+                "Q1 — Week 4",
+                "Adversarial re-test & Model Card v1.0",
+            ))
+        _milestones += [
+            ("Q2", "Drift assessment, compliance gap review, "
+             "CAPA if threshold breached"),
+            ("Q3", "Mid-cycle performance audit, "
+             "corrective action review"),
+            ("Q4", "Annual re-validation, PCCP update, "
+             "regulatory version check"),
+        ]
+        for _mq, _md in _milestones:
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.cell(34, 5.5, _mq + ":", ln=False)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.multi_cell(0, 5.5, _sanitize(_md))
+
+        # — Model Card (High Risk only) ————————————————————————————
+        if _risk.lower() == "high":
+            pdf.add_page()
+            _h1("6. Model Card")
+            _body(
+                "Auto-attached: High Risk classification "
+                "requires Model Card per FDA AI/ML SAMD "
+                "guidance."
+            )
+            pdf.ln(2)
+            _kv("System", "EVOLV Validation Factory")
+            _kv("Version", "0.1.0")
+            _kv("Risk Class",
+                f"{_risk} (GAMP 5 Cat. 5)")
+            _kv(
+                "Intended Use",
+                "Automated CSA/CSV document generation "
+                "for GxP systems",
+            )
+            _kv(
+                "Reg. Framework",
+                "GAMP 5 Rev 2 | 21 CFR Part 11 | ICH Q10",
+            )
+            pdf.ln(2)
+            _h2("Limitations")
+            for _lim in [
+                "Output requires qualified human review "
+                "before regulatory submission.",
+                "Accuracy depends on completeness of "
+                "ingested regulatory documents.",
+                "Not a substitute for Qualified Person "
+                "(QP) oversight.",
+            ]:
+                _body(f"• {_lim}")
+
+            # — 90-Day Health Check ————————————————————————————————
+            pdf.add_page()
+            _h1("7. 90-Day Health Check Schedule")
+            _body(
+                "Auto-attached: High Risk mandates "
+                "90-day monitoring per GAMP 5 §10.4."
+            )
+            pdf.ln(2)
+            _hc = [
+                ("Week 1",  "Establish performance baseline"),
+                ("Week 2",  "Initial compliance gap review"),
+                ("Week 4",  "First drift measurement"),
+                ("Week 6",  "Mid-period adversarial re-test"),
+                ("Week 8",  "Corrective action review "
+                            "(CAPA if drift > 5%)"),
+                ("Week 10", "Documentation update"),
+                ("Week 12", "Full re-validation & "
+                            "new VSR for QA sign-off"),
+            ]
+            for _wk, _wt in _hc:
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.cell(26, 5.5, _wk + ":", ln=False)
+                pdf.set_font("Helvetica", "", 8)
+                pdf.multi_cell(0, 5.5, _sanitize(_wt))
+
+        # — E-Signature Placeholders ———————————————————————————————
+        pdf.add_page()
+        _h1("Electronic Signature — Manifestation")
+        _body(
+            "In accordance with 21 CFR Part 11, the "
+            "following signatures constitute legally binding "
+            "approval of this Validation Summary Report."
+        )
+        pdf.ln(5)
+        _sigs = [
+            ("Document Author",    "Validation Engineer"),
+            ("Quality Reviewer",   "Quality Assurance Lead"),
+            ("System Owner",       "IT / Operations Lead"),
+            ("Regulatory Approver","Regulatory Affairs"),
+        ]
+        for _sn, _sr in _sigs:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.cell(
+                0, 6, _sn,
+                new_x="LMARGIN", new_y="NEXT",
+            )
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(90, 90, 90)
+            pdf.cell(
+                0, 5, f"Role: {_sr}",
+                new_x="LMARGIN", new_y="NEXT",
+            )
+            pdf.set_text_color(30, 30, 30)
+            pdf.ln(2)
+            _sx = pdf.l_margin
+            _sy = pdf.get_y() + 4
+            pdf.set_draw_color(120, 120, 120)
+            pdf.set_font("Helvetica", "", 8)
+            # Signature label + underline
+            pdf.set_xy(_sx, pdf.get_y())
+            pdf.cell(
+                22, 5, "Signature:",
+                new_x=XPos.RIGHT, new_y=YPos.TOP,
+            )
+            pdf.line(_sx + 22, _sy, _sx + 90, _sy)
+            # Date label + underline (offset right)
+            pdf.set_xy(_sx + 95, pdf.get_y())
+            pdf.cell(
+                16, 5, "Date:",
+                new_x=XPos.RIGHT, new_y=YPos.TOP,
+            )
+            pdf.line(
+                _sx + 111, _sy, _sx + 150, _sy,
+            )
+            pdf.ln(10)
+
+        return bytes(pdf.output())
+
+    # ── Pull aggregated data from upstream modules ────────────────
+    _vsr_ur_fr = st.session_state.get("vf_ur_fr")
+    _vsr_ts    = st.session_state.get("vf_test_script")
+    _vsr_rtm   = st.session_state.get("rtm_result")
+    _vsr_demo  = st.session_state.get("demo_mode", False)
+    if _vsr_demo:
+        _vsr_ur_fr = _vsr_ur_fr or DEMO_DATA.get("ur_fr")
+        _vsr_ts    = _vsr_ts    or DEMO_DATA.get("test_script")
+        _vsr_rtm   = _vsr_rtm   or DEMO_DATA.get("rtm")
+    _vsr_ok = _vsr_ur_fr is not None
+
+    # ── Breadcrumb ────────────────────────────────────────────────
+    breadcrumb(["Home", "Traceability", "VSR"])
+
+    # ── Top bar: title + GxP PDF export (top-right) ──────────────
+    _vsr_hdr_col, _vsr_pdf_col = st.columns([5, 1])
+    with _vsr_hdr_col:
+        page_header(
+            "Validation Summary Report",
+            "Consolidated GxP assurance record "
+            "· PCCP-ready · 21 CFR Part 11",
+        )
+    with _vsr_pdf_col:
+        st.markdown(
+            "<div style='height:1.5rem;'></div>",
+            unsafe_allow_html=True,
+        )
+        if _vsr_ok:
+            _vsr_pdf_bytes = _generate_vsr_pdf(
+                _vsr_ur_fr, _vsr_ts, _vsr_rtm,
+            )
+            st.download_button(
+                "⬇ GxP PDF",
+                data=_vsr_pdf_bytes,
+                file_name=(
+                    "VSR_"
+                    f"{datetime.utcnow():%Y%m%d_%H%M%S}"
+                    ".pdf"
+                ),
+                mime="application/pdf",
+                key="vsr_gxp_pdf_btn",
+                type="primary",
+            )
+
+    # ── Gate: require upstream data ───────────────────────────────
+    if not _vsr_ok:
+        empty_state(
+            "No Validation Data",
+            "Complete the Validation Factory and "
+            "Traceability workflows, then click "
+            "'Compile Record of Assurance' in the "
+            "Traceability tab.",
+            icon="file-shield",
+            action_label="Go to Validation Factory",
+        )
+    else:
+        # ── Derived values ────────────────────────────────────────
+        _vsr_risk = (
+            _vsr_ur_fr
+            .get("user_requirement", {})
+            .get("risk_level", "Medium")
+        )
+        _vsr_is_high = _vsr_risk.lower() == "high"
+        _vsr_cov = (
+            _vsr_rtm.get("coverage_percentage", 0)
+            if _vsr_rtm else 0
+        )
+        _vsr_steps = (
+            _vsr_ts.get("steps", []) if _vsr_ts else []
+        )
+        _vsr_pos = sum(
+            1 for s in _vsr_steps
+            if s.get("test_case_type") == "Positive"
+        )
+        _vsr_neg = sum(
+            1 for s in _vsr_steps
+            if s.get("test_case_type") == "Negative"
+        )
+        _vsr_edge = sum(
+            1 for s in _vsr_steps
+            if s.get("test_case_type") == "Edge_Case"
+        )
+        _vsr_setup = sum(
+            1 for s in _vsr_steps
+            if s.get("step_type") == "Setup"
+        )
+        _vsr_exec = len(_vsr_steps) - _vsr_setup
+        _vsr_adv = round(
+            (_vsr_neg + _vsr_edge)
+            / max(_vsr_exec, 1) * 100
+        )
+
+        # ── Status badge helper ───────────────────────────────────
+        def _vbadge(ok: bool) -> str:
+            if ok:
+                return (
+                    '<span class="badge badge-low"'
+                    ' style="font-size:0.62rem;">'
+                    "&#10003;&nbsp;Verified</span>"
+                )
+            return (
+                '<span class="badge badge-medium"'
+                ' style="font-size:0.62rem;">'
+                "&#9888;&nbsp;Review&nbsp;Required</span>"
+            )
+
+        # ── Section registry ──────────────────────────────────────
+        _vsr_secs = [
+            (
+                "validation-summary",
+                "Validation Summary",
+                _vsr_ur_fr is not None,
+            ),
+            (
+                "traceability",
+                "Traceability Coverage",
+                _vsr_rtm is not None and _vsr_cov >= 80,
+            ),
+            (
+                "performance",
+                "Performance Baseline",
+                _vsr_ts is not None,
+            ),
+            ("drift", "Drift Thresholds", True),
+            ("pccp",  "PCCP Roadmap",     True),
+        ]
+        if _vsr_is_high:
+            _vsr_secs += [
+                ("model-card",   "Model Card",         True),
+                ("health-check", "90-Day Health Check", True),
+            ]
+
+        # ── Active section state ──────────────────────────────────
+        if "vsr_active_section" not in st.session_state:
+            st.session_state.vsr_active_section = (
+                "validation-summary"
+            )
+        _vsr_active = st.session_state.vsr_active_section
+
+        # ── Page-scoped CSS ───────────────────────────────────────
+        st.markdown(
+            """
+            <style>
+            .vsr-nav-badge {
+                font-size: 0.6rem;
+                display: block;
+                margin: -0.25rem 0 0.35rem 0;
+            }
+            .vsr-section-card {
+                border: 1px solid #1e2d3d;
+                border-radius: 6px;
+                padding: 1.1rem 1.3rem 0.9rem;
+                margin-bottom: 0.9rem;
+                background: rgba(20, 30, 44, 0.55);
+            }
+            .vsr-section-title {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-bottom: 0.7rem;
+                padding-bottom: 0.45rem;
+                border-bottom: 1px solid #253647;
+                font-size: 1rem;
+                font-weight: 700;
+                color: #e8f4fb;
+            }
+            .vsr-kv-row {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 0.35rem;
+                font-size: 0.83rem;
+            }
+            .vsr-kv-key {
+                font-weight: 600;
+                color: #8fb4cc;
+                min-width: 9rem;
+            }
+            .vsr-kv-val { color: #d8eaf5; }
+            .vsr-thresh-tbl {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.8rem;
+                margin-top: 0.5rem;
+            }
+            .vsr-thresh-tbl th {
+                background: #0c1e30;
+                color: #6aaed4;
+                padding: 0.4rem 0.65rem;
+                text-align: left;
+                border-bottom: 2px solid #056696;
+            }
+            .vsr-thresh-tbl td {
+                padding: 0.38rem 0.65rem;
+                border-bottom: 1px solid #1e2d3d;
+                color: #c0d8e8;
+            }
+            .vsr-thresh-tbl tr.vsr-active-row td {
+                background: rgba(5,102,150,0.2);
+                color: #e8f4fb;
+                font-weight: 700;
+            }
+            .vsr-pccp-item {
+                display: flex;
+                gap: 0.9rem;
+                margin-bottom: 0.65rem;
+                align-items: flex-start;
+            }
+            .vsr-pccp-q {
+                min-width: 5rem;
+                font-weight: 700;
+                font-size: 0.82rem;
+                padding-top: 0.1rem;
+            }
+            .vsr-pccp-desc {
+                font-size: 0.82rem;
+                color: #c0d8e8;
+            }
+            .vsr-check-ok  { color: #4caf50; font-weight: 700; }
+            .vsr-check-fail{ color: #f44336; font-weight: 700; }
+            .vsr-checklist-item {
+                display: flex;
+                gap: 0.5rem;
+                font-size: 0.82rem;
+                margin-bottom: 0.28rem;
+                color: #c0d8e8;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # ── Master-Detail layout ──────────────────────────────────
+        _nav_c, _cnt_c = st.columns([1, 3])
+
+        # LEFT — Vertical scroll-spy nav ──────────────────────────
+        with _nav_c:
+            st.markdown(
+                "<p style='font-size:0.68rem;font-weight:700;"
+                "letter-spacing:0.07em;color:#6a8fa6;"
+                "text-transform:uppercase;"
+                "margin-bottom:0.4rem;'>"
+                "Report Sections</p>",
+                unsafe_allow_html=True,
+            )
+            for _sid, _slabel, _sok in _vsr_secs:
+                _act = _sid == _vsr_active
+                _bl = (
+                    "3px solid #056696;"
+                    if _act else
+                    "3px solid #1e2d3d;"
+                )
+                _bg = (
+                    "background:rgba(5,102,150,0.14);"
+                    if _act else ""
+                )
+                _fc = "#056696" if _act else "#8aa8bc"
+                _fw = "700" if _act else "400"
+                st.markdown(
+                    f'<div style="padding:0.45rem 0.55rem '
+                    f'0.05rem;border-left:{_bl}{_bg}'
+                    f'border-radius:0 4px 4px 0;'
+                    f'margin-bottom:0.05rem;">'
+                    f'<span style="font-size:0.78rem;'
+                    f'font-weight:{_fw};color:{_fc};">'
+                    f'{_slabel}</span><br/>'
+                    f'<span class="vsr-nav-badge">'
+                    f'{_vbadge(_sok)}</span></div>',
+                    unsafe_allow_html=True,
+                )
+                if st.button(
+                    "→ View",
+                    key=f"vsr_nav_{_sid}",
+                    use_container_width=True,
+                ):
+                    st.session_state.vsr_active_section = (
+                        _sid
+                    )
+                    st.rerun()
+
+        # RIGHT — Content card ─────────────────────────────────────
+        with _cnt_c:
+
+            def _card_open(title: str, ok: bool) -> None:
+                st.markdown(
+                    f'<div class="vsr-section-card">'
+                    f'<div class="vsr-section-title">'
+                    f"{title}&ensp;{_vbadge(ok)}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+            def _card_close() -> None:
+                st.markdown(
+                    "</div>", unsafe_allow_html=True
+                )
+
+            def _kv_html(k: str, v: str) -> None:
+                st.markdown(
+                    f'<div class="vsr-kv-row">'
+                    f'<span class="vsr-kv-key">{k}</span>'
+                    f'<span class="vsr-kv-val">{v}</span>'
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+            # ── Section: Validation Summary ───────────────────────
+            if _vsr_active == "validation-summary":
+                _card_open(
+                    "Validation Summary",
+                    _vsr_ur_fr is not None,
+                )
+                _ur_d = _vsr_ur_fr.get(
+                    "user_requirement", {}
+                )
+                _kv_html(
+                    "URS ID",
+                    _vsr_ur_fr.get("urs_id", "—"),
+                )
+                _kv_html(
+                    "UR ID", _ur_d.get("ur_id", "—"),
+                )
+                _kv_html(
+                    "Risk Level",
+                    _ur_d.get("risk_level", "—"),
+                )
+                _kv_html(
+                    "Risk Assessment",
+                    _ur_d.get("risk_assessment", "—"),
+                )
+                _kv_html(
+                    "Implementation",
+                    _ur_d.get(
+                        "implementation_method", "—"
+                    ),
+                )
+                _kv_html(
+                    "Test Strategy",
+                    _ur_d.get("test_strategy", "—"),
+                )
+                st.markdown(
+                    "<p style='margin:0.8rem 0 0.25rem;"
+                    "font-weight:700;font-size:0.82rem;"
+                    "color:#6aaed4;'>Requirement</p>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<blockquote style='border-left:"
+                    f"3px solid #056696;padding:"
+                    f"0.38rem 0.75rem;font-size:0.85rem;"
+                    f"color:#d8eaf5;margin:0;"
+                    f"font-style:italic;'>"
+                    f"{_ur_d.get('statement', '—')}"
+                    f"</blockquote>",
+                    unsafe_allow_html=True,
+                )
+                _frs_d = _vsr_ur_fr.get(
+                    "functional_requirements", []
+                )
+                if _frs_d:
+                    st.markdown(
+                        "<p style='margin:0.8rem 0 0.25rem;"
+                        "font-weight:700;font-size:0.82rem;"
+                        "color:#6aaed4;'>"
+                        "Functional Requirements</p>",
+                        unsafe_allow_html=True,
+                    )
+                    for _fr_i in _frs_d:
+                        _kv_html(
+                            _fr_i.get("fr_id", ""),
+                            _fr_i.get("statement", ""),
+                        )
+                _cn_d = _vsr_ur_fr.get(
+                    "compliance_notes", []
+                )
+                if _cn_d:
+                    st.markdown(
+                        "<p style='margin:0.8rem 0 0.25rem;"
+                        "font-weight:700;font-size:0.82rem;"
+                        "color:#6aaed4;'>"
+                        "Compliance Notes</p>",
+                        unsafe_allow_html=True,
+                    )
+                    for _n_i in _cn_d:
+                        st.markdown(
+                            f"<p style='font-size:0.8rem;"
+                            f"color:#9abccc;margin:0.18rem 0;"
+                            f"'>• {_n_i}</p>",
+                            unsafe_allow_html=True,
+                        )
+                _card_close()
+
+            # ── Section: Traceability Coverage ────────────────────
+            elif _vsr_active == "traceability":
+                _tc_ok = (
+                    _vsr_rtm is not None
+                    and _vsr_cov >= 80
+                )
+                _card_open("Traceability Coverage", _tc_ok)
+                if _vsr_rtm:
+                    _tc1, _tc2, _tc3, _tc4 = st.columns(4)
+                    _tc1.metric(
+                        "Total FRs",
+                        _vsr_rtm.get(
+                            "total_requirements", 0
+                        ),
+                    )
+                    _tc2.metric(
+                        "Covered",
+                        _vsr_rtm.get(
+                            "covered_requirements", 0
+                        ),
+                    )
+                    _tc3.metric(
+                        "Gaps",
+                        _vsr_rtm.get(
+                            "gap_requirements", 0
+                        ),
+                    )
+                    _tc4.metric(
+                        "Coverage", f"{_vsr_cov}%"
+                    )
+                    _tp = int(_vsr_cov)
+                    _tb = (
+                        "green" if _tp >= 80
+                        else "amber" if _tp >= 50
+                        else "red"
+                    )
+                    st.markdown(
+                        f'<div class="soho-progress"'
+                        f' style="margin:0.75rem 0 0.2rem;">'
+                        f'<div class="soho-progress-fill'
+                        f' {_tb}" style="width:{_tp}%;">'
+                        f'</div></div>'
+                        f'<p style="font-size:0.75rem;'
+                        f'color:#8aa8bc;margin:0;">'
+                        f"{_tp}% requirement coverage</p>",
+                        unsafe_allow_html=True,
+                    )
+                    _rrows = _vsr_rtm.get("rows", [])
+                    if _rrows:
+                        st.markdown(
+                            "<p style='margin:0.8rem 0 "
+                            "0.25rem;font-weight:700;"
+                            "font-size:0.82rem;"
+                            "color:#6aaed4;'>"
+                            "FR Coverage Detail</p>",
+                            unsafe_allow_html=True,
+                        )
+                        for _rr in _rrows[:12]:
+                            _rst = _rr.get(
+                                "coverage_status", "—"
+                            )
+                            _ric = (
+                                "&#10003;" if _rst == "Covered"
+                                else "&#10007;"
+                            )
+                            _rcl = (
+                                "badge-low"
+                                if _rst == "Covered"
+                                else "badge-high"
+                            )
+                            _req_s = _rr.get(
+                                "requirement_statement", ""
+                            )[:58]
+                            st.markdown(
+                                f'<div class="vsr-kv-row">'
+                                f'<span class="vsr-kv-key">'
+                                f"{_rr.get('fr_id','')}"
+                                f"</span>"
+                                f'<span class="vsr-kv-val">'
+                                f'<span class="badge {_rcl}"'
+                                f' style="font-size:0.6rem;">'
+                                f"{_ric} {_rst}</span>"
+                                f"&ensp;{_req_s}"
+                                f"</span></div>",
+                                unsafe_allow_html=True,
+                            )
+                else:
+                    st.info(
+                        "Generate the RTM in the "
+                        "Traceability tab first."
+                    )
+                _card_close()
+
+            # ── Section: Performance Baseline ─────────────────────
+            elif _vsr_active == "performance":
+                _card_open(
+                    "Performance Baseline",
+                    _vsr_ts is not None,
+                )
+                if _vsr_ts:
+                    _pb1, _pb2, _pb3, _pb4 = st.columns(4)
+                    _pb1.metric(
+                        "Total Steps", len(_vsr_steps)
+                    )
+                    _pb2.metric("Positive", _vsr_pos)
+                    _pb3.metric("Negative", _vsr_neg)
+                    _pb4.metric("Edge Cases", _vsr_edge)
+                    _abw = min(_vsr_adv, 100)
+                    _abc = (
+                        "green" if _abw >= 40 else "amber"
+                    )
+                    st.markdown(
+                        f'<div style="margin:0.75rem 0 0.2rem">'
+                        f'<span style="font-size:0.82rem;'
+                        f'font-weight:700;color:#6aaed4;">'
+                        f"Adversarial Coverage:&ensp;</span>"
+                        f'<span class="badge '
+                        f'{"badge-low" if _abw >= 40 else "badge-medium"}'
+                        f'" style="font-size:0.72rem;">'
+                        f"{_vsr_adv}%</span></div>"
+                        f'<div class="soho-progress">'
+                        f'<div class="soho-progress-fill'
+                        f' {_abc}" style="width:{_abw}%;">'
+                        f'</div></div>'
+                        f'<p style="font-size:0.73rem;'
+                        f"color:#8aa8bc;margin:0.2rem 0 "
+                        f"0.75rem;\">"
+                        f"Negative + Edge vs execution "
+                        f"steps</p>",
+                        unsafe_allow_html=True,
+                    )
+                    _qc_d = _vsr_ts.get(
+                        "quality_checklist", {}
+                    )
+                    if _qc_d:
+                        st.markdown(
+                            "<p style='margin:0.3rem 0 "
+                            "0.25rem;font-weight:700;"
+                            "font-size:0.82rem;"
+                            "color:#6aaed4;'>"
+                            "Quality Checklist</p>",
+                            unsafe_allow_html=True,
+                        )
+                        for _qk, _qv in _qc_d.items():
+                            _qic = (
+                                '<span class="vsr-check-ok">'
+                                "✓</span>"
+                                if _qv else
+                                '<span class="vsr-check-fail">'
+                                "✗</span>"
+                            )
+                            st.markdown(
+                                f'<div class="vsr-checklist'
+                                f'-item">{_qic}&ensp;'
+                                f"{_qk.replace('_',' ').title()}"
+                                f"</div>",
+                                unsafe_allow_html=True,
+                            )
+                else:
+                    st.info(
+                        "Generate test scripts in the "
+                        "Validation Factory tab first."
+                    )
+                _card_close()
+
+            # ── Section: Drift Thresholds ─────────────────────────
+            elif _vsr_active == "drift":
+                _card_open("Drift Thresholds", True)
+                st.markdown(
+                    "<p style='font-size:0.82rem;"
+                    "color:#8aa8bc;margin-bottom:0.75rem;'>"
+                    "Acceptable drift limits per GAMP 5 risk "
+                    "classification. The highlighted row "
+                    "reflects this document's risk level.</p>",
+                    unsafe_allow_html=True,
+                )
+                _dt_rows = [
+                    (
+                        "High", "≤ 5%", "90 days",
+                        "Rigorous Scripted",
+                        "Mandatory re-validate after any "
+                        "change event",
+                    ),
+                    (
+                        "Medium", "≤ 10%", "180 days",
+                        "Hybrid",
+                        "Scripted + unscripted review cycle",
+                    ),
+                    (
+                        "Low", "≤ 20%", "365 days",
+                        "Unscripted",
+                        "Annual exploratory charter",
+                    ),
+                ]
+                _tbl = (
+                    '<table class="vsr-thresh-tbl">'
+                    "<thead><tr>"
+                    "<th>Risk Level</th>"
+                    "<th>Drift Limit</th>"
+                    "<th>Re-validate</th>"
+                    "<th>Strategy</th>"
+                    "<th>Note</th>"
+                    "</tr></thead><tbody>"
+                )
+                for _drl, _ddl, _drv, _dst, _dnt in _dt_rows:
+                    _dact = (
+                        "vsr-active-row"
+                        if _drl.lower() == _vsr_risk.lower()
+                        else ""
+                    )
+                    _tbl += (
+                        f'<tr class="{_dact}">'
+                        f"<td><strong>{_drl}</strong></td>"
+                        f"<td>{_ddl}</td>"
+                        f"<td>{_drv}</td>"
+                        f"<td>{_dst}</td>"
+                        f"<td>{_dnt}</td>"
+                        f"</tr>"
+                    )
+                _tbl += "</tbody></table>"
+                st.markdown(_tbl, unsafe_allow_html=True)
+                _card_close()
+
+            # ── Section: PCCP Roadmap ─────────────────────────────
+            elif _vsr_active == "pccp":
+                _card_open("PCCP Roadmap", True)
+                st.markdown(
+                    f"<p style='font-size:0.82rem;"
+                    f"color:#8aa8bc;margin-bottom:0.75rem;'>"
+                    f"Post-Correction &amp; Change of "
+                    f"Practice roadmap for "
+                    f"<strong style='color:#e8f4fb;'>"
+                    f"{_vsr_risk} Risk</strong> "
+                    f"classification. Aligns with GAMP 5 "
+                    f"lifecycle and CSA proportionality "
+                    f"principle.</p>",
+                    unsafe_allow_html=True,
+                )
+                _pm_items = [
+                    (
+                        "Q1 — Month 1",
+                        "Initial baseline validation, "
+                        "IQ/OQ execution, UAT sign-off",
+                        "#056696",
+                    ),
+                ]
+                if _vsr_is_high:
+                    _pm_items.append((
+                        "Q1 — Week 4",
+                        "Adversarial test re-run and "
+                        "Model Card v1.0 publication",
+                        "#d97c2a",
+                    ))
+                _pm_items += [
+                    (
+                        "Q2",
+                        "First drift assessment, compliance "
+                        "gap review, CAPA if drift exceeds "
+                        "threshold",
+                        "#3a7ea8",
+                    ),
+                    (
+                        "Q3",
+                        "Mid-cycle performance audit, "
+                        "corrective action review, "
+                        "stakeholder sign-off",
+                        "#3a7ea8",
+                    ),
+                    (
+                        "Q4",
+                        "Annual re-validation, PCCP update, "
+                        "regulatory version check, new VSR",
+                        "#3a7ea8",
+                    ),
+                ]
+                for _pq, _pd, _pc in _pm_items:
+                    st.markdown(
+                        f'<div class="vsr-pccp-item">'
+                        f'<div class="vsr-pccp-q"'
+                        f' style="color:{_pc};">'
+                        f"{_pq}</div>"
+                        f'<div class="vsr-pccp-desc">'
+                        f"{_pd}</div></div>",
+                        unsafe_allow_html=True,
+                    )
+                _card_close()
+
+            # ── Section: Model Card (High Risk only) ──────────────
+            elif (
+                _vsr_active == "model-card"
+                and _vsr_is_high
+            ):
+                _card_open("Model Card", True)
+                st.markdown(
+                    "<p style='font-size:0.78rem;"
+                    "color:#d4922a;font-style:italic;"
+                    "margin-bottom:0.75rem;'>"
+                    "&#9888;&nbsp;Auto-attached: High Risk "
+                    "classification requires a Model Card "
+                    "per FDA AI/ML SAMD guidance.</p>",
+                    unsafe_allow_html=True,
+                )
+                _mc = {
+                    "System": "EVOLV Validation Factory",
+                    "Version": "0.1.0",
+                    "Risk Class": (
+                        f"{_vsr_risk} (GAMP 5 Cat. 5)"
+                    ),
+                    "Intended Use": (
+                        "Automated CSA/CSV document "
+                        "generation for GxP systems"
+                    ),
+                    "Reg. Framework": (
+                        "GAMP 5 Rev 2 | 21 CFR Part 11 "
+                        "| ICH Q10"
+                    ),
+                    "Knowledge Base": (
+                        "GAMP 5 & CSA guidance "
+                        "(Pinecone vector store)"
+                    ),
+                    "Output Types": (
+                        "URS · UR/FR · Test Scripts "
+                        "· RTM · VSR"
+                    ),
+                }
+                for _mk, _mv in _mc.items():
+                    _kv_html(_mk, _mv)
+                st.markdown(
+                    "<p style='margin:0.8rem 0 0.25rem;"
+                    "font-weight:700;font-size:0.82rem;"
+                    "color:#6aaed4;'>Limitations</p>",
+                    unsafe_allow_html=True,
+                )
+                for _lim in [
+                    "Output requires qualified human "
+                    "expert review before regulatory "
+                    "submission.",
+                    "Accuracy depends on completeness "
+                    "of ingested regulatory documents.",
+                    "Not a substitute for Qualified "
+                    "Person (QP) oversight.",
+                    "Embeddings are point-in-time — "
+                    "re-ingest after regulatory updates.",
+                ]:
+                    st.markdown(
+                        f"<p style='font-size:0.8rem;"
+                        f"color:#9abccc;margin:0.18rem 0;"
+                        f"'>• {_lim}</p>",
+                        unsafe_allow_html=True,
+                    )
+                _card_close()
+
+            # ── Section: 90-Day Health Check ──────────────────────
+            elif (
+                _vsr_active == "health-check"
+                and _vsr_is_high
+            ):
+                _card_open("90-Day Health Check", True)
+                st.markdown(
+                    "<p style='font-size:0.78rem;"
+                    "color:#d4922a;font-style:italic;"
+                    "margin-bottom:0.75rem;'>"
+                    "&#9888;&nbsp;Auto-attached: High Risk "
+                    "mandates a 90-day monitoring schedule "
+                    "per GAMP 5 §10.4 and CSA guidance.</p>",
+                    unsafe_allow_html=True,
+                )
+                _hcs = [
+                    (
+                        "Week 1",
+                        "Establish performance baseline: "
+                        "record step counts, coverage %, "
+                        "adversarial ratio",
+                    ),
+                    (
+                        "Week 2",
+                        "Initial compliance gap review: "
+                        "verify all FRs have test coverage",
+                    ),
+                    (
+                        "Week 4",
+                        "First drift measurement: compare "
+                        "against baseline thresholds (≤ 5%)",
+                    ),
+                    (
+                        "Week 6",
+                        "Mid-period adversarial re-test: "
+                        "re-run all negative & edge cases",
+                    ),
+                    (
+                        "Week 8",
+                        "Corrective action review: "
+                        "initiate CAPA if drift > threshold",
+                    ),
+                    (
+                        "Week 10",
+                        "Documentation update: refresh "
+                        "URS/UR-FR if system scope changed",
+                    ),
+                    (
+                        "Week 12",
+                        "Full re-validation: generate new "
+                        "VSR and obtain QA sign-off",
+                    ),
+                ]
+                for _hw, _ht in _hcs:
+                    st.markdown(
+                        f'<div class="vsr-pccp-item">'
+                        f'<div class="vsr-pccp-q"'
+                        f' style="color:#056696;">'
+                        f"{_hw}</div>"
+                        f'<div class="vsr-pccp-desc">'
+                        f"{_ht}</div></div>",
+                        unsafe_allow_html=True,
+                    )
+                st.markdown(
+                    "<p style='margin:0.75rem 0 0.25rem;"
+                    "font-weight:700;font-size:0.82rem;"
+                    "color:#6aaed4;'>Sign-off Checklist</p>",
+                    unsafe_allow_html=True,
+                )
+                for _ci in [
+                    "Audit trail reviewed and verified",
+                    "Test coverage ≥ 80% maintained",
+                    "No unresolved CAPAs outstanding",
+                    "Model Card updated if system changed",
+                    "Regulatory version drift checked",
+                    "Stakeholder sign-off obtained",
+                ]:
+                    st.markdown(
+                        f'<div class="vsr-checklist-item">'
+                        f'<span style="color:#5a8098;">'
+                        f"&#9744;</span>&ensp;{_ci}</div>",
+                        unsafe_allow_html=True,
+                    )
+                _card_close()
