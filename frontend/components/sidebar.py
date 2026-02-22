@@ -134,6 +134,20 @@ def render_sidebar(
                 "Skip doc lookup \u2014 use custom logic"
             )
 
+        # ---- Adversarial Red-Teaming toggle ----
+        adversarial_on = st.toggle(
+            "Enable Adversarial Red-Teaming",
+            key="adversarial_mode",
+        )
+        if adversarial_on:
+            st.markdown(
+                '<span style="color:#f0a500;'
+                ' font-size:0.72rem;">'
+                '⚡ High Intensity'
+                ' — Red-Teaming active</span>',
+                unsafe_allow_html=True,
+            )
+
         # ---- Load Demo Project ----
         st.markdown("---")
         if st.button(
