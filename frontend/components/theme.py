@@ -1,4 +1,4 @@
-"""Theme loader and colour constants for the Infor SOHO design system.
+"""Theme loader and colour constants for the SOHO design system.
 
 :requirement: URS-15.1 - Branded PDF / UI theming.
 """
@@ -8,8 +8,12 @@ import streamlit.components.v1 as components
 from pathlib import Path
 
 # ── Colour constants ─────────────────────────────────────────────
-INFOR_BLUE = "#056696"
-INFOR_SLATE = "#54585A"
+EV_BLUE = "#056696"
+EV_SLATE = "#54585A"
+
+# Backward-compatible aliases
+INFOR_BLUE = EV_BLUE
+INFOR_SLATE = EV_SLATE
 
 
 def load_theme(project_root: Path) -> None:
@@ -17,7 +21,7 @@ def load_theme(project_root: Path) -> None:
 
     :param project_root: Absolute path to the repository root.
     """
-    css_path = project_root / "frontend" / "infor_soho_theme.css"
+    css_path = project_root / "frontend" / "soho_theme.css"
     if css_path.exists():
         st.markdown(
             f"<style>{css_path.read_text(encoding='utf-8')}"

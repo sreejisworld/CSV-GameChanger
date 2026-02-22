@@ -1,4 +1,4 @@
-"""Page header and breadcrumb components (Infor SOHO style).
+"""Page header and breadcrumb components (SOHO style).
 
 :requirement: URS-1.1 - Consistent navigation chrome.
 """
@@ -7,7 +7,7 @@ import streamlit as st
 
 
 def breadcrumb(stages: list) -> None:
-    """Render an Infor SOHO breadcrumb trail.
+    """Render a SOHO breadcrumb trail.
 
     :param stages: Ordered list of breadcrumb labels.
     """

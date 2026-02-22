@@ -1,5 +1,5 @@
 /* =================================================================
-   EVOLV: The Validation Factory — Infor SOHO Design System Theme
+   EVOLV: The Validation Factory — SOHO Design System Theme
    =================================================================
    Neutral palette · Subtle borders · High-density enterprise layout
    ================================================================= */
@@ -9,38 +9,38 @@
 
 /* ── CSS Custom Properties ─────────────────────────────────────── */
 :root {
-    --infor-blue:   #056696;
-    --infor-blue-light: #0A7EB5;
-    --infor-blue-bg: #E8F4F8;
-    --infor-slate:  #54585A;
-    --infor-slate-light: #6E7275;
-    --infor-border: #E0E0E0;
-    --infor-bg:     #FFFFFF;
-    --infor-bg-alt: #F7F7F7;
-    --infor-bg-page: #F4F5F6;
-    --infor-green:  #488421;
-    --infor-green-bg: #E8F5E9;
-    --infor-red:    #B94E4E;
-    --infor-red-bg: #FDEAEA;
-    --infor-amber:  #D17D00;
-    --infor-amber-bg: #FFF4E6;
-    --infor-sidebar: #1B1B1B;
-    --infor-sidebar-hover: rgba(255,255,255,0.08);
+    --ev-blue:   #056696;
+    --ev-blue-light: #0A7EB5;
+    --ev-blue-bg: #E8F4F8;
+    --ev-slate:  #54585A;
+    --ev-slate-light: #6E7275;
+    --ev-border: #E0E0E0;
+    --ev-bg:     #FFFFFF;
+    --ev-bg-alt: #F7F7F7;
+    --ev-bg-page: #F4F5F6;
+    --ev-green:  #488421;
+    --ev-green-bg: #E8F5E9;
+    --ev-red:    #B94E4E;
+    --ev-red-bg: #FDEAEA;
+    --ev-amber:  #D17D00;
+    --ev-amber-bg: #FFF4E6;
+    --ev-sidebar: #1B1B1B;
+    --ev-sidebar-hover: rgba(255,255,255,0.08);
     --font-stack: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ── Dark Theme Variant ──────────────────────────────────────── */
 [data-theme="dark"] {
-    --infor-bg: #1A1A1A;
-    --infor-bg-page: #121212;
-    --infor-bg-alt: #2A2A2A;
-    --infor-border: #3A3A3A;
-    --infor-slate: #E0E0E0;
-    --infor-slate-light: #AAAAAA;
-    --infor-blue-bg: rgba(5,102,150,0.15);
-    --infor-green-bg: rgba(72,132,33,0.15);
-    --infor-red-bg: rgba(185,78,78,0.15);
-    --infor-amber-bg: rgba(209,125,0,0.15);
+    --ev-bg: #1A1A1A;
+    --ev-bg-page: #121212;
+    --ev-bg-alt: #2A2A2A;
+    --ev-border: #3A3A3A;
+    --ev-slate: #E0E0E0;
+    --ev-slate-light: #AAAAAA;
+    --ev-blue-bg: rgba(5,102,150,0.15);
+    --ev-green-bg: rgba(72,132,33,0.15);
+    --ev-red-bg: rgba(185,78,78,0.15);
+    --ev-amber-bg: rgba(209,125,0,0.15);
 }
 
 /* ── Global Resets ─────────────────────────────────────────────── */
@@ -48,16 +48,16 @@ html, body, [data-testid="stAppViewContainer"] {
     font-family: var(--font-stack) !important;
     font-size: 16px !important;
     line-height: 1.6 !important;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
 }
 
 [data-testid="stAppViewContainer"] > section > div {
-    background-color: var(--infor-bg-page);
+    background-color: var(--ev-bg-page);
 }
 
 h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-stack) !important;
-    color: var(--infor-slate) !important;
+    color: var(--ev-slate) !important;
 }
 
 /* Streamlit text elements — readable base */
@@ -89,17 +89,17 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Sidebar ───────────────────────────────────────────────────── */
 section[data-testid="stSidebar"] {
-    background-color: var(--infor-sidebar) !important;
+    background-color: var(--ev-sidebar) !important;
     min-width: 260px !important;
     max-width: 260px !important;
     width: 260px !important;
     flex-shrink: 0 !important;
     height: 100vh !important;
-    border-right: 2px solid var(--infor-blue) !important;
+    border-right: 2px solid var(--ev-blue) !important;
     overflow-y: auto;
 }
 section[data-testid="stSidebar"] > div:first-child {
-    background-color: var(--infor-sidebar) !important;
+    background-color: var(--ev-sidebar) !important;
 }
 
 /* ── Main Content ─────────────────────────────────────────────── */
@@ -134,7 +134,7 @@ section[data-testid="stSidebar"] hr {
     justify-content: center;
     width: 52px;
     height: 52px;
-    background: var(--infor-blue);
+    background: var(--ev-blue);
     border-radius: 10px;
     margin-bottom: 0.5rem;
 }
@@ -193,7 +193,7 @@ section[data-testid="stSidebar"] hr {
 }
 .nav-item.active {
     background: rgba(5, 102, 150, 0.18);
-    border-left: 3px solid var(--infor-blue);
+    border-left: 3px solid var(--ev-blue);
     color: #FFFFFF !important;
 }
 .nav-item i {
@@ -201,16 +201,69 @@ section[data-testid="stSidebar"] hr {
     width: 18px;
     text-align: center;
     flex-shrink: 0;
-    color: var(--infor-blue) !important;
+    color: var(--ev-blue) !important;
 }
 .nav-item.active i {
     color: #FFFFFF !important;
 }
 
+/* ── Sidebar nav buttons (inactive items) ───────────────────────
+   Style native st.button() widgets in the sidebar to match the
+   .nav-item appearance.  Active items are rendered as .nav-item
+   HTML (above), so these rules target only the button elements.
+   ─────────────────────────────────────────────────────────────── */
+section[data-testid="stSidebar"] div[data-testid="stButton"] {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    background: transparent !important;
+    border: none !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 0 !important;
+    color: #CCCCCC !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    font-family: var(--font-stack) !important;
+    padding: 0.55rem 1.2rem !important;
+    width: 100% !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    transition: background 0.15s, color 0.15s, border-color 0.15s !important;
+    box-shadow: none !important;
+    letter-spacing: 0.3px !important;
+    line-height: 1.6 !important;
+    height: auto !important;
+    min-height: 0 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: #FFFFFF !important;
+    border-left-color: transparent !important;
+    box-shadow: none !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:focus,
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:active {
+    outline: none !important;
+    box-shadow: none !important;
+    border-left-color: transparent !important;
+}
+/* "Load Demo Project" special button — keep its default styling */
+section[data-testid="stSidebar"] div[data-testid="stButton"]:has(button[data-testid*="load_demo"]) > button {
+    border-left: none !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 4px !important;
+    justify-content: center !important;
+    margin-top: 0.25rem !important;
+}
+
 /* Sidebar audit feed item */
 .audit-feed-item {
     background: rgba(255,255,255,0.06);
-    border-left: 2px solid var(--infor-blue);
+    border-left: 2px solid var(--ev-blue);
     border-radius: 3px;
     padding: 0.35rem 0.55rem;
     margin-bottom: 0.35rem;
@@ -226,21 +279,21 @@ section[data-testid="stSidebar"] hr {
 
 /* ── Page Header (soho-header) ─────────────────────────────────── */
 .soho-header {
-    background: var(--infor-bg);
-    border: 1px solid var(--infor-border);
-    border-top: 2px solid var(--infor-blue);
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
+    border-top: 2px solid var(--ev-blue);
     border-radius: 0 0 4px 4px;
     padding: 1.1rem 1.5rem;
     margin-bottom: 1.25rem;
 }
 .soho-header h2 {
-    color: var(--infor-slate) !important;
+    color: var(--ev-slate) !important;
     margin: 0 !important;
     font-weight: 600;
     font-size: 1.5rem;
 }
 .soho-header p {
-    color: var(--infor-slate-light) !important;
+    color: var(--ev-slate-light) !important;
     margin: 0.25rem 0 0 0 !important;
     font-size: 1rem;
 }
@@ -248,7 +301,7 @@ section[data-testid="stSidebar"] hr {
 /* ── Breadcrumb ────────────────────────────────────────────────── */
 .breadcrumb {
     font-size: 0.92rem;
-    color: var(--infor-slate-light);
+    color: var(--ev-slate-light);
     margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
@@ -260,7 +313,7 @@ section[data-testid="stSidebar"] hr {
 .breadcrumb-item:last-child {
     opacity: 1;
     font-weight: 600;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
 }
 .breadcrumb-sep {
     margin: 0 0.4rem;
@@ -270,9 +323,9 @@ section[data-testid="stSidebar"] hr {
 
 /* ── Container (soho-container) ────────────────────────────────── */
 .soho-container {
-    background: var(--infor-bg);
-    border: 1px solid var(--infor-border);
-    border-top: 2px solid var(--infor-blue);
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
+    border-top: 2px solid var(--ev-blue);
     border-radius: 0 0 4px 4px;
     padding: 1.25rem 1.5rem;
     margin-bottom: 1rem;
@@ -289,26 +342,26 @@ section[data-testid="stSidebar"] hr {
     line-height: 1.4;
 }
 .badge-high, .badge-error {
-    background-color: var(--infor-red-bg);
-    color: var(--infor-red);
+    background-color: var(--ev-red-bg);
+    color: var(--ev-red);
 }
 .badge-medium, .badge-warning {
-    background-color: var(--infor-amber-bg);
-    color: var(--infor-amber);
+    background-color: var(--ev-amber-bg);
+    color: var(--ev-amber);
 }
 .badge-low, .badge-success {
-    background-color: var(--infor-green-bg);
-    color: var(--infor-green);
+    background-color: var(--ev-green-bg);
+    color: var(--ev-green);
 }
 .badge-info {
-    background-color: var(--infor-blue-bg);
-    color: var(--infor-blue);
+    background-color: var(--ev-blue-bg);
+    color: var(--ev-blue);
 }
 
 /* ── Data Grid (soho-grid) ─────────────────────────────────────── */
 .soho-grid-wrap {
     overflow-x: auto;
-    border: 1px solid var(--infor-border);
+    border: 1px solid var(--ev-border);
     border-radius: 4px;
     margin-bottom: 0.75rem;
 }
@@ -316,7 +369,7 @@ section[data-testid="stSidebar"] hr {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
-    background: var(--infor-bg);
+    background: var(--ev-bg);
 }
 .soho-grid thead {
     position: sticky;
@@ -325,11 +378,11 @@ section[data-testid="stSidebar"] hr {
 }
 .soho-grid th {
     background-color: #F5F5F5;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     padding: 0.55rem 0.75rem;
     text-align: left;
     font-weight: 700;
-    border-bottom: 2px solid var(--infor-border);
+    border-bottom: 2px solid var(--ev-border);
     white-space: nowrap;
     font-size: 14px;
     letter-spacing: 0.01em;
@@ -348,32 +401,32 @@ section[data-testid="stSidebar"] hr {
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid #F0F0F0;
     vertical-align: top;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     line-height: 1.4;
 }
 .soho-grid tbody tr:nth-child(even) {
-    background-color: var(--infor-bg-alt);
+    background-color: var(--ev-bg-alt);
 }
 .soho-grid tbody tr:hover {
-    background-color: var(--infor-blue-bg);
+    background-color: var(--ev-blue-bg);
 }
 
 /* Row-status modifiers (semantic) */
 .soho-grid tbody tr.row-covered {
-    background-color: var(--infor-green-bg) !important;
+    background-color: var(--ev-green-bg) !important;
 }
 .soho-grid tbody tr.row-partial {
-    background-color: var(--infor-amber-bg) !important;
+    background-color: var(--ev-amber-bg) !important;
 }
 .soho-grid tbody tr.row-missing,
 .soho-grid tbody tr.row-gap {
-    background-color: var(--infor-red-bg) !important;
+    background-color: var(--ev-red-bg) !important;
 }
 
 /* ── Toolbar (soho-toolbar) ────────────────────────────────────── */
 .soho-toolbar {
     background: #FAFAFA;
-    border: 1px solid var(--infor-border);
+    border: 1px solid var(--ev-border);
     border-bottom: none;
     border-radius: 4px 4px 0 0;
     padding: 0.45rem 0.75rem;
@@ -394,17 +447,17 @@ section[data-testid="stSidebar"] hr {
 .toolbar-title {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     margin-right: 0.75rem;
 }
 .toolbar-btn {
-    background: var(--infor-bg);
-    border: 1px solid var(--infor-border);
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
     padding: 0.3rem 0.7rem;
     font-size: 0.9rem;
     border-radius: 3px;
     cursor: pointer;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     font-family: var(--font-stack);
     transition: background 0.15s, border-color 0.15s;
     display: inline-flex;
@@ -419,7 +472,7 @@ section[data-testid="stSidebar"] hr {
     width: 14px;
     height: 14px;
     fill: none;
-    stroke: var(--infor-slate);
+    stroke: var(--ev-slate);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -429,9 +482,9 @@ section[data-testid="stSidebar"] hr {
 .soho-empty-state {
     text-align: center;
     padding: 3.5rem 1.5rem;
-    color: var(--infor-slate-light);
-    background: var(--infor-bg);
-    border: 1px dashed var(--infor-border);
+    color: var(--ev-slate-light);
+    background: var(--ev-bg);
+    border: 1px dashed var(--ev-border);
     border-radius: 4px;
     margin: 1rem 0;
 }
@@ -442,7 +495,7 @@ section[data-testid="stSidebar"] hr {
 .soho-empty-state .empty-title {
     font-size: 1.15rem;
     font-weight: 600;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     margin: 0 0 0.3rem 0;
 }
 .soho-empty-state .empty-desc {
@@ -455,7 +508,7 @@ section[data-testid="stSidebar"] hr {
 }
 .soho-empty-state .soho-btn-primary {
     display: inline-block;
-    background: var(--infor-blue);
+    background: var(--ev-blue);
     color: #FFFFFF;
     border: none;
     padding: 0.55rem 1.4rem;
@@ -468,7 +521,7 @@ section[data-testid="stSidebar"] hr {
     transition: background 0.15s;
 }
 .soho-empty-state .soho-btn-primary:hover {
-    background: var(--infor-blue-light);
+    background: var(--ev-blue-light);
 }
 
 /* ── Skeleton Loading ──────────────────────────────────────────── */
@@ -504,8 +557,8 @@ section[data-testid="stSidebar"] hr {
 
 /* ── KPI / Metric Card ─────────────────────────────────────────── */
 .soho-kpi {
-    background: var(--infor-bg);
-    border: 1px solid var(--infor-border);
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
     border-radius: 4px;
     padding: 1rem 1.1rem;
     text-align: center;
@@ -513,12 +566,12 @@ section[data-testid="stSidebar"] hr {
 .soho-kpi .kpi-value {
     font-size: 1.6rem;
     font-weight: 700;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     line-height: 1.2;
 }
 .soho-kpi .kpi-label {
     font-size: 0.88rem;
-    color: var(--infor-slate-light);
+    color: var(--ev-slate-light);
     margin-top: 0.25rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -526,20 +579,20 @@ section[data-testid="stSidebar"] hr {
 
 /* Override Streamlit metric cards */
 div[data-testid="stMetric"] {
-    background-color: var(--infor-bg) !important;
-    border: 1px solid var(--infor-border) !important;
+    background-color: var(--ev-bg) !important;
+    border: 1px solid var(--ev-border) !important;
     border-radius: 4px !important;
     padding: 0.9rem 1rem !important;
     box-shadow: none !important;
 }
 div[data-testid="stMetric"] label {
-    color: var(--infor-slate-light) !important;
+    color: var(--ev-slate-light) !important;
     font-size: 0.88rem !important;
     text-transform: uppercase;
     letter-spacing: 0.03em;
 }
 div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-    color: var(--infor-slate) !important;
+    color: var(--ev-slate) !important;
     font-weight: 700 !important;
 }
 
@@ -553,22 +606,22 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     flex-wrap: wrap;
 }
 .workflow-step {
-    border: 1px solid var(--infor-blue);
-    color: var(--infor-blue);
+    border: 1px solid var(--ev-blue);
+    color: var(--ev-blue);
     padding: 0.4rem 0.9rem;
     border-radius: 4px;
     font-size: 0.9rem;
     font-weight: 600;
     white-space: nowrap;
-    background: var(--infor-bg);
+    background: var(--ev-bg);
 }
 .workflow-step.active {
-    background: var(--infor-blue);
+    background: var(--ev-blue);
     color: #FFFFFF;
 }
 .workflow-arrow {
     font-size: 1rem;
-    color: var(--infor-blue);
+    color: var(--ev-blue);
     padding: 0 0.35rem;
     opacity: 0.5;
 }
@@ -577,29 +630,29 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
 .section-title {
     font-size: 1.15rem;
     font-weight: 600;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     margin: 0.8rem 0 0.4rem 0;
     padding-bottom: 0.3rem;
-    border-bottom: 1px solid var(--infor-border);
+    border-bottom: 1px solid var(--ev-border);
 }
 
 /* ── Info / Justification Box ──────────────────────────────────── */
 .soho-info-box {
-    background: var(--infor-blue-bg);
-    border-left: 3px solid var(--infor-blue);
+    background: var(--ev-blue-bg);
+    border-left: 3px solid var(--ev-blue);
     padding: 0.75rem 1rem;
     border-radius: 0 4px 4px 0;
     font-size: 1rem;
     line-height: 1.5;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
     margin: 0.5rem 0;
 }
 
 /* ── Cost / Alert Banner ───────────────────────────────────────── */
 .soho-alert-banner {
-    background: var(--infor-red-bg);
-    border: 1px solid var(--infor-red);
-    border-left: 4px solid var(--infor-red);
+    background: var(--ev-red-bg);
+    border: 1px solid var(--ev-red);
+    border-left: 4px solid var(--ev-red);
     border-radius: 0 4px 4px 0;
     padding: 1rem 1.25rem;
     margin: 0.75rem 0;
@@ -607,16 +660,16 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
 .soho-alert-banner .alert-value {
     font-size: 1.4rem;
     font-weight: 700;
-    color: var(--infor-red);
+    color: var(--ev-red);
 }
 .soho-alert-banner .alert-label {
     font-size: 0.95rem;
-    color: var(--infor-slate);
+    color: var(--ev-slate);
 }
 
 /* ── Progress Bar Override ─────────────────────────────────────── */
 .soho-progress {
-    background: var(--infor-border);
+    background: var(--ev-border);
     border-radius: 3px;
     height: 8px;
     overflow: hidden;
@@ -627,15 +680,15 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-radius: 3px;
     transition: width 0.4s ease;
 }
-.soho-progress-fill.green  { background: var(--infor-green); }
-.soho-progress-fill.amber  { background: var(--infor-amber); }
-.soho-progress-fill.red    { background: var(--infor-red); }
+.soho-progress-fill.green  { background: var(--ev-green); }
+.soho-progress-fill.amber  { background: var(--ev-amber); }
+.soho-progress-fill.red    { background: var(--ev-red); }
 
 /* ── Streamlit Primary Button Override ─────────────────────────── */
 button[kind="primary"],
 .stDownloadButton > button {
-    background-color: var(--infor-blue) !important;
-    border-color: var(--infor-blue) !important;
+    background-color: var(--ev-blue) !important;
+    border-color: var(--ev-blue) !important;
     color: #FFFFFF !important;
     border-radius: 4px !important;
     font-family: var(--font-stack) !important;
@@ -644,14 +697,14 @@ button[kind="primary"],
 }
 button[kind="primary"]:hover,
 .stDownloadButton > button:hover {
-    background-color: var(--infor-blue-light) !important;
-    border-color: var(--infor-blue-light) !important;
+    background-color: var(--ev-blue-light) !important;
+    border-color: var(--ev-blue-light) !important;
 }
 
 /* Secondary buttons */
 button[kind="secondary"] {
-    border-color: var(--infor-border) !important;
-    color: var(--infor-slate) !important;
+    border-color: var(--ev-border) !important;
+    color: var(--ev-slate) !important;
     border-radius: 4px !important;
     font-family: var(--font-stack) !important;
 }
@@ -662,28 +715,28 @@ button[kind="secondary"]:hover {
 
 /* ── Streamlit Expander Override ────────────────────────────────── */
 details[data-testid="stExpander"] {
-    border: 1px solid var(--infor-border) !important;
+    border: 1px solid var(--ev-border) !important;
     border-radius: 4px !important;
-    background: var(--infor-bg) !important;
+    background: var(--ev-bg) !important;
 }
 details[data-testid="stExpander"] summary {
     font-weight: 600 !important;
-    color: var(--infor-slate) !important;
+    color: var(--ev-slate) !important;
 }
 
 /* ── Streamlit Selectbox / Input Override ───────────────────────── */
 div[data-baseweb="select"] > div {
-    border-color: var(--infor-border) !important;
+    border-color: var(--ev-border) !important;
     border-radius: 4px !important;
 }
 div[data-baseweb="select"] > div:focus-within {
-    border-color: var(--infor-blue) !important;
-    box-shadow: 0 0 0 1px var(--infor-blue) !important;
+    border-color: var(--ev-blue) !important;
+    box-shadow: 0 0 0 1px var(--ev-blue) !important;
 }
 .stTextArea textarea:focus,
 .stTextInput input:focus {
-    border-color: var(--infor-blue) !important;
-    box-shadow: 0 0 0 1px var(--infor-blue) !important;
+    border-color: var(--ev-blue) !important;
+    box-shadow: 0 0 0 1px var(--ev-blue) !important;
 }
 
 /* ── Streamlit Form Controls — readable sizes ────────────────── */
@@ -730,6 +783,55 @@ input, select, textarea, .form-control {
     font-size: 14px !important;
     line-height: 1.4;
 }
+
+/* ── SPA Navigation ──────────────────────────────────────────── */
+/* Hide the hidden nav trigger text input */
+section[data-testid="stSidebar"]
+    .stTextInput:has(input[aria-label="_nav_trigger"]) {
+    position: absolute !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+/* Transparent iframe for SPA nav component */
+section[data-testid="stSidebar"] iframe {
+    background: transparent !important;
+    border: none !important;
+    color-scheme: normal !important;
+}
+/* Keep sidebar rock-solid during content transitions */
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] * {
+    animation: none !important;
+}
+/* Main content fade-in transition (200ms) */
+@keyframes spa-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+[data-testid="stAppViewContainer"]
+    > section:not([data-testid="stSidebar"]) > div {
+    animation: spa-fade-in 200ms ease-out;
+}
+/* Skeleton placeholder for page transitions */
+.spa-skeleton {
+    padding: 1.5rem;
+}
+.spa-skeleton-bar {
+    height: 18px;
+    background: linear-gradient(
+        90deg, #F0F0F0 25%, #E4E4E4 50%, #F0F0F0 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: 3px;
+    margin-bottom: 12px;
+}
+.spa-skeleton-bar.wide  { width: 80%; }
+.spa-skeleton-bar.med   { width: 55%; }
+.spa-skeleton-bar.short { width: 35%; }
 
 /* ── Scrollbar (subtle) ────────────────────────────────────────── */
 ::-webkit-scrollbar {
