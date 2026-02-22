@@ -3035,6 +3035,7 @@ elif page.startswith("10"):
         vsr_ur_fr: dict,
         vsr_ts: dict,
         vsr_rtm: dict,
+        is_signed: bool = False,
     ) -> bytes:
         """Generate paginated GxP VSR PDF with e-sig placeholders.
 
@@ -3049,13 +3050,24 @@ elif page.startswith("10"):
             .get("user_requirement", {})
             .get("risk_level", "Unknown")
         )
-        _urs_id = (vsr_ur_fr or {}).get("urs_id", "—")
+        _urs_id = (vsr_ur_fr or {}).get("urs_id", "-")
         _ts_now = datetime.utcnow().strftime(
             "%Y-%m-%d %H:%M UTC"
         )
 
         class _VSRPDF(FPDF):
             def header(self):
+                # — DRAFT watermark (disappears when signed) ────────
+                if not is_signed:
+                    _cx = self.w / 2
+                    _cy = self.h / 2
+                    self.set_font("Helvetica", "B", 70)
+                    self.set_text_color(220, 220, 220)
+                    _tw = self.get_string_width("DRAFT")
+                    self.rotate(45, _cx, _cy)
+                    self.text(_cx - _tw / 2, _cy, "DRAFT")
+                    self.rotate(0)
+                # — Branded header line ──────────────────────────────
                 _eff = self.w - self.l_margin - self.r_margin
                 _hw = _eff / 2
                 _hy = self.get_y()
@@ -3141,6 +3153,8 @@ elif page.startswith("10"):
                 .replace("\u201c", '"')   # left double quote
                 .replace("\u201d", '"')   # right double quote
                 .replace("\u2026", "...")  # ellipsis
+                .replace("\u2264", "<=")  # ≤
+                .replace("\u2265", ">=")  # ≥
             )
 
         def _kv(k: str, v: str) -> None:
@@ -3287,16 +3301,38 @@ elif page.startswith("10"):
             _adv_r = round(
                 (_neg + _edge) / max(_exec_c, 1) * 100
             )
-            _kv("Script ID",
-                vsr_ts.get("script_id", "—"))
-            _kv("Test Type",
-                vsr_ts.get("test_type", "—"))
-            _kv("Total Steps", str(len(_steps)))
-            _kv("Setup Steps", str(_setup))
-            _kv("Positive Cases", str(_pos))
-            _kv("Negative Cases", str(_neg))
-            _kv("Edge Cases", str(_edge))
-            _kv("Adversarial Coverage", f"{_adv_r}%")
+            _pb_rows = [
+                ("Script ID",
+                 _sanitize(vsr_ts.get("script_id", "-"))),
+                ("Test Type",
+                 _sanitize(vsr_ts.get("test_type", "-"))),
+                ("Total Steps",         str(len(_steps))),
+                ("Setup Steps",         str(_setup)),
+                ("Positive Cases",      str(_pos)),
+                ("Negative Cases",      str(_neg)),
+                ("Edge Cases",          str(_edge)),
+                ("Adversarial Coverage", f"{_adv_r}%"),
+            ]
+            _pb_cw = [90, 84]
+            # — Header row (Infor Blue + white text) ──────────────
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_fill_color(5, 102, 150)
+            pdf.set_text_color(255, 255, 255)
+            for _ph, _pw in zip(["Metric", "Value"], _pb_cw):
+                pdf.cell(_pw, 7, _ph, border=1, fill=True)
+            pdf.ln()
+            # — Data rows (alternating light fill) ────────────────
+            pdf.set_text_color(30, 30, 30)
+            for _ri, (_mk, _mv) in enumerate(_pb_rows):
+                if _ri % 2 == 0:
+                    pdf.set_fill_color(240, 246, 251)
+                else:
+                    pdf.set_fill_color(255, 255, 255)
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.cell(_pb_cw[0], 6, _mk, border=1, fill=True)
+                pdf.set_font("Helvetica", "", 8)
+                pdf.cell(_pb_cw[1], 6, _mv, border=1, fill=True)
+                pdf.ln()
             _qc = vsr_ts.get("quality_checklist", {})
             if _qc:
                 pdf.ln(2)
@@ -3320,9 +3356,9 @@ elif page.startswith("10"):
         )
         pdf.ln(3)
         _thresh = [
-            ("High",   "≤ 5%",  "90 days",  "Rigorous Scripted"),
-            ("Medium", "≤ 10%", "180 days", "Hybrid"),
-            ("Low",    "≤ 20%", "365 days", "Unscripted"),
+            ("High",   "<= 5%",  "90 days",  "Rigorous Scripted"),
+            ("Medium", "<= 10%", "180 days", "Hybrid"),
+            ("Low",    "<= 20%", "365 days", "Unscripted"),
         ]
         _cw = [28, 28, 30, 54]
         _hdrs = [
@@ -3330,13 +3366,15 @@ elif page.startswith("10"):
             "Re-validate", "Strategy",
         ]
         pdf.set_font("Helvetica", "B", 8)
-        pdf.set_fill_color(225, 238, 248)
+        pdf.set_fill_color(5, 102, 150)     # Infor Blue
+        pdf.set_text_color(255, 255, 255)   # white header text
         for _i, _hh in enumerate(_hdrs):
             pdf.cell(
-                _cw[_i], 6, _hh,
+                _cw[_i], 7, _hh,
                 border=1, fill=True,
             )
         pdf.ln()
+        pdf.set_text_color(30, 30, 30)
         pdf.set_font("Helvetica", "", 8)
         for _rl, _dl, _rv, _st_s in _thresh:
             _hl = _rl.lower() == _risk.lower()
@@ -3509,6 +3547,15 @@ elif page.startswith("10"):
         _vsr_rtm   = _vsr_rtm   or DEMO_DATA.get("rtm")
     _vsr_ok = _vsr_ur_fr is not None
 
+    # ── Handle "Compile Record of Assurance" from sidebar ─────────
+    if st.session_state.pop("_compile_vsr_requested", False):
+        if _vsr_ok:
+            st.session_state["_vsr_preview_bytes"] = (
+                _generate_vsr_pdf(
+                    _vsr_ur_fr, _vsr_ts, _vsr_rtm,
+                )
+            )
+
     # ── Breadcrumb ────────────────────────────────────────────────
     breadcrumb(["Home", "Traceability", "VSR"])
 
@@ -3526,8 +3573,11 @@ elif page.startswith("10"):
             unsafe_allow_html=True,
         )
         if _vsr_ok:
-            _vsr_pdf_bytes = _generate_vsr_pdf(
-                _vsr_ur_fr, _vsr_ts, _vsr_rtm,
+            _vsr_pdf_bytes = (
+                st.session_state.get("_vsr_preview_bytes")
+                or _generate_vsr_pdf(
+                    _vsr_ur_fr, _vsr_ts, _vsr_rtm,
+                )
             )
             st.download_button(
                 "⬇ GxP PDF",
@@ -3541,6 +3591,24 @@ elif page.startswith("10"):
                 key="vsr_gxp_pdf_btn",
                 type="primary",
             )
+
+    # ── Live Preview (when compiled from sidebar button) ──────────
+    if "_vsr_preview_bytes" in st.session_state:
+        import base64 as _b64mod
+        _pdf_b64 = _b64mod.b64encode(
+            st.session_state["_vsr_preview_bytes"]
+        ).decode()
+        st.markdown(
+            "#### Live Preview — Record of Assurance"
+        )
+        st.components.v1.html(
+            f'<iframe src="data:application/pdf;base64,'
+            f'{_pdf_b64}" width="100%" height="800" '
+            f'style="border:none; border-radius:6px;">'
+            f"</iframe>",
+            height=820,
+        )
+        st.markdown("---")
 
     # ── Gate: require upstream data ───────────────────────────────
     if not _vsr_ok:
