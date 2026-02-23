@@ -19,7 +19,11 @@ import pandas as pd
 from datetime import datetime
 
 from frontend.components.theme import load_theme
-from frontend.components.header import breadcrumb, page_header
+from frontend.components.header import (
+    breadcrumb,
+    page_header,
+    adversarial_page_header,
+)
 from frontend.components.data_grid import toolbar, empty_state, skeleton_table
 from frontend.components.sidebar import render_sidebar
 
@@ -823,13 +827,97 @@ page = render_sidebar(audit_csv=AUDIT_CSV)
 
 
 # -------------------------------------------------------------------
+# Helper: generate negative-testing and data-drift scenarios
+# -------------------------------------------------------------------
+def generate_adversarial_scenarios(ur_fr: dict) -> list:
+    """Generate negative-testing and data-drift scenarios.
+
+    Targets two specific failure classes:
+
+    * **Negative Testing** — cases where the system *should* reject
+      the input (invalid fields, missing mandatories, type mismatches).
+    * **Data Drift** — how the system handles out-of-range values
+      that silently corrupt QC records over time.
+
+    :param ur_fr: UR/FR document from RequirementArchitect.
+    :return: List of two adversarial scenario dicts.
+    :requirement: URS-21.2 - Negative testing and drift scenarios.
+    """
+    ur = ur_fr.get("user_requirement", {})
+    frs = ur_fr.get("functional_requirements", [])
+    ur_stmt = ur.get("statement", "the requirement")
+    risk_level = ur.get("risk_level", "Low")
+
+    # ── NEG-1: Negative Testing ────────────────────────────────
+    fr_labels = ", ".join(
+        f.get("fr_id", "") for f in frs[:3]
+    ) or "FR-1"
+    neg_1 = {
+        "scenario_id": "NEG-1",
+        "type": "Negative Testing",
+        "title": "System Rejection of Invalid Input",
+        "description": (
+            f"Submit requests for '{ur_stmt[:70]}' "
+            f"with deliberately invalid field "
+            f"combinations, missing mandatory fields, "
+            f"and type-mismatched values. Verify the "
+            f"system rejects each case with a "
+            f"structured, auditable error and does NOT "
+            f"persist partial data. Scope: {fr_labels}."
+        ),
+        "failure_mode": (
+            "Partial acceptance of invalid input "
+            "creates orphan records in the audit trail,"
+            " violating 21 CFR Part 11 data integrity."
+        ),
+    }
+
+    # ── DRIFT-1: Data Drift / Out-of-Range ─────────────────────
+    _thresholds = {
+        "high": ("<= 5%", "90 days"),
+        "medium": ("<= 10%", "180 days"),
+        "low": ("<= 20%", "365 days"),
+    }
+    _drift_limit, _period = _thresholds.get(
+        risk_level.lower(), ("<= 20%", "365 days")
+    )
+    drift_1 = {
+        "scenario_id": "DRIFT-1",
+        "type": "Data Drift",
+        "title": "Out-of-Range Value Handling",
+        "description": (
+            f"Inject values systematically outside "
+            f"acceptable range for '{ur_stmt[:60]}'. "
+            f"Verify the system flags, quarantines, or "
+            f"rejects out-of-range data without silent "
+            f"propagation. GAMP 5 drift threshold for "
+            f"{risk_level} risk: {_drift_limit} "
+            f"over {_period}."
+        ),
+        "failure_mode": (
+            "Silent acceptance of out-of-range data "
+            "introduces undetected drift that "
+            "invalidates calibration records and "
+            "corrupts QC statistical process control."
+        ),
+    }
+
+    return [neg_1, drift_1]
+
+
+# -------------------------------------------------------------------
 # Helper: deterministic adversarial red-team analysis
 # -------------------------------------------------------------------
-def _run_adversarial_analysis(ur_fr: dict) -> dict:
+def _run_adversarial_analysis(
+    ur_fr: dict,
+    extra_scenarios: list = None,
+) -> dict:
     """Run deterministic adversarial stress-test analysis.
 
-    Produces 3 stress-test scenarios and an assurance confidence
-    score without any LLM or Pinecone calls.
+    Produces base stress-test scenarios (ST-1/ST-2/ST-3) plus any
+    ``extra_scenarios`` passed in (e.g. from
+    ``generate_adversarial_scenarios()``), and an assurance
+    confidence score — no LLM or Pinecone calls.
 
     :param ur_fr: UR/FR document from RequirementArchitect.
     :return: Adversarial analysis result dict.
@@ -963,9 +1051,12 @@ def _run_adversarial_analysis(ur_fr: dict) -> dict:
     score_rationale = " + ".join(rationale_parts)
 
     from datetime import datetime as _dt
+    _all_scenarios = [st1, st2, st3]
+    if extra_scenarios:
+        _all_scenarios.extend(extra_scenarios)
     return {
         "adversarial_mode": True,
-        "stress_tests": [st1, st2, st3],
+        "stress_tests": _all_scenarios,
         "assurance_confidence_score": score,
         "score_rationale": score_rationale,
         "generated_at": (
@@ -1895,7 +1986,7 @@ elif page.startswith("5"):
 # ===================================================================
 elif page.startswith("6"):
     breadcrumb(["Home", "Validation Factory"])
-    page_header(
+    adversarial_page_header(
         "Validation Factory",
         "End-to-end: requirement \u2192 UR/FR \u2192 CSA test script",
     )
@@ -1936,15 +2027,10 @@ elif page.startswith("6"):
             "document lookup; using custom UR/FR logic"
         )
     if _adversarial_vf:
-        st.markdown(
-            '<span class="badge badge-high"'
-            ' style="font-size:0.72rem;">'
-            '⚡ High-Assurance Mode</span>',
-            unsafe_allow_html=True,
-        )
         st.caption(
-            "Advanced diagnostics active: "
-            "This may take longer to process."
+            "Advanced diagnostics active — "
+            "red-team analysis will run after test "
+            "script generation."
         )
 
     # ---- Input controls ----
@@ -2093,16 +2179,27 @@ elif page.startswith("6"):
                     "Generate requirements first."
                 )
             else:
-                _spinner_msg = (
-                    "Drafting CSA test script "
-                    "+ running red-team analysis..."
-                    if _adversarial_vf
-                    else "Drafting CSA test script..."
-                )
-                with st.spinner(_spinner_msg):
+                if _adversarial_vf:
+                    # ── Progress bar for deep-dive
+                    #    adversarial analysis ──────────
+                    import time as _time
+                    _prog = st.progress(
+                        0,
+                        text=(
+                            "Initializing deep-dive "
+                            "analysis..."
+                        ),
+                    )
                     try:
                         from Agents.delta_agent import (
                             DeltaAgent,
+                        )
+                        _prog.progress(
+                            20,
+                            text=(
+                                "Drafting CSA "
+                                "test script..."
+                            ),
                         )
                         delta = DeltaAgent()
                         script = (
@@ -2114,23 +2211,85 @@ elif page.startswith("6"):
                         st.session_state.vf_test_script = (
                             script
                         )
-                        if _adversarial_vf:
-                            st.session_state\
-                                .vf_adversarial_result = (
-                                _run_adversarial_analysis(
-                                    ur_fr
-                                )
+                        _prog.progress(
+                            45,
+                            text=(
+                                "Scanning for negative "
+                                "test scenarios..."
+                            ),
+                        )
+                        _time.sleep(0.3)
+                        _prog.progress(
+                            70,
+                            text=(
+                                "Analysing data drift "
+                                "thresholds..."
+                            ),
+                        )
+                        _extra = (
+                            generate_adversarial_scenarios(
+                                ur_fr
                             )
-                        else:
-                            st.session_state\
-                                .vf_adversarial_result = (
-                                None
+                        )
+                        _time.sleep(0.3)
+                        _prog.progress(
+                            88,
+                            text=(
+                                "Computing assurance "
+                                "confidence score..."
+                            ),
+                        )
+                        adv_result = (
+                            _run_adversarial_analysis(
+                                ur_fr,
+                                extra_scenarios=_extra,
                             )
+                        )
+                        _prog.progress(
+                            100,
+                            text=(
+                                "Red-team analysis "
+                                "complete."
+                            ),
+                        )
+                        _time.sleep(0.4)
+                        _prog.empty()
+                        st.session_state\
+                            .vf_adversarial_result = (
+                            adv_result
+                        )
                     except Exception as exc:
+                        _prog.empty()
                         st.error(
                             f"Test script generation "
                             f"failed: {exc}"
                         )
+                else:
+                    with st.spinner(
+                        "Drafting CSA test script..."
+                    ):
+                        try:
+                            from Agents.delta_agent import (
+                                DeltaAgent,
+                            )
+                            delta = DeltaAgent()
+                            script = (
+                                delta
+                                .generate_csa_test_from_ur_fr(
+                                    ur_fr, vf_test_type
+                                )
+                            )
+                            st.session_state.vf_test_script\
+                                = script
+                            st.session_state\
+                                .vf_adversarial_result = (
+                                None
+                            )
+                        except Exception as exc:
+                            st.error(
+                                f"Test script generation "
+                                f"failed: {exc}"
+                            )
 
     # ---- Display results side-by-side ----
     st.markdown("---")
@@ -3472,19 +3631,27 @@ elif page.startswith("10"):
 
         def _sanitize(txt: str) -> str:
             """Replace non-Latin-1 chars so Helvetica core font survives."""
-            return (
+            _s = (
                 str(txt)
-                .replace("\u2022", "-")   # bullet •
-                .replace("\u2013", "-")   # en dash
-                .replace("\u2014", "-")   # em dash
-                .replace("\u2018", "'")   # left single quote
-                .replace("\u2019", "'")   # right single quote
-                .replace("\u201c", '"')   # left double quote
-                .replace("\u201d", '"')   # right double quote
-                .replace("\u2026", "...")  # ellipsis
-                .replace("\u2264", "<=")  # ≤
-                .replace("\u2265", ">=")  # ≥
+                .replace("\u2022", "-")    # bullet •
+                .replace("\u2013", "-")    # en dash
+                .replace("\u2014", "-")    # em dash
+                .replace("\u2018", "'")    # left single quote
+                .replace("\u2019", "'")    # right single quote
+                .replace("\u201c", '"')    # left double quote
+                .replace("\u201d", '"')    # right double quote
+                .replace("\u2026", "...")   # ellipsis
+                .replace("\u2264", "<=")   # ≤
+                .replace("\u2265", ">=")   # ≥
+                .replace("\u2192", "->")   # right arrow →
+                .replace("\u2190", "<-")   # left arrow ←
+                .replace("\u2194", "<->")  # bidirectional ↔
+                .replace("\u2122", "(TM)") # trademark (TM)
             )
+            # Safety net: drop any remaining non-Latin-1 chars
+            return _s.encode(
+                "latin-1", errors="replace"
+            ).decode("latin-1")
 
         def _kv(k: str, v: str) -> None:
             _kw = 52
@@ -3605,9 +3772,90 @@ elif page.startswith("10"):
             _body("Generate the RTM in the Traceability "
                   "tab to populate this section.")
 
+        # — Adversarial Resilience & Edge Case Analysis ————————————
+        pdf.add_page()
+        _h1("3. Adversarial Resilience & Edge Case Analysis")
+        if adversarial_result:
+            _conf = adversarial_result.get(
+                "assurance_confidence_score", 0
+            )
+            _rat = adversarial_result.get(
+                "score_rationale", ""
+            )
+            _kv(
+                "Assurance Confidence Score",
+                f"{_conf} / 100",
+            )
+            _body(_sanitize(_rat))
+            pdf.ln(3)
+            _sts = adversarial_result.get(
+                "stress_tests", []
+            )
+            if _sts:
+                _cw_adv = [22, 38, 52, 62]
+                pdf.set_fill_color(5, 102, 150)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_font("Helvetica", "B", 7)
+                for _col, _cw_a in zip(
+                    [
+                        "Scenario",
+                        "Type",
+                        "Title",
+                        "Failure Mode",
+                    ],
+                    _cw_adv,
+                ):
+                    pdf.cell(
+                        _cw_a, 6, _col,
+                        border=1, fill=True,
+                    )
+                pdf.ln()
+                pdf.set_fill_color(255, 255, 255)
+                pdf.set_text_color(30, 30, 30)
+                pdf.set_font("Helvetica", "", 7)
+                for _st_r in _sts:
+                    _row_vals = [
+                        _st_r.get("scenario_id", ""),
+                        _st_r.get("type", ""),
+                        _st_r.get("title", ""),
+                        _st_r.get("failure_mode", ""),
+                    ]
+                    _row_y = pdf.get_y()
+                    _row_x = pdf.l_margin
+                    _heights = []
+                    for _rv, _cw_a in zip(
+                        _row_vals, _cw_adv
+                    ):
+                        _lines = (
+                            pdf.get_string_width(
+                                _sanitize(_rv)
+                            ) / (_cw_a - 1)
+                        )
+                        _heights.append(
+                            max(6, int(_lines + 1) * 5)
+                        )
+                    _max_h = max(_heights)
+                    for _rv, _cw_a in zip(
+                        _row_vals, _cw_adv
+                    ):
+                        pdf.set_xy(_row_x, _row_y)
+                        pdf.multi_cell(
+                            _cw_a, 5,
+                            _sanitize(_rv),
+                            border=1,
+                        )
+                        _row_x += _cw_a
+                    pdf.set_y(_row_y + _max_h)
+        else:
+            _body(
+                "Standard Validation Protocol — "
+                "Adversarial Red-Teaming was not "
+                "active during this session."
+            )
+
         # — Performance Baseline ———————————————————————————————————
         pdf.add_page()
-        _h1("3. Performance Baseline")
+        _h1("4. Performance Baseline")
         if vsr_ts:
             _steps = vsr_ts.get("steps", [])
             _pos = sum(
@@ -3677,7 +3925,7 @@ elif page.startswith("10"):
 
         # — Drift Thresholds ———————————————————————————————————————
         pdf.add_page()
-        _h1("4. Drift Thresholds")
+        _h1("5. Drift Thresholds")
         _body(
             "Acceptable drift limits per GAMP 5 risk "
             "classification. Active row reflects current "
@@ -3722,7 +3970,7 @@ elif page.startswith("10"):
 
         # — PCCP Roadmap ———————————————————————————————————————————
         pdf.add_page()
-        _h1("5. PCCP Roadmap")
+        _h1("6. PCCP Roadmap")
         _body(
             f"Post-Correction & Change of Practice roadmap "
             f"for {_risk} Risk classification."
@@ -3748,99 +3996,20 @@ elif page.startswith("10"):
         ]
         for _mq, _md in _milestones:
             pdf.set_font("Helvetica", "B", 8)
-            pdf.cell(34, 5.5, _sanitize(_mq) + ":", ln=False)
+            pdf.cell(
+                34, 5.5, _sanitize(_mq) + ":",
+                new_x=XPos.RIGHT, new_y=YPos.TOP,
+            )
             pdf.set_font("Helvetica", "", 8)
-            pdf.multi_cell(0, 5.5, _sanitize(_md))
-
-        # — Adversarial Resilience Summary ————————————————————————
-        pdf.add_page()
-        _h1("5a. Adversarial Resilience Summary")
-        if adversarial_result:
-            _conf = adversarial_result.get(
-                "assurance_confidence_score", 0
-            )
-            _rat = adversarial_result.get(
-                "score_rationale", ""
-            )
-            _kv(
-                "Assurance Confidence Score",
-                f"{_conf} / 100",
-            )
-            _body(_sanitize(_rat))
-            pdf.ln(3)
-            # Stress-test table
-            _sts = adversarial_result.get(
-                "stress_tests", []
-            )
-            if _sts:
-                # Table header
-                _cw_adv = [22, 38, 52, 62]
-                pdf.set_fill_color(5, 102, 150)
-                pdf.set_text_color(255, 255, 255)
-                pdf.set_font("Helvetica", "B", 7)
-                for _col, _cw in zip(
-                    [
-                        "Scenario",
-                        "Type",
-                        "Title",
-                        "Failure Mode",
-                    ],
-                    _cw_adv,
-                ):
-                    pdf.cell(
-                        _cw, 6, _col,
-                        border=1, fill=True,
-                    )
-                pdf.ln()
-                pdf.set_fill_color(255, 255, 255)
-                pdf.set_text_color(30, 30, 30)
-                pdf.set_font("Helvetica", "", 7)
-                for _st_row in _sts:
-                    _row_vals = [
-                        _st_row.get("scenario_id", ""),
-                        _st_row.get("type", ""),
-                        _st_row.get("title", ""),
-                        _st_row.get("failure_mode", ""),
-                    ]
-                    _row_y = pdf.get_y()
-                    _row_x = pdf.l_margin
-                    _max_h = 6
-                    # measure heights
-                    _heights = []
-                    for _rv, _cw in zip(
-                        _row_vals, _cw_adv
-                    ):
-                        _lines = (
-                            pdf.get_string_width(
-                                _sanitize(_rv)
-                            ) / (_cw - 1)
-                        )
-                        _heights.append(
-                            max(6, int(_lines + 1) * 5)
-                        )
-                    _max_h = max(_heights)
-                    for _rv, _cw in zip(
-                        _row_vals, _cw_adv
-                    ):
-                        pdf.set_xy(_row_x, _row_y)
-                        pdf.multi_cell(
-                            _cw, 5,
-                            _sanitize(_rv),
-                            border=1,
-                        )
-                        _row_x += _cw
-                    pdf.set_y(_row_y + _max_h)
-        else:
-            _body(
-                "Standard Validation Protocol — "
-                "Adversarial Red-Teaming was not "
-                "active during this session."
+            pdf.multi_cell(
+                0, 5.5, _sanitize(_md),
+                new_x=XPos.LMARGIN, new_y=YPos.NEXT,
             )
 
         # — Model Card (High Risk only) ————————————————————————————
         if _risk.lower() == "high":
             pdf.add_page()
-            _h1("6. Model Card")
+            _h1("7. Model Card")
             _body(
                 "Auto-attached: High Risk classification "
                 "requires Model Card per FDA AI/ML SAMD "
@@ -3874,7 +4043,7 @@ elif page.startswith("10"):
 
             # — 90-Day Health Check ————————————————————————————————
             pdf.add_page()
-            _h1("7. 90-Day Health Check Schedule")
+            _h1("8. 90-Day Health Check Schedule")
             _body(
                 "Auto-attached: High Risk mandates "
                 "90-day monitoring per GAMP 5 §10.4."
@@ -3893,9 +4062,15 @@ elif page.startswith("10"):
             ]
             for _wk, _wt in _hc:
                 pdf.set_font("Helvetica", "B", 8)
-                pdf.cell(26, 5.5, _wk + ":", ln=False)
+                pdf.cell(
+                    26, 5.5, _sanitize(_wk) + ":",
+                    new_x=XPos.RIGHT, new_y=YPos.TOP,
+                )
                 pdf.set_font("Helvetica", "", 8)
-                pdf.multi_cell(0, 5.5, _sanitize(_wt))
+                pdf.multi_cell(
+                    0, 5.5, _sanitize(_wt),
+                    new_x=XPos.LMARGIN, new_y=YPos.NEXT,
+                )
 
         # — E-Signature Placeholders ———————————————————————————————
         pdf.add_page()

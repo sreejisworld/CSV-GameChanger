@@ -134,19 +134,20 @@ def render_sidebar(
                 "Skip doc lookup \u2014 use custom logic"
             )
 
-        # ---- Adversarial Red-Teaming toggle ----
-        adversarial_on = st.toggle(
-            "Enable Adversarial Red-Teaming",
-            key="adversarial_mode",
+        # ---- Adversarial Red-Teaming status (toggle lives
+        #      in the Validation Factory page header) ----
+        _adv_active = st.session_state.get(
+            "adversarial_mode", False
         )
-        if adversarial_on:
+        if _adv_active:
             st.markdown(
                 '<span style="color:#f0a500;'
                 ' font-size:0.72rem;">'
-                '⚡ High Intensity'
-                ' — Red-Teaming active</span>',
+                '⚡ Adversarial Mode: Active</span>',
                 unsafe_allow_html=True,
             )
+        else:
+            st.caption("Adversarial Mode: Off")
 
         # ---- Load Demo Project ----
         st.markdown("---")
