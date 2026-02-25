@@ -829,19 +829,29 @@ page = render_sidebar(audit_csv=AUDIT_CSV)
 # -------------------------------------------------------------------
 # Helper: generate negative-testing and data-drift scenarios
 # -------------------------------------------------------------------
-def generate_adversarial_scenarios(ur_fr: dict) -> list:
-    """Generate negative-testing and data-drift scenarios.
+def generate_adversarial_scenarios(
+    ur_fr: dict,
+    limitations: list = None,
+) -> list:
+    """Generate negative-testing, data-drift, and vendor-constraint scenarios.
 
-    Targets two specific failure classes:
+    Targets three failure classes:
 
     * **Negative Testing** — cases where the system *should* reject
       the input (invalid fields, missing mandatories, type mismatches).
     * **Data Drift** — how the system handles out-of-range values
       that silently corrupt QC records over time.
+    * **Vendor Constraints (LIM-N)** — each vendor-stated limitation
+      becomes an enforcement scenario; the system must actively reject
+      or block the prohibited action.
 
     :param ur_fr: UR/FR document from RequirementArchitect.
-    :return: List of two adversarial scenario dicts.
+    :param limitations: Optional list of vendor limitation strings
+                        extracted by IngestorAgent (from ingest_result
+                        or gap_analysis_report).  Capped at 5.
+    :return: List of adversarial scenario dicts.
     :requirement: URS-21.2 - Negative testing and drift scenarios.
+    :requirement: URS-21.3 - Vendor constraint enforcement scenarios.
     """
     ur = ur_fr.get("user_requirement", {})
     frs = ur_fr.get("functional_requirements", [])
@@ -902,7 +912,38 @@ def generate_adversarial_scenarios(ur_fr: dict) -> list:
         ),
     }
 
-    return [neg_1, drift_1]
+    scenarios = [neg_1, drift_1]
+
+    # ── LIM-N: Vendor Constraint Enforcement ───────────────────
+    for idx, lim in enumerate(
+        (limitations or [])[:5], start=1
+    ):
+        lim_short = lim.strip()
+        scenarios.append({
+            "scenario_id": f"LIM-{idx}",
+            "type": "Vendor Constraint",
+            "title": (
+                f"Enforce: {lim_short[:60]}"
+                f"{'...' if len(lim_short) > 60 else ''}"
+            ),
+            "description": (
+                f"The vendor document states: "
+                f"\"{lim_short[:120]}"
+                f"{'...' if len(lim_short) > 120 else ''}\". "
+                f"Attempt to exercise this prohibited action "
+                f"against '{ur_stmt[:60]}' and confirm the "
+                f"system rejects it with an auditable error. "
+                f"Verify no partial state is persisted."
+            ),
+            "failure_mode": (
+                f"Failure to enforce vendor constraint "
+                f"'{lim_short[:50]}...' creates a compliance "
+                f"gap that invalidates the system's stated "
+                f"intended-use boundary."
+            ),
+        })
+
+    return scenarios
 
 
 # -------------------------------------------------------------------
@@ -1342,9 +1383,17 @@ if page == "1":
 
         lims = ingest.get("limitations", [])
         if lims:
+            # Bridge: make limitations available to Page 6
+            # adversarial engine across page navigation
+            st.session_state.vendor_limitations = lims
             with st.expander(
                 f"Extracted Limitations ({len(lims)})"
             ):
+                st.caption(
+                    "These constraints are automatically "
+                    "loaded into the Adversarial Red-Teaming "
+                    "engine on the Validation Factory page."
+                )
                 for lim in lims:
                     st.markdown(
                         f'<span class="badge badge-high">'
@@ -1530,6 +1579,18 @@ if page == "1":
                         f"(score: `{score}`)",
                         unsafe_allow_html=True,
                     )
+
+        # Bridge gap-result limitations into Page 6 feed
+        # (merges with any already set by ingest result)
+        gap_lims = gap.get("limitations", [])
+        if gap_lims:
+            existing = st.session_state.get(
+                "vendor_limitations", []
+            )
+            merged = list(
+                dict.fromkeys(existing + gap_lims)
+            )
+            st.session_state.vendor_limitations = merged
 
         with st.expander("Raw JSON"):
             st.json(gap)
@@ -2323,9 +2384,15 @@ elif page.startswith("6"):
                                 "thresholds..."
                             ),
                         )
+                        _vendor_lims = (
+                            st.session_state.get(
+                                "vendor_limitations", []
+                            )
+                        )
                         _extra = (
                             generate_adversarial_scenarios(
-                                ur_fr
+                                ur_fr,
+                                limitations=_vendor_lims,
                             )
                         )
                         _time.sleep(0.3)
@@ -2767,6 +2834,29 @@ elif page.startswith("6"):
                 "CSA test script here."
             )
 
+    # ---- Vendor Limitations Feed indicator ----
+    if _adversarial_vf:
+        _vl = st.session_state.get("vendor_limitations", [])
+        if _vl:
+            with st.expander(
+                f"⚡ Vendor Limitations Feed "
+                f"({len(_vl)} constraints loaded)",
+                expanded=False,
+            ):
+                st.caption(
+                    "These constraints were extracted from "
+                    "your ingested vendor document and are "
+                    "injected as LIM-N scenarios into the "
+                    "adversarial engine."
+                )
+                for _i, _lim in enumerate(_vl, 1):
+                    st.markdown(
+                        f'<span class="badge badge-high" '
+                        f'style="font-size:0.7rem;">'
+                        f"LIM-{_i}</span>&nbsp;{_lim}",
+                        unsafe_allow_html=True,
+                    )
+
     # ---- Adversarial Stress Test Results ----
     _adv_res = st.session_state.get(
         "vf_adversarial_result"
@@ -2800,9 +2890,19 @@ elif page.startswith("6"):
 
         _sts = _adv_res.get("stress_tests", [])
         if _sts:
+            # ST-1 / ST-2 / ST-3 — standard 3-column grid
+            _base = [
+                s for s in _sts
+                if not s.get("scenario_id",
+                              "").startswith("LIM")
+            ]
+            _lim_sts = [
+                s for s in _sts
+                if s.get("scenario_id", "").startswith("LIM")
+            ]
             _ac1, _ac2, _ac3 = st.columns(3)
             _adv_cols = [_ac1, _ac2, _ac3]
-            for _i, _st_item in enumerate(_sts[:3]):
+            for _i, _st_item in enumerate(_base[:3]):
                 with _adv_cols[_i]:
                     st.markdown(
                         f'<span class="badge '
@@ -2829,6 +2929,79 @@ elif page.startswith("6"):
                         f'</span>',
                         unsafe_allow_html=True,
                     )
+
+            # NEG-1 / DRIFT-1 — extra generated scenarios
+            _extra_sts = [
+                s for s in _sts
+                if not s.get("scenario_id", "").startswith(
+                    "LIM"
+                ) and s not in _base
+            ]
+            if _extra_sts:
+                _ec1, _ec2 = st.columns(2)
+                _extra_cols = [_ec1, _ec2]
+                for _i, _st_item in enumerate(
+                    _extra_sts[:2]
+                ):
+                    with _extra_cols[_i]:
+                        st.markdown(
+                            f'<span class="badge '
+                            f'badge-medium" '
+                            f'style="font-size:0.7rem;">'
+                            f'{_st_item.get("scenario_id","")} '
+                            f'— {_st_item.get("type","")}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f'**{_st_item.get("title","")}**'
+                        )
+                        st.markdown(
+                            _st_item.get("description", "")
+                        )
+                        _fm = _st_item.get(
+                            "failure_mode", ""
+                        )
+                        st.markdown(
+                            f'<span style="color:#c0392b;'
+                            f'font-size:0.78rem;">'
+                            f'⚠ Failure Mode: {_fm}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
+
+            # LIM-N — vendor constraint enforcement scenarios
+            if _lim_sts:
+                st.markdown(
+                    "##### ⚡ Vendor Constraint Scenarios"
+                )
+                for _st_item in _lim_sts:
+                    with st.expander(
+                        f'{_st_item.get("scenario_id","")} '
+                        f'— {_st_item.get("title","")}',
+                        expanded=False,
+                    ):
+                        st.markdown(
+                            f'<span class="badge badge-high" '
+                            f'style="font-size:0.7rem;">'
+                            f'{_st_item.get("scenario_id","")} '
+                            f'— {_st_item.get("type","")}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            _st_item.get("description", "")
+                        )
+                        _fm = _st_item.get(
+                            "failure_mode", ""
+                        )
+                        st.markdown(
+                            f'<span style="color:#c0392b;'
+                            f'font-size:0.78rem;">'
+                            f'⚠ Failure Mode: {_fm}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
 
     # ---- Download Validation Report (combined PDF) ----
     vr_ur = st.session_state.vf_ur_fr
