@@ -1288,7 +1288,7 @@ if page == "1":
     if ingest is not None:
         st.markdown("---")
         st.markdown("### Document Structure")
-        im1, im2, im3 = st.columns(3)
+        im1, im2, im3, im4 = st.columns(4)
         im1.metric("Title", ingest.get("title", "-"))
         im2.metric(
             "Pages", ingest.get("total_pages", "-")
@@ -1296,6 +1296,10 @@ if page == "1":
         im3.metric(
             "Sections",
             len(ingest.get("sections", [])),
+        )
+        im4.metric(
+            "Limitations",
+            len(ingest.get("limitations", [])),
         )
 
         sections = ingest.get("sections", [])
@@ -1310,6 +1314,7 @@ if page == "1":
                         "section_index",
                         "heading",
                         "page_number",
+                        "section_type",
                         "content",
                     ]
                     if c in sec_df.columns
@@ -1335,6 +1340,18 @@ if page == "1":
                 for i, r in enumerate(reqs, 1):
                     st.markdown(f"{i}. {r}")
 
+        lims = ingest.get("limitations", [])
+        if lims:
+            with st.expander(
+                f"Extracted Limitations ({len(lims)})"
+            ):
+                for lim in lims:
+                    st.markdown(
+                        f'<span class="badge badge-high">'
+                        f"&#x26A0;</span>&nbsp;{lim}",
+                        unsafe_allow_html=True,
+                    )
+
         with st.expander("Raw JSON"):
             st.json(ingest)
 
@@ -1345,13 +1362,15 @@ if page == "1":
         st.markdown("### GAMP 5 Gap Analysis")
 
         # Summary metrics
-        gm1, gm2, gm3 = st.columns(3)
+        gm1, gm2, gm3, gm4 = st.columns(4)
         total_cat = gap.get("total_categories", 0)
         covered = gap.get("covered", 0)
+        partial_count = gap.get("partial", 0)
         gaps_count = gap.get("gaps", 0)
         gm1.metric("Categories Assessed", total_cat)
         gm2.metric("Covered", covered)
-        gm3.metric("Gaps Found", gaps_count)
+        gm3.metric("Partial", partial_count)
+        gm4.metric("Gaps Found", gaps_count)
 
         # Coverage bar
         if total_cat > 0:
@@ -1399,6 +1418,7 @@ if page == "1":
                 for i, f in enumerate(findings):
                     cat = f.get("category", "Unknown")
                     status = f.get("status", "-")
+                    sim_score = f.get("similarity_score", 0.0)
                     badge = _status_badge(status)
 
                     with st.expander(
@@ -1407,6 +1427,10 @@ if page == "1":
                         st.markdown(
                             f"**Status:** {badge}",
                             unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f"**Similarity Score:** "
+                            f"`{sim_score:.4f} / 1.00`"
                         )
                         st.markdown(
                             f"**Vendor Evidence:** "
@@ -1420,6 +1444,51 @@ if page == "1":
                             f"**Recommendation:** "
                             f"{f.get('recommendation', '-')}"
                         )
+                        clause_map = f.get(
+                            "regulatory_clause_mapping", []
+                        )
+                        if clause_map:
+                            with st.expander(
+                                "Regulatory Clause Mapping"
+                            ):
+                                clause_rows = [
+                                    {
+                                        "Rank": c.get("rank", ""),
+                                        "Source": c.get(
+                                            "source", ""
+                                        ),
+                                        "Page": c.get("page", ""),
+                                        "Score": round(
+                                            float(
+                                                c.get(
+                                                    "similarity_score",
+                                                    0,
+                                                )
+                                            ),
+                                            4,
+                                        ),
+                                        "Excerpt": (
+                                            c.get(
+                                                "text_excerpt", ""
+                                            )[:120] + "…"
+                                            if len(
+                                                c.get(
+                                                    "text_excerpt",
+                                                    "",
+                                                )
+                                            ) > 120
+                                            else c.get(
+                                                "text_excerpt", ""
+                                            )
+                                        ),
+                                    }
+                                    for c in clause_map
+                                ]
+                                st.dataframe(
+                                    pd.DataFrame(clause_rows),
+                                    use_container_width=True,
+                                    hide_index=True,
+                                )
 
             # Downloadable findings table
             findings_df = pd.DataFrame(findings)
@@ -1433,6 +1502,34 @@ if page == "1":
                 ),
                 mime="text/csv",
             )
+
+        # Requirement → GAMP 5 Clause Mapping
+        req_mappings = gap.get("requirement_mappings", [])
+        if req_mappings:
+            with st.expander(
+                f"Requirement \u2192 GAMP 5 Clause Mapping "
+                f"({len(req_mappings)})"
+            ):
+                for rm in req_mappings:
+                    req_text = rm.get("requirement", "")
+                    clauses = rm.get("regulatory_clauses", [])
+                    top_clause = clauses[0] if clauses else {}
+                    src = top_clause.get("source", "-")
+                    pg = top_clause.get("page", "-")
+                    score = round(
+                        float(
+                            top_clause.get("similarity_score", 0)
+                        ),
+                        4,
+                    )
+                    st.markdown(
+                        f"**{req_text[:100]}"
+                        f"{'…' if len(req_text) > 100 else ''}**"
+                        f" &nbsp;→&nbsp; "
+                        f"`{src}` p.{pg} "
+                        f"(score: `{score}`)",
+                        unsafe_allow_html=True,
+                    )
 
         with st.expander("Raw JSON"):
             st.json(gap)
