@@ -1,5 +1,5 @@
 """
-Agents package - AI logic for CSV Engine.
+Agents package - AI logic for EVOLV Engine.
 
 :requirement: URS-3.0 - System shall provide automated risk assessment agents.
 """

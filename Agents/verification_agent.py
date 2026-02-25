@@ -30,6 +30,10 @@ from dataclasses import dataclass, field
 from Agents.integrity_manager import (
     log_audit_event as _log_integrity_event,
 )
+from Agents.requirement_architect import (
+    _clean_chunk_text,
+    _clean_source_document,
+)
 
 try:
     from pinecone import Pinecone
@@ -364,9 +368,13 @@ class VerificationAgent:
             if match.score >= min_score:
                 matches.append({
                     "chunk_id": match.id,
-                    "text": match.metadata.get("text", ""),
-                    "source_document": match.metadata.get(
-                        "source_document", ""
+                    "text": _clean_chunk_text(
+                        match.metadata.get("text", "")
+                    ),
+                    "source_document": _clean_source_document(
+                        match.metadata.get(
+                            "source_document", ""
+                        )
                     ),
                     "page_number": match.metadata.get(
                         "page_number", 0

@@ -21,7 +21,7 @@ from Agents.requirement_architect import (
 
 app = FastAPI(
     title="CSV-GameChanger",
-    description="GAMP 5 / CSA Compliant CSV Engine",
+    description="GAMP 5 / CSA Compliant EVOLV Engine",
     version="0.1.0",
 )
 

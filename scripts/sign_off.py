@@ -65,7 +65,7 @@ def sign_off() -> None:
     """
     print()
     print("=" * 60)
-    print("  Trustme AI - Digital Sign-Off")
+    print("  EVOLV: The Validation Factory - Sign-Off")
     print("=" * 60)
 
     # ----------------------------------------------------------

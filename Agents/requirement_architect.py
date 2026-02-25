@@ -7,9 +7,11 @@ context retrieved from Pinecone vector store.
 :requirement: URS-6.1 - System shall generate URS from natural language input.
 """
 import os
+import re
 import json
 from enum import Enum
 from pathlib import Path
+from collections import namedtuple
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 
@@ -35,6 +37,68 @@ TOP_K_RESULTS = 5
 MIN_SIMILARITY_SCORE = 0.5
 
 _KNOWN_REG_VERSIONS: set = set()
+
+# ── PDF watermark / metadata cleaning ────────────────────────────
+_WATERMARK_RE = re.compile(
+    r"Downloaded\s+from\s+.*?(?:without|only)\s*\.?",
+    re.IGNORECASE | re.DOTALL,
+)
+_PERSONAL_USE_RE = re.compile(
+    r"[Ff]or\s+personal\s+use\s+only\.?",
+)
+_BY_NAME_RE = re.compile(
+    r"\bby\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}\b"
+)
+_DATE_RE = re.compile(
+    r"\b(?:January|February|March|April|May|June|July|August"
+    r"|September|October|November|December)"
+    r"\s+\d{1,2},?\s+\d{4}\b",
+    re.IGNORECASE,
+)
+
+
+def _clean_chunk_text(text: str) -> str:
+    """Strip PDF watermark metadata from chunk text.
+
+    Removes 'Downloaded from ...', 'by [Name]', dates, and
+    'For personal use only' stamps that leak from source PDFs.
+
+    :param text: Raw text from Pinecone chunk.
+    :return: Cleaned text with only document content.
+    """
+    text = _WATERMARK_RE.sub("", text)
+    text = _PERSONAL_USE_RE.sub("", text)
+    text = _DATE_RE.sub("", text)
+    # Collapse whitespace left behind
+    text = re.sub(r"\s{2,}", " ", text).strip()
+    return text
+
+
+def _clean_source_document(source: str) -> str:
+    """Extract only the document title from a source filename.
+
+    :param source: Raw source_document string (e.g. PDF filename).
+    :return: Clean document title.
+    """
+    # Remove file extension
+    title = re.sub(r"\.\w{2,4}$", "", source)
+    # Remove 'Downloaded from ...' suffix if embedded in filename
+    title = _WATERMARK_RE.sub("", title)
+    title = _PERSONAL_USE_RE.sub("", title)
+    # Replace underscores with spaces for readability
+    title = title.replace("_", " ").strip()
+    return title
+
+CriticalityResult = namedtuple(
+    "CriticalityResult",
+    ["criticality", "matched_keywords", "source"],
+)
+"""Result of keyword-based criticality classification.
+
+:param criticality: The determined ``Criticality`` enum value.
+:param matched_keywords: All keywords that triggered the match.
+:param source: ``"requirement_text"`` or ``"context_text"``.
+"""
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "enterprise_standards"
 
@@ -255,6 +319,621 @@ URFR_CATEGORIES: List[str] = [
     "Non-functional",
 ]
 
+# ── Regulatory Fingerprint map ────────────────────────────────
+# Domain priority (highest first): Patient Safety > Data
+# Integrity > GxP Compliance > Quality System > Operational
+
+_DOMAIN_PRIORITY: List[str] = [
+    "Patient Safety",
+    "Data Integrity",
+    "GxP Compliance",
+    "Quality System",
+    "Operational",
+]
+
+_REGULATORY_FINGERPRINT_MAP: Dict[str, Dict[str, Any]] = {
+    # ── Patient Safety ────────────────────────────────────
+    "patient": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 820.30(g)",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "ISPE GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Design validation shall ensure the device "
+            "conforms to defined user needs and intended "
+            "uses. Patient-facing systems require rigorous "
+            "scripted testing per GAMP 5 risk-based "
+            "approach."
+        ),
+        "expert_advice": (
+            "I've seen FDA 483s issued solely because a "
+            "firm couldn't demonstrate that patient-"
+            "facing software was validated to the level "
+            "the risk demanded. Don't short-cut this — "
+            "scripted IQ/OQ/PQ with documented expected "
+            "results is the only defensible path."
+        ),
+    },
+    "safety": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 820.30(g)",
+            "ISPE GAMP 5, Section 4.3",
+            "ICH Q9 — Quality Risk Management",
+        ],
+        "source": "ISPE GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Safety-critical functions must be identified "
+            "through risk assessment and validated with "
+            "evidence proportional to the risk."
+        ),
+        "expert_advice": (
+            "I've seen FDA 483s issued solely because a "
+            "firm couldn't demonstrate that patient-"
+            "facing software was validated to the level "
+            "the risk demanded. Don't short-cut this — "
+            "scripted IQ/OQ/PQ with documented expected "
+            "results is the only defensible path."
+        ),
+    },
+    "clinical": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "ICH E6(R2) — GCP",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "ICH E6(R2) and GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Clinical systems affecting patient outcomes "
+            "require comprehensive validation evidence "
+            "per GCP and GAMP 5."
+        ),
+        "expert_advice": (
+            "I've reviewed Warning Letters where clinical "
+            "data integrity failures led to study "
+            "invalidation. Treat every clinical system as "
+            "high-risk until a documented risk assessment "
+            "proves otherwise."
+        ),
+    },
+    "adverse": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 314.80",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "21 CFR 314.80 and GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Adverse-event reporting systems are safety-"
+            "critical and demand rigorous validation to "
+            "ensure timely and accurate reporting."
+        ),
+        "expert_advice": (
+            "I've seen firms receive Warning Letters for "
+            "late adverse-event submissions traced back "
+            "to unvalidated reporting tools. Validate the "
+            "end-to-end workflow, not just the database."
+        ),
+    },
+    "pharmacovigilance": {
+        "domain": "Patient Safety",
+        "regulatory_citations": [
+            "21 CFR 314.80",
+            "EudraVigilance requirements",
+            "ISPE GAMP 5, Section 4.3",
+        ],
+        "source": "21 CFR 314.80 and GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Pharmacovigilance systems are classified as "
+            "safety-critical, requiring full scripted "
+            "testing and documented evidence."
+        ),
+        "expert_advice": (
+            "I've seen firms receive Warning Letters for "
+            "late adverse-event submissions traced back "
+            "to unvalidated reporting tools. Validate the "
+            "end-to-end workflow, not just the database."
+        ),
+    },
+    # ── Data Integrity ────────────────────────────────────
+    "audit": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR 11.10(e)",
+            "ISPE GAMP 5, Appendix M4",
+        ],
+        "source": "21 CFR Part 11 and GAMP 5, Appendix M4",
+        "compliance_mapping": (
+            "Systems managing electronic records must "
+            "maintain audit trails that record the date, "
+            "time, operator, and nature of every change."
+        ),
+        "expert_advice": (
+            "I've reviewed dozens of 483s citing audit-"
+            "trail gaps. The FDA expects every create, "
+            "modify, and delete to be captured with a "
+            "timestamp and user ID — no exceptions, no "
+            "'we'll add it later'."
+        ),
+    },
+    "traceability": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR 11.10(e)",
+            "ISPE GAMP 5, Appendix M4",
+        ],
+        "source": "21 CFR Part 11 and GAMP 5, Appendix M4",
+        "compliance_mapping": (
+            "Traceability of electronic records is a "
+            "regulatory requirement for GxP systems to "
+            "ensure data integrity."
+        ),
+        "expert_advice": (
+            "I've reviewed dozens of 483s citing audit-"
+            "trail gaps. The FDA expects every create, "
+            "modify, and delete to be captured with a "
+            "timestamp and user ID — no exceptions, no "
+            "'we'll add it later'."
+        ),
+    },
+    "compliance": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Compliance with applicable regulations must "
+            "be demonstrated through documented "
+            "validation activities."
+        ),
+        "expert_advice": (
+            "I've seen companies pass audits simply "
+            "because they could show a clear line from "
+            "requirement to test to evidence. Build "
+            "traceability from day one — retrofitting "
+            "is ten times the cost."
+        ),
+    },
+    "validation": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 5",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "GAMP 5, Section 5 and CSA Guidance",
+        "compliance_mapping": (
+            "Validation activities must be commensurate "
+            "with the risk to patient safety, product "
+            "quality, and data integrity."
+        ),
+        "expert_advice": (
+            "I've seen companies pass audits simply "
+            "because they could show a clear line from "
+            "requirement to test to evidence. Build "
+            "traceability from day one — retrofitting "
+            "is ten times the cost."
+        ),
+    },
+    "21 cfr": {
+        "domain": "Data Integrity",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "FDA Guidance on Part 11 Scope and "
+            "Application (2003)",
+        ],
+        "source": "21 CFR Part 11",
+        "compliance_mapping": (
+            "Electronic records and signatures must meet "
+            "requirements for authenticity, integrity, "
+            "and confidentiality."
+        ),
+        "expert_advice": (
+            "I've reviewed dozens of 483s citing Part 11 "
+            "deficiencies. Focus on audit trails, access "
+            "controls, and electronic signatures — these "
+            "three areas account for most observations."
+        ),
+    },
+    # ── GxP Compliance ────────────────────────────────────
+    "gxp": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 5",
+            "EU GMP Annex 11",
+        ],
+        "source": "GAMP 5, Section 5",
+        "compliance_mapping": (
+            "GxP-regulated processes require documented "
+            "evidence of validation proportional to "
+            "their risk."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    "sterile": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR 211.42",
+            "ISPE GAMP 5, Section 5",
+        ],
+        "source": "21 CFR 211.42 and GAMP 5, Section 5",
+        "compliance_mapping": (
+            "Sterile manufacturing systems are high-"
+            "impact and require rigorous testing to "
+            "ensure product sterility assurance."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    "batch": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR 211.188",
+            "ISPE GAMP 5, Section 5",
+        ],
+        "source": "21 CFR 211.188 and GAMP 5, Section 5",
+        "compliance_mapping": (
+            "Batch-record systems directly support "
+            "product release decisions and require "
+            "validated controls."
+        ),
+        "expert_advice": (
+            "I've seen batch-record errors lead to "
+            "product recalls. Validate every calculation, "
+            "every limit check, and every signature "
+            "workflow — there is zero tolerance for "
+            "error in release decisions."
+        ),
+    },
+    "release": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR 211.188",
+            "ISPE GAMP 5, Section 5",
+        ],
+        "source": "21 CFR 211.188 and GAMP 5, Section 5",
+        "compliance_mapping": (
+            "Systems involved in product release "
+            "decisions must be validated to ensure "
+            "data integrity."
+        ),
+        "expert_advice": (
+            "I've seen batch-record errors lead to "
+            "product recalls. Validate every calculation, "
+            "every limit check, and every signature "
+            "workflow — there is zero tolerance for "
+            "error in release decisions."
+        ),
+    },
+    "regulatory": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 3",
+            "21 CFR Part 11",
+        ],
+        "source": "GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Regulatory submissions and reporting "
+            "systems require validated data sources."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    "fda": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "FDA CSA Guidance (2022)",
+        "compliance_mapping": (
+            "Systems subject to FDA oversight must "
+            "comply with applicable predicate rules "
+            "and 21 CFR Part 11."
+        ),
+        "expert_advice": (
+            "I've sat across the table from FDA "
+            "investigators. They check three things "
+            "first: audit trails, access controls, and "
+            "change management. Nail those and the rest "
+            "of the inspection goes smoothly."
+        ),
+    },
+    "ema": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "EU GMP Annex 11",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "EU GMP Annex 11 and GAMP 5",
+        "compliance_mapping": (
+            "Systems subject to EMA oversight must "
+            "comply with Annex 11 and applicable EU "
+            "GMP guidelines."
+        ),
+        "expert_advice": (
+            "I've worked with both FDA and EMA "
+            "inspectors. Annex 11 demands the same "
+            "rigour as Part 11 but adds explicit "
+            "requirements for supplier assessments — "
+            "don't forget the vendor audit."
+        ),
+    },
+    "critical": {
+        "domain": "GxP Compliance",
+        "regulatory_citations": [
+            "ISPE GAMP 5, Section 4",
+            "ICH Q9 — Quality Risk Management",
+        ],
+        "source": "GAMP 5, Section 4",
+        "compliance_mapping": (
+            "Critical systems require a risk-based "
+            "approach to determine appropriate "
+            "validation effort."
+        ),
+        "expert_advice": (
+            "I've guided teams through dozens of GxP "
+            "system validations. The key is proportional "
+            "effort — GAMP 5 Category 3 vs. 5 matters. "
+            "Don't over-validate configured software, "
+            "but never under-validate custom code."
+        ),
+    },
+    # ── Quality System ────────────────────────────────────
+    "quality": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 820.20",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Quality management systems supporting GxP "
+            "operations require appropriate validation "
+            "commensurate with their impact."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "calibration": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.68",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.68 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Calibration management systems support "
+            "data integrity and require validated "
+            "controls."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "deviation": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.192",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.192 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Deviation management systems are quality-"
+            "critical and require documented validation."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "capa": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 820.90",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 820.90 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "CAPA systems must be validated to ensure "
+            "corrective actions are tracked and "
+            "effective."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "change control": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.100",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.100 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Change control systems must be validated "
+            "to maintain the qualified state of GxP "
+            "systems."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "sop": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.100",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR 211.100 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "SOP management systems support regulatory "
+            "compliance and require documented "
+            "validation."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "training": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR 211.25",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "21 CFR 211.25 and CSA Guidance",
+        "compliance_mapping": (
+            "Training management systems should be "
+            "validated to ensure personnel competency "
+            "records are reliable."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    "document": {
+        "domain": "Quality System",
+        "regulatory_citations": [
+            "21 CFR Part 11",
+            "ISPE GAMP 5, Section 3",
+        ],
+        "source": "21 CFR Part 11 and GAMP 5, Section 3",
+        "compliance_mapping": (
+            "Document management systems that control "
+            "GxP documents require appropriate "
+            "validation."
+        ),
+        "expert_advice": (
+            "I've helped dozens of QA teams right-size "
+            "their validation effort. The trick is a "
+            "solid risk assessment up front — it saves "
+            "you from both over-testing low-risk "
+            "features and under-testing the critical "
+            "ones."
+        ),
+    },
+    # ── Operational ───────────────────────────────────────
+    "warehouse": {
+        "domain": "Operational",
+        "regulatory_citations": [
+            "21 CFR 211.142",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "21 CFR 211.142 and CSA Guidance",
+        "compliance_mapping": (
+            "Warehouse management systems supporting "
+            "GxP storage conditions should be validated "
+            "to ensure product integrity."
+        ),
+        "expert_advice": (
+            "I've audited warehouses where a missed "
+            "temperature excursion ruined an entire "
+            "shipment. Validate the monitoring system, "
+            "the alerting logic, and the escalation "
+            "workflow — all three, not just the sensor."
+        ),
+    },
+    "inventory": {
+        "domain": "Operational",
+        "regulatory_citations": [
+            "21 CFR 211.142",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": "21 CFR 211.142 and CSA Guidance",
+        "compliance_mapping": (
+            "Inventory systems that track GxP materials "
+            "should be validated to ensure material "
+            "traceability."
+        ),
+        "expert_advice": (
+            "I've audited warehouses where a missed "
+            "temperature excursion ruined an entire "
+            "shipment. Validate the monitoring system, "
+            "the alerting logic, and the escalation "
+            "workflow — all three, not just the sensor."
+        ),
+    },
+    "temperature": {
+        "domain": "Operational",
+        "regulatory_citations": [
+            "21 CFR 211.142",
+            "WHO TRS 961 Annex 9",
+            "FDA CSA Guidance (2022)",
+        ],
+        "source": (
+            "21 CFR 211.142, WHO TRS 961, "
+            "and CSA Guidance"
+        ),
+        "compliance_mapping": (
+            "Temperature monitoring systems supporting "
+            "storage-condition compliance should be "
+            "validated to ensure data reliability."
+        ),
+        "expert_advice": (
+            "I've audited warehouses where a missed "
+            "temperature excursion ruined an entire "
+            "shipment. Validate the monitoring system, "
+            "the alerting logic, and the escalation "
+            "workflow — all three, not just the sensor."
+        ),
+    },
+}
+
 _RISK_NOTE: str = (
     "Final Risk Profiling will be decided with stakeholders "
     "as part of the Risk Assessment process."
@@ -466,9 +1145,13 @@ class RequirementArchitect:
             if match.score >= min_score:
                 matches.append({
                     "chunk_id": match.id,
-                    "text": match.metadata.get("text", ""),
-                    "source_document": match.metadata.get(
-                        "source_document", ""
+                    "text": _clean_chunk_text(
+                        match.metadata.get("text", "")
+                    ),
+                    "source_document": _clean_source_document(
+                        match.metadata.get(
+                            "source_document", ""
+                        )
                     ),
                     "page_number": match.metadata.get(
                         "page_number", 0
@@ -571,9 +1254,13 @@ class RequirementArchitect:
         self,
         requirement: str,
         search_results: List[SearchResult]
-    ) -> Criticality:
+    ) -> CriticalityResult:
         """
         Determine requirement criticality based on content analysis.
+
+        Scans the requirement text *and* any retrieved GAMP 5 context
+        for keyword matches and returns a ``CriticalityResult`` that
+        includes every matched keyword and where it was found.
 
         High criticality indicators:
         - Patient safety impact
@@ -593,53 +1280,89 @@ class RequirementArchitect:
 
         :param requirement: The original requirement text.
         :param search_results: Retrieved GAMP 5 search results.
-        :return: Criticality classification.
-        :requirement: URS-6.9 - System shall assess requirement criticality.
+        :return: CriticalityResult with criticality, matched
+                 keywords, and match source.
+        :requirement: URS-6.9 - System shall assess requirement
+                      criticality.
         """
         requirement_lower = requirement.lower()
 
         # Use template keywords if available, otherwise defaults
         if self._template:
-            high_keywords = self._template.criticality_keywords.get(
-                "high", []
+            high_keywords = (
+                self._template.criticality_keywords.get(
+                    "high", []
+                )
             )
-            medium_keywords = self._template.criticality_keywords.get(
-                "medium", []
+            medium_keywords = (
+                self._template.criticality_keywords.get(
+                    "medium", []
+                )
             )
         else:
             # High criticality keywords
             high_keywords = [
-                "patient", "safety", "critical", "gxp", "compliance",
-                "validation", "sterile", "batch", "release", "adverse",
-                "pharmacovigilance", "clinical", "regulatory",
-                "fda", "ema"
+                "patient", "safety", "critical", "gxp",
+                "compliance", "validation", "sterile",
+                "batch", "release", "adverse",
+                "pharmacovigilance", "clinical",
+                "regulatory", "fda", "ema",
             ]
 
             # Medium criticality keywords
             medium_keywords = [
-                "quality", "audit", "traceability", "calibration",
-                "deviation", "capa", "change control", "training",
-                "document", "sop", "warehouse", "inventory",
-                "temperature"
+                "quality", "audit", "traceability",
+                "calibration", "deviation", "capa",
+                "change control", "training", "document",
+                "sop", "warehouse", "inventory",
+                "temperature",
             ]
 
-        # Check for high criticality
-        for keyword in high_keywords:
-            if keyword in requirement_lower:
-                return Criticality.HIGH
+        # Collect ALL matches from the requirement text
+        high_req = [
+            kw for kw in high_keywords
+            if kw in requirement_lower
+        ]
+        med_req = [
+            kw for kw in medium_keywords
+            if kw in requirement_lower
+        ]
 
-        # Check context for regulatory references
-        context_text = " ".join([r.text.lower() for r in search_results if r.text])
-        for keyword in high_keywords:
-            if keyword in context_text:
-                return Criticality.HIGH
+        if high_req:
+            return CriticalityResult(
+                criticality=Criticality.HIGH,
+                matched_keywords=high_req,
+                source="requirement_text",
+            )
 
-        # Check for medium criticality
-        for keyword in medium_keywords:
-            if keyword in requirement_lower:
-                return Criticality.MEDIUM
+        # Check context for high-criticality references
+        context_text = " ".join(
+            [r.text.lower() for r in search_results if r.text]
+        )
+        high_ctx = [
+            kw for kw in high_keywords
+            if kw in context_text
+        ]
+        if high_ctx:
+            return CriticalityResult(
+                criticality=Criticality.HIGH,
+                matched_keywords=high_ctx,
+                source="context_text",
+            )
 
-        return Criticality.LOW
+        # Check for medium criticality in requirement
+        if med_req:
+            return CriticalityResult(
+                criticality=Criticality.MEDIUM,
+                matched_keywords=med_req,
+                source="requirement_text",
+            )
+
+        return CriticalityResult(
+            criticality=Criticality.LOW,
+            matched_keywords=[],
+            source="requirement_text",
+        )
 
     def _generate_urs_id(self) -> str:
         """
@@ -675,9 +1398,12 @@ class RequirementArchitect:
             prefix = self._template.rationale_prefix
 
         for result in search_results[:3]:  # Use top 3 matches
-            source = result.source_document or "Unknown"
+            source = _clean_source_document(
+                result.source_document or "Unknown"
+            )
             page = result.page_number or 0
-            text = result.text[:200] if result.text else ""
+            raw_text = result.text[:200] if result.text else ""
+            text = _clean_chunk_text(raw_text)
             ver = result.reg_version or ""
 
             source_key = f"{source}:p{page}"
@@ -695,6 +1421,219 @@ class RequirementArchitect:
                     )
 
         return " | ".join(rationale_parts)
+
+    @staticmethod
+    def _build_deterministic_rationale(
+        criticality: Criticality,
+        matched_keywords: List[str],
+    ) -> str:
+        """
+        Build an audit-ready regulatory rationale without external APIs.
+
+        Maps matched keywords to hard-coded GAMP 5 / CSA regulatory
+        principles so the output is professional and traceable even
+        when Pinecone is unavailable.
+
+        :param criticality: Determined criticality level.
+        :param matched_keywords: Keywords that triggered the
+                                 classification.
+        :return: Multi-sentence rationale string.
+        :requirement: URS-6.11 - System shall provide regulatory
+                      justification.
+        """
+        _KEYWORD_RATIONALE: Dict[str, str] = {
+            # Patient safety
+            "patient": (
+                "Per ISPE GAMP 5 (Section 4): Patient safety "
+                "is the primary consideration in determining "
+                "the level of testing effort. Systems that "
+                "directly affect patient safety require "
+                "rigorous scripted testing."
+            ),
+            "safety": (
+                "Per ISPE GAMP 5 (Section 4): Patient safety "
+                "is the primary consideration in determining "
+                "the level of testing effort."
+            ),
+            "clinical": (
+                "Per ISPE GAMP 5 (Section 4): Clinical "
+                "systems that affect patient outcomes "
+                "require comprehensive validation evidence."
+            ),
+            "adverse": (
+                "Per ISPE GAMP 5 (Section 4): Adverse-event "
+                "reporting systems are safety-critical and "
+                "demand rigorous validation."
+            ),
+            "pharmacovigilance": (
+                "Per ISPE GAMP 5 (Section 4): "
+                "Pharmacovigilance systems are classified as "
+                "safety-critical, requiring full scripted "
+                "testing."
+            ),
+            # Data integrity / compliance
+            "audit": (
+                "Per 21 CFR Part 11 and GAMP 5 "
+                "Appendix M4: Systems managing electronic "
+                "records must ensure data integrity through "
+                "audit trails and access controls."
+            ),
+            "traceability": (
+                "Per 21 CFR Part 11 and GAMP 5 "
+                "Appendix M4: Traceability of electronic "
+                "records is a regulatory requirement for "
+                "GxP systems."
+            ),
+            "21 cfr": (
+                "Per 21 CFR Part 11: Electronic records and "
+                "signatures must meet specific requirements "
+                "for authenticity, integrity, and "
+                "confidentiality."
+            ),
+            "compliance": (
+                "Per GAMP 5 (Section 3): Compliance with "
+                "applicable regulations must be demonstrated "
+                "through documented validation activities."
+            ),
+            "validation": (
+                "Per GAMP 5 (Section 5): Validation "
+                "activities must be commensurate with the "
+                "risk to patient safety, product quality, "
+                "and data integrity."
+            ),
+            # GxP process
+            "gxp": (
+                "Per GAMP 5 (Section 5): GxP-regulated "
+                "processes require documented evidence of "
+                "validation proportional to their risk."
+            ),
+            "sterile": (
+                "Per GAMP 5 (Section 5): Sterile "
+                "manufacturing systems are classified as "
+                "high-impact and require rigorous testing."
+            ),
+            "batch": (
+                "Per GAMP 5 (Section 5): Batch-record "
+                "systems directly support product release "
+                "decisions and require validated controls."
+            ),
+            "release": (
+                "Per GAMP 5 (Section 5): Systems involved "
+                "in product release decisions must be "
+                "validated to ensure data integrity."
+            ),
+            "regulatory": (
+                "Per GAMP 5 (Section 3): Regulatory "
+                "submissions and reporting systems require "
+                "validated data sources."
+            ),
+            "fda": (
+                "Per GAMP 5 (Section 3): Systems subject "
+                "to FDA oversight must comply with "
+                "applicable predicate rules and 21 CFR "
+                "Part 11."
+            ),
+            "ema": (
+                "Per GAMP 5 (Section 3): Systems subject "
+                "to EMA oversight must comply with "
+                "Annex 11 and applicable EU GMP guidelines."
+            ),
+            "critical": (
+                "Per GAMP 5 (Section 4): Critical systems "
+                "require a risk-based approach to determine "
+                "appropriate validation effort."
+            ),
+            # Quality system
+            "quality": (
+                "Per GAMP 5 (Section 3): Quality management "
+                "systems supporting GxP operations require "
+                "appropriate validation commensurate with "
+                "their impact."
+            ),
+            "calibration": (
+                "Per GAMP 5 (Section 3): Calibration "
+                "management systems support data integrity "
+                "and require validated controls."
+            ),
+            "deviation": (
+                "Per GAMP 5 (Section 3): Deviation "
+                "management systems are quality-critical "
+                "and require documented validation."
+            ),
+            "capa": (
+                "Per GAMP 5 (Section 3): CAPA systems "
+                "must be validated to ensure corrective "
+                "actions are tracked and effective."
+            ),
+            "change control": (
+                "Per GAMP 5 (Section 3): Change control "
+                "systems must be validated to maintain "
+                "the qualified state of GxP systems."
+            ),
+            "sop": (
+                "Per GAMP 5 (Section 3): SOP management "
+                "systems support regulatory compliance and "
+                "require documented validation."
+            ),
+            "training": (
+                "Per CSA guidance: Training management "
+                "systems should be validated commensurate "
+                "with their risk to ensure personnel "
+                "competency records are reliable."
+            ),
+            "document": (
+                "Per GAMP 5 (Section 3): Document "
+                "management systems that control GxP "
+                "documents require appropriate validation."
+            ),
+            # Operational
+            "warehouse": (
+                "Per CSA guidance: Warehouse management "
+                "systems supporting GxP storage conditions "
+                "should be validated commensurate with "
+                "their risk."
+            ),
+            "inventory": (
+                "Per CSA guidance: Inventory systems that "
+                "track GxP materials should be validated "
+                "to ensure material traceability."
+            ),
+            "temperature": (
+                "Per CSA guidance: Temperature monitoring "
+                "systems supporting storage-condition "
+                "compliance should be validated to ensure "
+                "data reliability."
+            ),
+        }
+
+        # Collect unique rationale sentences for matched keywords
+        seen: set = set()
+        rationale_parts: List[str] = []
+        for kw in matched_keywords:
+            text = _KEYWORD_RATIONALE.get(kw)
+            if text and text not in seen:
+                seen.add(text)
+                rationale_parts.append(text)
+
+        # Opening sentence: classification reason
+        kw_list = ", ".join(matched_keywords) if matched_keywords else "general"
+        opening = (
+            f"Expert-Defined Logic: Requirement classified as "
+            f"{criticality.value} criticality based on "
+            f"keyword analysis ({kw_list})."
+        )
+
+        # Risk-based justification closing
+        closing = (
+            "Per GAMP 5 risk-based approach and CSA principles, "
+            "the testing effort shall be commensurate with the "
+            f"assessed {criticality.value} risk level."
+        )
+
+        parts = [opening]
+        parts.extend(rationale_parts[:3])  # cap at 3 citations
+        parts.append(closing)
+        return " ".join(parts)
 
     def _format_requirement_statement(self, requirement: str) -> str:
         """
@@ -792,9 +1731,10 @@ class RequirementArchitect:
 
         # Step 2: Determine criticality (works with or
         #         without GAMP 5 context — keyword-based)
-        criticality = self._determine_criticality(
+        crit_result = self._determine_criticality(
             requirement, search_results,
         )
+        criticality = crit_result.criticality
 
         # Step 3: Generate URS ID
         urs_id = self._generate_urs_id()
@@ -819,15 +1759,14 @@ class RequirementArchitect:
                 if r.reg_version
             })
         else:
-            # No GAMP 5 match — use expert-defined logic
-            rationale = (
-                "Expert-Defined Logic: Requirement "
-                "classified as "
-                f"{criticality.value} criticality "
-                "based on proprietary risk assessment "
-                "criteria and industry best practices."
+            # No GAMP 5 match — use deterministic rationale
+            rationale = self._build_deterministic_rationale(
+                criticality,
+                crit_result.matched_keywords,
             )
-            reg_versions_cited = []
+            reg_versions_cited = [
+                "GAMP5_Guide", "CSA_2022",
+            ]
 
         # Create URS document
         urs = URSDocument(

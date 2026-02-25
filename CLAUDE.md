@@ -6,6 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CSV-GameChanger is a GAMP 5 and CSA (Computer Software Assurance) compliant CSV (Computer System Validation) Engine.
 
+## Branding Convention (IMPORTANT — follow exactly)
+
+This project uses **dual branding**. Getting this wrong causes rework.
+
+| Concept | Name | Where to use |
+|---------|------|-------------|
+| **Product / tool brand** | **EVOLV** (all caps) | "Powered by" lines, tool-name contexts, sidebar logo text, legal/signature text |
+| **Functional label** | **Validation Factory** | Page headers / hero sections, navigation menu, about text, process descriptions, requirement-generation logic |
+| **Combined form** | **EVOLV: The Validation Factory** or **EVOLV \| The Validation Factory** | Browser tab title, PDF headers, CLI banners |
+| **Company** | **WingstarTech Inc.** | Footer attribution |
+
+**Rules:**
+1. The main page header (hero) for Tab 6 must say **"Validation Factory"**, NOT "EVOLV".
+2. The sidebar nav label for Tab 6 must say **"6. Validation Factory"**.
+3. Footer stays: `"Powered by EVOLV | A WingstarTech Inc. Product"`.
+4. PDF headers use: `"EVOLV | The Validation Factory"`.
+5. Sidebar logo: "EVOLV" with subtitle "THE VALIDATION FACTORY".
+6. **Never** replace "Validation Factory" with just "EVOLV" in user-facing text — "Validation Factory" is the core business identity.
+7. Old names ("Trustme AI", "CSV Engine") are retired. Internal class names like `CSVEngineError` are kept to avoid breaking imports.
+
 ## Build and Development Commands
 
 ```bash
@@ -606,7 +626,7 @@ Generates a Markdown file with:
 **PDF Structure:**
 
 - **Page 1 — URS Document:**
-  - Branded header (TRUSTME AI | CSV Engine)
+  - Branded header (EVOLV | The Validation Factory)
   - URS ID and generation timestamp
   - Requirement Statement
   - Criticality (color-coded: High=red, Medium=amber, Low=green)
@@ -937,6 +957,13 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-18.4 | Include regulatory justification page | `utils/pdf_generator.py:generate_validation_report_pdf()` |
 | URS-18.5 | Include Manifestation of Signature page | `utils/pdf_generator.py:generate_validation_report_pdf()` |
 | URS-18.6 | Provide Validation Report download from Streamlit UI | `frontend/app.py` (Page 6) |
+| URS-19.1 | Detect ambiguous language in human-written requirements | `utils/demo_comparison.py:detect_ambiguities()` |
+| URS-19.2 | Detect missing regulatory controls | `utils/demo_comparison.py:detect_regulatory_gaps()` |
+| URS-19.3 | Rewrite requirements to audit-ready format | `utils/demo_comparison.py:rewrite_requirement()` |
+| URS-19.4 | Evaluate and score requirement quality | `utils/demo_comparison.py:evaluate_requirements()` |
+| URS-19.5 | Inject AI output into .docx templates | `utils/demo_comparison.py:inject_into_docx()` |
+| URS-19.6 | Display side-by-side comparison with cost analysis | `frontend/app.py` (Page 8) |
+| URS-19.7 | Provide CSV, PDF, and Word Factory exports | `frontend/app.py` (Page 8) |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

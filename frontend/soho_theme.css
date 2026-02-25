@@ -1,0 +1,850 @@
+/* =================================================================
+   EVOLV: The Validation Factory — SOHO Design System Theme
+   =================================================================
+   Neutral palette · Subtle borders · High-density enterprise layout
+   ================================================================= */
+
+/* ── FontAwesome 6 CDN ───────────────────────────────────────── */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+
+/* ── CSS Custom Properties ─────────────────────────────────────── */
+:root {
+    --ev-blue:   #056696;
+    --ev-blue-light: #0A7EB5;
+    --ev-blue-bg: #E8F4F8;
+    --ev-slate:  #54585A;
+    --ev-slate-light: #6E7275;
+    --ev-border: #E0E0E0;
+    --ev-bg:     #FFFFFF;
+    --ev-bg-alt: #F7F7F7;
+    --ev-bg-page: #F4F5F6;
+    --ev-green:  #488421;
+    --ev-green-bg: #E8F5E9;
+    --ev-red:    #B94E4E;
+    --ev-red-bg: #FDEAEA;
+    --ev-amber:  #D17D00;
+    --ev-amber-bg: #FFF4E6;
+    --ev-sidebar: #1B1B1B;
+    --ev-sidebar-hover: rgba(255,255,255,0.08);
+    --font-stack: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ── Dark Theme Variant ──────────────────────────────────────── */
+[data-theme="dark"] {
+    --ev-bg: #1A1A1A;
+    --ev-bg-page: #121212;
+    --ev-bg-alt: #2A2A2A;
+    --ev-border: #3A3A3A;
+    --ev-slate: #E0E0E0;
+    --ev-slate-light: #AAAAAA;
+    --ev-blue-bg: rgba(5,102,150,0.15);
+    --ev-green-bg: rgba(72,132,33,0.15);
+    --ev-red-bg: rgba(185,78,78,0.15);
+    --ev-amber-bg: rgba(209,125,0,0.15);
+}
+
+/* ── Global Resets ─────────────────────────────────────────────── */
+html, body, [data-testid="stAppViewContainer"] {
+    font-family: var(--font-stack) !important;
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    color: var(--ev-slate);
+}
+
+[data-testid="stAppViewContainer"] > section > div {
+    background-color: var(--ev-bg-page);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-stack) !important;
+    color: var(--ev-slate) !important;
+}
+
+/* Streamlit text elements — readable base */
+[data-testid="stAppViewContainer"] p,
+[data-testid="stAppViewContainer"] li,
+[data-testid="stAppViewContainer"] span,
+[data-testid="stAppViewContainer"] label,
+[data-testid="stAppViewContainer"] div {
+    font-size: inherit;
+    line-height: 1.6;
+}
+[data-testid="stMarkdownContainer"] p {
+    font-size: 0.95rem !important;
+    line-height: 1.65 !important;
+}
+[data-testid="stMarkdownContainer"] h3 {
+    font-size: 1.25rem !important;
+}
+[data-testid="stMarkdownContainer"] h5 {
+    font-size: 1.05rem !important;
+}
+
+/* ── Holy Grail Flex Layout ────────────────────────────────────── */
+[data-testid="stAppViewContainer"] {
+    display: flex !important;
+    width: 100vw !important;
+    flex-direction: row !important;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background-color: var(--ev-sidebar) !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    width: 260px !important;
+    flex-shrink: 0 !important;
+    height: 100vh !important;
+    border-right: 2px solid var(--ev-blue) !important;
+    overflow-y: auto;
+}
+section[data-testid="stSidebar"] > div:first-child {
+    background-color: var(--ev-sidebar) !important;
+}
+
+/* ── Main Content ─────────────────────────────────────────────── */
+section[data-testid="stSidebar"] + section,
+[data-testid="stAppViewContainer"] > section:not([data-testid="stSidebar"]) {
+    flex-grow: 1 !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    border-left: 1px solid #d8d8d8 !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #FFFFFF !important;
+    font-family: var(--font-stack) !important;
+}
+/* Hide the sidebar collapse arrow that leaks "keyboard..." text */
+[data-testid="stSidebar"] button[data-testid="stBaseButton-headerNoPadding"] {
+    display: none !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: rgba(255,255,255,0.12) !important;
+}
+
+/* Sidebar logo block */
+.sidebar-logo {
+    text-align: center;
+    padding: 1.2rem 0 0.6rem 0;
+}
+.sidebar-logo-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    background: var(--ev-blue);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+}
+.sidebar-logo-icon span {
+    font-size: 1.5rem;
+    color: #FFF !important;
+    font-weight: 700;
+}
+.sidebar-logo h3 {
+    margin: 0 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+    color: #FFF !important;
+    font-size: 1.15rem;
+}
+.sidebar-logo p {
+    margin: 0 !important;
+    font-size: 0.78rem;
+    opacity: 0.6;
+    letter-spacing: 1.2px;
+    color: #FFF !important;
+}
+
+/* ── Sidebar Grouped Navigation ──────────────────────────────── */
+.sidebar-nav {
+    padding: 0;
+}
+.nav-group-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #999999 !important;
+    padding: 1rem 1.2rem 0.3rem 1.2rem;
+    margin: 0;
+}
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 1.2rem;
+    color: #CCCCCC !important;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none !important;
+}
+.nav-item:hover {
+    background: rgba(255,255,255,0.06);
+    color: #FFFFFF !important;
+    text-decoration: none !important;
+}
+.nav-item.active {
+    background: rgba(5, 102, 150, 0.18);
+    border-left: 3px solid var(--ev-blue);
+    color: #FFFFFF !important;
+}
+.nav-item i {
+    font-size: 18px;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    color: var(--ev-blue) !important;
+}
+.nav-item.active i {
+    color: #FFFFFF !important;
+}
+
+/* ── Sidebar nav buttons (inactive items) ───────────────────────
+   Style native st.button() widgets in the sidebar to match the
+   .nav-item appearance.  Active items are rendered as .nav-item
+   HTML (above), so these rules target only the button elements.
+   ─────────────────────────────────────────────────────────────── */
+section[data-testid="stSidebar"] div[data-testid="stButton"] {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    background: transparent !important;
+    border: none !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 0 !important;
+    color: #CCCCCC !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    font-family: var(--font-stack) !important;
+    padding: 0.55rem 1.2rem !important;
+    width: 100% !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    transition: background 0.15s, color 0.15s, border-color 0.15s !important;
+    box-shadow: none !important;
+    letter-spacing: 0.3px !important;
+    line-height: 1.6 !important;
+    height: auto !important;
+    min-height: 0 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: #FFFFFF !important;
+    border-left-color: transparent !important;
+    box-shadow: none !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:focus,
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:active {
+    outline: none !important;
+    box-shadow: none !important;
+    border-left-color: transparent !important;
+}
+/* "Load Demo Project" special button — keep its default styling */
+section[data-testid="stSidebar"] div[data-testid="stButton"]:has(button[data-testid*="load_demo"]) > button {
+    border-left: none !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 4px !important;
+    justify-content: center !important;
+    margin-top: 0.25rem !important;
+}
+
+/* Sidebar audit feed item */
+.audit-feed-item {
+    background: rgba(255,255,255,0.06);
+    border-left: 2px solid var(--ev-blue);
+    border-radius: 3px;
+    padding: 0.35rem 0.55rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+.audit-feed-item strong {
+    color: #FFF !important;
+}
+.audit-feed-item .feed-meta {
+    opacity: 0.6;
+}
+
+/* ── Page Header (soho-header) ─────────────────────────────────── */
+.soho-header {
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
+    border-top: 2px solid var(--ev-blue);
+    border-radius: 0 0 4px 4px;
+    padding: 1.1rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+.soho-header h2 {
+    color: var(--ev-slate) !important;
+    margin: 0 !important;
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+.soho-header p {
+    color: var(--ev-slate-light) !important;
+    margin: 0.25rem 0 0 0 !important;
+    font-size: 1rem;
+}
+
+/* ── Breadcrumb ────────────────────────────────────────────────── */
+.breadcrumb {
+    font-size: 0.92rem;
+    color: var(--ev-slate-light);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+}
+.breadcrumb-item {
+    opacity: 0.65;
+}
+.breadcrumb-item:last-child {
+    opacity: 1;
+    font-weight: 600;
+    color: var(--ev-slate);
+}
+.breadcrumb-sep {
+    margin: 0 0.4rem;
+    opacity: 0.35;
+    font-size: 0.9rem;
+}
+
+/* ── Container (soho-container) ────────────────────────────────── */
+.soho-container {
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
+    border-top: 2px solid var(--ev-blue);
+    border-radius: 0 0 4px 4px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* ── Status Badges (pill-shaped) ───────────────────────────────── */
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+}
+.badge-high, .badge-error {
+    background-color: var(--ev-red-bg);
+    color: var(--ev-red);
+}
+.badge-medium, .badge-warning {
+    background-color: var(--ev-amber-bg);
+    color: var(--ev-amber);
+}
+.badge-low, .badge-success {
+    background-color: var(--ev-green-bg);
+    color: var(--ev-green);
+}
+.badge-info {
+    background-color: var(--ev-blue-bg);
+    color: var(--ev-blue);
+}
+
+/* ── Data Grid (soho-grid) ─────────────────────────────────────── */
+.soho-grid-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--ev-border);
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+}
+.soho-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: var(--ev-bg);
+}
+.soho-grid thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.soho-grid th {
+    background-color: #F5F5F5;
+    color: var(--ev-slate);
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    font-weight: 700;
+    border-bottom: 2px solid var(--ev-border);
+    white-space: nowrap;
+    font-size: 14px;
+    letter-spacing: 0.01em;
+    user-select: none;
+}
+.soho-grid th::after {
+    content: ' \21C5';
+    opacity: 0.2;
+    font-size: 0.75rem;
+    margin-left: 0.3rem;
+}
+.soho-grid th.no-sort::after {
+    content: '';
+}
+.soho-grid td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #F0F0F0;
+    vertical-align: top;
+    color: var(--ev-slate);
+    line-height: 1.4;
+}
+.soho-grid tbody tr:nth-child(even) {
+    background-color: var(--ev-bg-alt);
+}
+.soho-grid tbody tr:hover {
+    background-color: var(--ev-blue-bg);
+}
+
+/* Row-status modifiers (semantic) */
+.soho-grid tbody tr.row-covered {
+    background-color: var(--ev-green-bg) !important;
+}
+.soho-grid tbody tr.row-partial {
+    background-color: var(--ev-amber-bg) !important;
+}
+.soho-grid tbody tr.row-missing,
+.soho-grid tbody tr.row-gap {
+    background-color: var(--ev-red-bg) !important;
+}
+
+/* ── Toolbar (soho-toolbar) ────────────────────────────────────── */
+.soho-toolbar {
+    background: #FAFAFA;
+    border: 1px solid var(--ev-border);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    padding: 0.45rem 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+.soho-toolbar + .soho-grid-wrap {
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+.toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.toolbar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ev-slate);
+    margin-right: 0.75rem;
+}
+.toolbar-btn {
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.9rem;
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--ev-slate);
+    font-family: var(--font-stack);
+    transition: background 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.toolbar-btn:hover {
+    background: #F0F0F0;
+    border-color: #CCCCCC;
+}
+.toolbar-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: var(--ev-slate);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ── Empty State ───────────────────────────────────────────────── */
+.soho-empty-state {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    color: var(--ev-slate-light);
+    background: var(--ev-bg);
+    border: 1px dashed var(--ev-border);
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+.soho-empty-state svg {
+    margin-bottom: 1rem;
+    opacity: 0.45;
+}
+.soho-empty-state .empty-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ev-slate);
+    margin: 0 0 0.3rem 0;
+}
+.soho-empty-state .empty-desc {
+    font-size: 1rem;
+    margin: 0 0 1.25rem 0;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+}
+.soho-empty-state .soho-btn-primary {
+    display: inline-block;
+    background: var(--ev-blue);
+    color: #FFFFFF;
+    border: none;
+    padding: 0.55rem 1.4rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: var(--font-stack);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.soho-empty-state .soho-btn-primary:hover {
+    background: var(--ev-blue-light);
+}
+
+/* ── Skeleton Loading ──────────────────────────────────────────── */
+.skeleton-table {
+    padding: 0.5rem 0;
+}
+.skeleton-header {
+    height: 36px;
+    background: #EBEBEB;
+    border-radius: 3px;
+    margin-bottom: 6px;
+}
+.skeleton-row {
+    height: 38px;
+    background: linear-gradient(
+        90deg,
+        #F0F0F0 25%,
+        #E4E4E4 50%,
+        #F0F0F0 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    margin-bottom: 4px;
+    border-radius: 3px;
+}
+.skeleton-row:nth-child(even) {
+    animation-delay: 0.15s;
+}
+@keyframes skeleton-pulse {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── KPI / Metric Card ─────────────────────────────────────────── */
+.soho-kpi {
+    background: var(--ev-bg);
+    border: 1px solid var(--ev-border);
+    border-radius: 4px;
+    padding: 1rem 1.1rem;
+    text-align: center;
+}
+.soho-kpi .kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--ev-slate);
+    line-height: 1.2;
+}
+.soho-kpi .kpi-label {
+    font-size: 0.88rem;
+    color: var(--ev-slate-light);
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Override Streamlit metric cards */
+div[data-testid="stMetric"] {
+    background-color: var(--ev-bg) !important;
+    border: 1px solid var(--ev-border) !important;
+    border-radius: 4px !important;
+    padding: 0.9rem 1rem !important;
+    box-shadow: none !important;
+}
+div[data-testid="stMetric"] label {
+    color: var(--ev-slate-light) !important;
+    font-size: 0.88rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: var(--ev-slate) !important;
+    font-weight: 700 !important;
+}
+
+/* ── Workflow Diagram (Page 6) ─────────────────────────────────── */
+.workflow-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 0.5rem 0 1.25rem 0;
+    flex-wrap: wrap;
+}
+.workflow-step {
+    border: 1px solid var(--ev-blue);
+    color: var(--ev-blue);
+    padding: 0.4rem 0.9rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--ev-bg);
+}
+.workflow-step.active {
+    background: var(--ev-blue);
+    color: #FFFFFF;
+}
+.workflow-arrow {
+    font-size: 1rem;
+    color: var(--ev-blue);
+    padding: 0 0.35rem;
+    opacity: 0.5;
+}
+
+/* ── Section Title ─────────────────────────────────────────────── */
+.section-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ev-slate);
+    margin: 0.8rem 0 0.4rem 0;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--ev-border);
+}
+
+/* ── Info / Justification Box ──────────────────────────────────── */
+.soho-info-box {
+    background: var(--ev-blue-bg);
+    border-left: 3px solid var(--ev-blue);
+    padding: 0.75rem 1rem;
+    border-radius: 0 4px 4px 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--ev-slate);
+    margin: 0.5rem 0;
+}
+
+/* ── Cost / Alert Banner ───────────────────────────────────────── */
+.soho-alert-banner {
+    background: var(--ev-red-bg);
+    border: 1px solid var(--ev-red);
+    border-left: 4px solid var(--ev-red);
+    border-radius: 0 4px 4px 0;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+}
+.soho-alert-banner .alert-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--ev-red);
+}
+.soho-alert-banner .alert-label {
+    font-size: 0.95rem;
+    color: var(--ev-slate);
+}
+
+/* ── Progress Bar Override ─────────────────────────────────────── */
+.soho-progress {
+    background: var(--ev-border);
+    border-radius: 3px;
+    height: 8px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+.soho-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+.soho-progress-fill.green  { background: var(--ev-green); }
+.soho-progress-fill.amber  { background: var(--ev-amber); }
+.soho-progress-fill.red    { background: var(--ev-red); }
+
+/* ── Streamlit Primary Button Override ─────────────────────────── */
+button[kind="primary"],
+.stDownloadButton > button {
+    background-color: var(--ev-blue) !important;
+    border-color: var(--ev-blue) !important;
+    color: #FFFFFF !important;
+    border-radius: 4px !important;
+    font-family: var(--font-stack) !important;
+    font-weight: 600 !important;
+    transition: background 0.15s !important;
+}
+button[kind="primary"]:hover,
+.stDownloadButton > button:hover {
+    background-color: var(--ev-blue-light) !important;
+    border-color: var(--ev-blue-light) !important;
+}
+
+/* Secondary buttons */
+button[kind="secondary"] {
+    border-color: var(--ev-border) !important;
+    color: var(--ev-slate) !important;
+    border-radius: 4px !important;
+    font-family: var(--font-stack) !important;
+}
+button[kind="secondary"]:hover {
+    border-color: #CCCCCC !important;
+    background: #F5F5F5 !important;
+}
+
+/* ── Streamlit Expander Override ────────────────────────────────── */
+details[data-testid="stExpander"] {
+    border: 1px solid var(--ev-border) !important;
+    border-radius: 4px !important;
+    background: var(--ev-bg) !important;
+}
+details[data-testid="stExpander"] summary {
+    font-weight: 600 !important;
+    color: var(--ev-slate) !important;
+}
+
+/* ── Streamlit Selectbox / Input Override ───────────────────────── */
+div[data-baseweb="select"] > div {
+    border-color: var(--ev-border) !important;
+    border-radius: 4px !important;
+}
+div[data-baseweb="select"] > div:focus-within {
+    border-color: var(--ev-blue) !important;
+    box-shadow: 0 0 0 1px var(--ev-blue) !important;
+}
+.stTextArea textarea:focus,
+.stTextInput input:focus {
+    border-color: var(--ev-blue) !important;
+    box-shadow: 0 0 0 1px var(--ev-blue) !important;
+}
+
+/* ── Streamlit Form Controls — readable sizes ────────────────── */
+.stTextInput input,
+.stTextArea textarea,
+div[data-baseweb="select"] span,
+div[data-baseweb="select"] input {
+    font-size: 16px !important;
+    padding: 10px 12px !important;
+}
+/* Label text */
+.stTextInput label,
+.stTextArea label,
+.stSelectbox label,
+.stNumberInput label,
+.stMultiSelect label {
+    font-size: 16px !important;
+}
+button[kind="primary"],
+button[kind="secondary"],
+.stDownloadButton > button {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+}
+.stCaption, [data-testid="stCaptionContainer"] {
+    font-size: 0.85rem !important;
+}
+
+/* ── Sidebar Legibility ───────────────────────────────────────── */
+.nav-item-text {
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.3px;
+}
+
+/* ── Form Accessibility ──────────────────────────────────────── */
+input, select, textarea, .form-control {
+    font-size: 16px !important;
+    padding: 10px 12px !important;
+}
+
+/* ── Data Table Content ──────────────────────────────────────── */
+.csv-grid-cell {
+    font-size: 14px !important;
+    line-height: 1.4;
+}
+
+/* ── SPA Navigation ──────────────────────────────────────────── */
+/* Hide the hidden nav trigger text input */
+section[data-testid="stSidebar"]
+    .stTextInput:has(input[aria-label="_nav_trigger"]) {
+    position: absolute !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+/* Transparent iframe for SPA nav component */
+section[data-testid="stSidebar"] iframe {
+    background: transparent !important;
+    border: none !important;
+    color-scheme: normal !important;
+}
+/* Keep sidebar rock-solid during content transitions */
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] * {
+    animation: none !important;
+}
+/* Main content fade-in transition (200ms) */
+@keyframes spa-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+[data-testid="stAppViewContainer"]
+    > section:not([data-testid="stSidebar"]) > div {
+    animation: spa-fade-in 200ms ease-out;
+}
+/* Skeleton placeholder for page transitions */
+.spa-skeleton {
+    padding: 1.5rem;
+}
+.spa-skeleton-bar {
+    height: 18px;
+    background: linear-gradient(
+        90deg, #F0F0F0 25%, #E4E4E4 50%, #F0F0F0 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: 3px;
+    margin-bottom: 12px;
+}
+.spa-skeleton-bar.wide  { width: 80%; }
+.spa-skeleton-bar.med   { width: 55%; }
+.spa-skeleton-bar.short { width: 35%; }
+
+/* ── Scrollbar (subtle) ────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #CCC;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #AAA;
+}

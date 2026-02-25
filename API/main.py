@@ -1,7 +1,7 @@
 """
 CSV-GameChanger API Module.
 
-GAMP 5 and CSA Compliant CSV Engine - API Endpoints.
+GAMP 5 and CSA Compliant EVOLV Engine - API Endpoints.
 """
 import logging
 import sys
@@ -58,7 +58,7 @@ class ProcessingError(CSVEngineError):
 
 app = FastAPI(
     title="CSV-GameChanger",
-    description="GAMP 5 and CSA Compliant CSV Engine",
+    description="GAMP 5 and CSA Compliant EVOLV Engine",
     version="0.1.0"
 )
 
