@@ -1,0 +1,463 @@
+{
+  "schema_version": "1.0.0",
+  "graph_id": "TG-EVOLV-2026-001",
+  "generated_at": "2026-02-26T12:00:00Z",
+  "generated_by": "SentinelAgent/bootstrap",
+  "integrity_hash": "a3f8d2c1e9b74056f1d2a3c4e5f67890abcdef1234567890abcdef1234567890",
+
+  "requirements": [
+    {
+      "req_id": "URS-6.1",
+      "req_type": "URS",
+      "title": "Generate URS from natural language input",
+      "statement": "The system shall generate a structured User Requirements Specification from a natural language description, grounded in GAMP 5 regulatory context retrieved from the knowledge base.",
+      "risk_level": "High",
+      "criticality_score": 3,
+      "gxp_category": "GxP Direct",
+      "regulatory_reference": "GAMP 5 Rev 2, Section 6.3 — Requirements Management",
+      "parent_req_id": null,
+      "status": "Approved"
+    },
+    {
+      "req_id": "URS-6.9",
+      "req_type": "URS",
+      "title": "Assess requirement criticality",
+      "statement": "The system shall classify each generated requirement as High, Medium, or Low criticality based on GxP keyword analysis.",
+      "risk_level": "High",
+      "criticality_score": 3,
+      "gxp_category": "GxP Direct",
+      "regulatory_reference": "GAMP 5 Rev 2, Appendix M — Risk Assessment",
+      "parent_req_id": "URS-6.1",
+      "status": "Approved"
+    },
+    {
+      "req_id": "URS-12.1",
+      "req_type": "URS",
+      "title": "Verify generated URS against GAMP 5 text",
+      "statement": "The system shall verify every generated URS document against GAMP 5 regulatory text stored in the knowledge base before releasing it for use.",
+      "risk_level": "High",
+      "criticality_score": 3,
+      "gxp_category": "GxP Direct",
+      "regulatory_reference": "21 CFR Part 11.10(e) — Audit controls; GAMP 5 Rev 2, Section 7",
+      "parent_req_id": null,
+      "status": "Approved"
+    },
+    {
+      "req_id": "URS-12.10",
+      "req_type": "URS",
+      "title": "Detect criticality misclassification",
+      "statement": "The system shall flag any URS where the assigned criticality may be under-classified relative to GAMP 5 high-risk indicators.",
+      "risk_level": "High",
+      "criticality_score": 3,
+      "gxp_category": "GxP Direct",
+      "regulatory_reference": "GAMP 5 Rev 2, Appendix M",
+      "parent_req_id": "URS-12.1",
+      "status": "Approved"
+    },
+    {
+      "req_id": "URS-4.2",
+      "req_type": "URS",
+      "title": "Calculate risk using GAMP 5 methodology",
+      "statement": "The system shall calculate a Risk Priority Number (RPN) using Severity × Occurrence × Detectability, and map it to Low/Medium/High risk levels.",
+      "risk_level": "High",
+      "criticality_score": 3,
+      "gxp_category": "GxP Direct",
+      "regulatory_reference": "GAMP 5 Rev 2, Section 5 — Risk Management",
+      "parent_req_id": null,
+      "status": "Approved"
+    },
+    {
+      "req_id": "URS-13.1",
+      "req_type": "URS",
+      "title": "Archive AI reasoning alongside audit records",
+      "statement": "The system shall persist a structured AI reasoning chain (inputs, steps, outputs) alongside every audit trail entry, with a tamper-evident SHA-256 integrity hash.",
+      "risk_level": "Medium",
+      "criticality_score": 2,
+      "gxp_category": "GxP Direct",
+      "regulatory_reference": "21 CFR Part 11.10(e) — Audit controls",
+      "parent_req_id": null,
+      "status": "Approved"
+    },
+    {
+      "req_id": "URS-17.1",
+      "req_type": "URS",
+      "title": "Generate CSA test scripts from UR/FR documents",
+      "statement": "The system shall generate structured CSA test scripts from UR/FR documents, routing to scripted (IQ/OQ/UAT) or charter (exploratory) formats based on risk level.",
+      "risk_level": "Medium",
+      "criticality_score": 2,
+      "gxp_category": "GxP Indirect",
+      "regulatory_reference": "GAMP 5 Rev 2, Section 6.5 — Testing",
+      "parent_req_id": null,
+      "status": "Approved"
+    },
+    {
+      "req_id": "URS-2.1",
+      "req_type": "URS",
+      "title": "Maintain 21 CFR Part 11 compliant audit trail",
+      "statement": "The system shall maintain an append-only, tamper-evident CSV audit trail recording all agent actions with timestamps, user IDs, and SHA-256 reasoning hashes.",
+      "risk_level": "High",
+      "criticality_score": 3,
+      "gxp_category": "GxP Direct",
+      "regulatory_reference": "21 CFR Part 11.10(e) and 11.10(k)",
+      "parent_req_id": null,
+      "status": "Approved"
+    }
+  ],
+
+  "code_modules": [
+    {
+      "module_id": "MOD-REQ-ARCH",
+      "file_path": "Agents/requirement_architect.py",
+      "module_name": "Agents.requirement_architect",
+      "description": "RequirementArchitect agent — generates URS documents from natural language using GAMP 5 Pinecone context.",
+      "functions": [
+        {
+          "function_name": "generate_urs",
+          "class_name": "RequirementArchitect",
+          "line_start": 180,
+          "line_end": 260,
+          "criticality_override": null
+        },
+        {
+          "function_name": "_determine_criticality",
+          "class_name": "RequirementArchitect",
+          "line_start": 120,
+          "line_end": 155,
+          "criticality_override": "High"
+        },
+        {
+          "function_name": "_build_regulatory_rationale",
+          "class_name": "RequirementArchitect",
+          "line_start": 156,
+          "line_end": 179,
+          "criticality_override": null
+        },
+        {
+          "function_name": "transform_urs_to_ur_fr",
+          "class_name": "RequirementArchitect",
+          "line_start": 261,
+          "line_end": 360,
+          "criticality_override": null
+        }
+      ]
+    },
+    {
+      "module_id": "MOD-VERIF",
+      "file_path": "Agents/verification_agent.py",
+      "module_name": "Agents.verification_agent",
+      "description": "VerificationAgent — validates generated URS against GAMP 5 text; performs criticality alignment, rationale relevance, and contradiction scan checks.",
+      "functions": [
+        {
+          "function_name": "verify_urs",
+          "class_name": "VerificationAgent",
+          "line_start": 110,
+          "line_end": 200,
+          "criticality_override": null
+        },
+        {
+          "function_name": "_check_criticality_alignment",
+          "class_name": "VerificationAgent",
+          "line_start": 201,
+          "line_end": 255,
+          "criticality_override": "High"
+        },
+        {
+          "function_name": "_check_rationale_relevance",
+          "class_name": "VerificationAgent",
+          "line_start": 256,
+          "line_end": 295,
+          "criticality_override": null
+        },
+        {
+          "function_name": "_check_contradictions",
+          "class_name": "VerificationAgent",
+          "line_start": 296,
+          "line_end": 350,
+          "criticality_override": null
+        }
+      ]
+    },
+    {
+      "module_id": "MOD-RISK",
+      "file_path": "Agents/risk_strategist.py",
+      "module_name": "Agents.risk_strategist",
+      "description": "Risk Strategist — GAMP 5 RPN calculation, CSA testing strategy recommendation, ServiceNow field mapping.",
+      "functions": [
+        {
+          "function_name": "calculate_risk_score",
+          "class_name": null,
+          "line_start": 55,
+          "line_end": 95,
+          "criticality_override": "High"
+        },
+        {
+          "function_name": "assess_change_request",
+          "class_name": null,
+          "line_start": 96,
+          "line_end": 145,
+          "criticality_override": null
+        },
+        {
+          "function_name": "get_csa_testing_strategy",
+          "class_name": null,
+          "line_start": 146,
+          "line_end": 175,
+          "criticality_override": null
+        }
+      ]
+    },
+    {
+      "module_id": "MOD-INTEGRITY",
+      "file_path": "Agents/integrity_manager.py",
+      "module_name": "Agents.integrity_manager",
+      "description": "Integrity Manager — append-only CSV audit trail and logic archive writer with SHA-256 tamper detection.",
+      "functions": [
+        {
+          "function_name": "log_audit_event",
+          "class_name": null,
+          "line_start": 80,
+          "line_end": 145,
+          "criticality_override": "High"
+        },
+        {
+          "function_name": "_compute_reasoning_hash",
+          "class_name": null,
+          "line_start": 146,
+          "line_end": 175,
+          "criticality_override": "High"
+        },
+        {
+          "function_name": "_write_logic_archive",
+          "class_name": null,
+          "line_start": 176,
+          "line_end": 240,
+          "criticality_override": null
+        }
+      ]
+    },
+    {
+      "module_id": "MOD-DELTA",
+      "file_path": "Agents/delta_agent.py",
+      "module_name": "Agents.delta_agent",
+      "description": "Delta Agent — deterministic CSA test script generation from UR/FR documents; routes by risk level to scripted or charter outputs.",
+      "functions": [
+        {
+          "function_name": "generate_csa_test_from_ur_fr",
+          "class_name": "DeltaAgent",
+          "line_start": 95,
+          "line_end": 165,
+          "criticality_override": null
+        },
+        {
+          "function_name": "_build_positive_steps",
+          "class_name": "DeltaAgent",
+          "line_start": 166,
+          "line_end": 215,
+          "criticality_override": null
+        },
+        {
+          "function_name": "_build_negative_steps",
+          "class_name": "DeltaAgent",
+          "line_start": 216,
+          "line_end": 260,
+          "criticality_override": null
+        }
+      ]
+    }
+  ],
+
+  "test_scripts": [
+    {
+      "script_id": "OQ-URS6-001",
+      "phase": "OQ",
+      "title": "OQ: URS Generation from Natural Language — Functional Verification",
+      "execution_priority": "Critical",
+      "test_type": "Formal OQ",
+      "automation_status": "Manual",
+      "owner": "CSV Validation Lead",
+      "last_executed_at": "2026-01-15T09:00:00Z"
+    },
+    {
+      "script_id": "OQ-URS6-002",
+      "phase": "OQ",
+      "title": "OQ: Criticality Classification — High/Medium/Low Keyword Matching",
+      "execution_priority": "Critical",
+      "test_type": "Formal OQ",
+      "automation_status": "Semi-Automated",
+      "owner": "CSV Validation Lead",
+      "last_executed_at": "2026-01-15T10:00:00Z"
+    },
+    {
+      "script_id": "OQ-VERIF-001",
+      "phase": "OQ",
+      "title": "OQ: Verification Agent — Criticality Alignment Check",
+      "execution_priority": "Critical",
+      "test_type": "Formal OQ",
+      "automation_status": "Manual",
+      "owner": "QA Engineer",
+      "last_executed_at": "2026-01-20T14:00:00Z"
+    },
+    {
+      "script_id": "OQ-VERIF-002",
+      "phase": "OQ",
+      "title": "OQ: Verification Agent — Contradiction Detection (Skip Validation / No Audit Trail)",
+      "execution_priority": "Critical",
+      "test_type": "Formal OQ",
+      "automation_status": "Manual",
+      "owner": "QA Engineer",
+      "last_executed_at": "2026-01-20T15:30:00Z"
+    },
+    {
+      "script_id": "OQ-RISK-001",
+      "phase": "OQ",
+      "title": "OQ: Risk Strategist — RPN Calculation and Threshold Mapping",
+      "execution_priority": "Critical",
+      "test_type": "Formal OQ",
+      "automation_status": "Automated",
+      "owner": "Automation Engineer",
+      "last_executed_at": "2026-01-18T11:00:00Z"
+    },
+    {
+      "script_id": "OQ-AUDIT-001",
+      "phase": "OQ",
+      "title": "OQ: Integrity Manager — Audit Trail Append-Only and SHA-256 Hash Integrity",
+      "execution_priority": "Critical",
+      "test_type": "Formal OQ",
+      "automation_status": "Automated",
+      "owner": "Automation Engineer",
+      "last_executed_at": "2026-01-18T13:00:00Z"
+    },
+    {
+      "script_id": "UAT-FACTORY-001",
+      "phase": "UAT",
+      "title": "UAT: End-to-End Validation Factory Workflow — Requirement to Test Script",
+      "execution_priority": "High",
+      "test_type": "Formal UAT",
+      "automation_status": "Manual",
+      "owner": "Business Analyst / CSV Lead",
+      "last_executed_at": "2026-02-01T09:00:00Z"
+    },
+    {
+      "script_id": "TS-DELTA-001",
+      "phase": "OQ",
+      "title": "OQ: Delta Agent — CSA Test Script Generation Routing (High/Med/Low)",
+      "execution_priority": "High",
+      "test_type": "Formal OQ",
+      "automation_status": "Semi-Automated",
+      "owner": "QA Engineer",
+      "last_executed_at": "2026-02-05T10:00:00Z"
+    },
+    {
+      "script_id": "IQ-ENV-001",
+      "phase": "IQ",
+      "title": "IQ: Environment Qualification — Pinecone Index, OpenAI API Key, FPDF2 Version",
+      "execution_priority": "Critical",
+      "test_type": "Scripted",
+      "automation_status": "Automated",
+      "owner": "DevOps / CSV Lead",
+      "last_executed_at": "2026-01-10T08:00:00Z"
+    }
+  ],
+
+  "traceability_links": [
+    {
+      "link_id": "LINK-URS6.1-REQARCH-001",
+      "req_id": "URS-6.1",
+      "module_id": "MOD-REQ-ARCH",
+      "function_names": ["generate_urs", "_build_regulatory_rationale"],
+      "test_script_ids": ["OQ-URS6-001", "UAT-FACTORY-001", "IQ-ENV-001"],
+      "change_impact_type": "Direct",
+      "rationale": "generate_urs() is the primary implementation of URS-6.1. _build_regulatory_rationale() constructs the GAMP 5 citation that forms the regulatory basis of the generated URS.",
+      "created_at": "2026-01-05T09:00:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS6.9-REQARCH-002",
+      "req_id": "URS-6.9",
+      "module_id": "MOD-REQ-ARCH",
+      "function_names": ["_determine_criticality"],
+      "test_script_ids": ["OQ-URS6-002", "OQ-VERIF-001", "UAT-FACTORY-001"],
+      "change_impact_type": "Direct",
+      "rationale": "_determine_criticality() directly implements criticality scoring via GxP keyword matching. A change to this function alters classification outcomes, triggering downstream verification and UAT re-runs.",
+      "created_at": "2026-01-05T09:05:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS12.1-VERIF-001",
+      "req_id": "URS-12.1",
+      "module_id": "MOD-VERIF",
+      "function_names": ["verify_urs"],
+      "test_script_ids": ["OQ-VERIF-001", "OQ-VERIF-002", "UAT-FACTORY-001"],
+      "change_impact_type": "Direct",
+      "rationale": "verify_urs() is the top-level entry point for URS-12.1. It orchestrates all three verification checks and determines the final Approved/Rejected verdict.",
+      "created_at": "2026-01-05T09:10:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS12.10-VERIF-002",
+      "req_id": "URS-12.10",
+      "module_id": "MOD-VERIF",
+      "function_names": ["_check_criticality_alignment"],
+      "test_script_ids": ["OQ-VERIF-001", "UAT-FACTORY-001"],
+      "change_impact_type": "Direct",
+      "rationale": "_check_criticality_alignment() is the sole implementation of URS-12.10. Modifying its high-risk indicator list or scoring threshold directly affects compliance outcomes.",
+      "created_at": "2026-01-05T09:15:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS4.2-RISK-001",
+      "req_id": "URS-4.2",
+      "module_id": "MOD-RISK",
+      "function_names": ["calculate_risk_score", "get_csa_testing_strategy"],
+      "test_script_ids": ["OQ-RISK-001", "UAT-FACTORY-001"],
+      "change_impact_type": "Direct",
+      "rationale": "calculate_risk_score() implements the Severity × Occurrence × Detectability RPN formula. get_csa_testing_strategy() maps the resulting RPN to a CSA testing strategy. Both are core to URS-4.2.",
+      "created_at": "2026-01-05T09:20:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS13.1-INTEGRITY-001",
+      "req_id": "URS-13.1",
+      "module_id": "MOD-INTEGRITY",
+      "function_names": ["log_audit_event", "_compute_reasoning_hash", "_write_logic_archive"],
+      "test_script_ids": ["OQ-AUDIT-001", "UAT-FACTORY-001"],
+      "change_impact_type": "Direct",
+      "rationale": "All three functions jointly implement URS-13.1. log_audit_event() is the entry point; _compute_reasoning_hash() ensures tamper evidence; _write_logic_archive() persists the AI reasoning chain.",
+      "created_at": "2026-01-05T09:25:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS2.1-INTEGRITY-002",
+      "req_id": "URS-2.1",
+      "module_id": "MOD-INTEGRITY",
+      "function_names": ["log_audit_event", "_compute_reasoning_hash"],
+      "test_script_ids": ["OQ-AUDIT-001", "IQ-ENV-001"],
+      "change_impact_type": "Direct",
+      "rationale": "The audit trail (URS-2.1) is implemented by log_audit_event() (append-only CSV write) and _compute_reasoning_hash() (tamper-evident SHA-256). Both must be re-tested after any change.",
+      "created_at": "2026-01-05T09:30:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS17.1-DELTA-001",
+      "req_id": "URS-17.1",
+      "module_id": "MOD-DELTA",
+      "function_names": ["generate_csa_test_from_ur_fr", "_build_positive_steps", "_build_negative_steps"],
+      "test_script_ids": ["TS-DELTA-001", "UAT-FACTORY-001"],
+      "change_impact_type": "Direct",
+      "rationale": "generate_csa_test_from_ur_fr() is the primary URS-17.1 implementation. Step-builder functions determine the content and completeness of generated test scripts.",
+      "created_at": "2026-01-05T09:35:00Z",
+      "verified_by": "csv_lead_001"
+    },
+    {
+      "link_id": "LINK-URS6.1-VERIF-INDIRECT",
+      "req_id": "URS-6.1",
+      "module_id": "MOD-VERIF",
+      "function_names": ["verify_urs"],
+      "test_script_ids": ["OQ-VERIF-001", "UAT-FACTORY-001"],
+      "change_impact_type": "Indirect",
+      "rationale": "VerificationAgent.verify_urs() is called as part of the URS-6.1 workflow to gate URS approval. Changes to verification logic indirectly affect URS-6.1 output quality.",
+      "created_at": "2026-01-05T09:40:00Z",
+      "verified_by": "csv_lead_001"
+    }
+  ]
+}
