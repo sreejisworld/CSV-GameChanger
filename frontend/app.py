@@ -5270,6 +5270,23 @@ elif page.startswith("11"):
         "Change Impact Assessment — GxP Traceability & IAR Engine",
     )
 
+    # ── Local card helpers ────────────────────────────────────────
+    def _card_open(title: str, icon: str = "") -> None:
+        _ico = (
+            f'<i class="fa-solid {icon}"'
+            f' style="margin-right:0.4rem;"></i>'
+            if icon else ""
+        )
+        st.markdown(
+            f'<div class="vsr-section-card">'
+            f'<div class="vsr-section-title">'
+            f"{_ico}{title}</div>",
+            unsafe_allow_html=True,
+        )
+
+    def _card_close() -> None:
+        st.markdown("</div>", unsafe_allow_html=True)
+
     # ── Load traceability graph ───────────────────────────────────
     SENTINEL_GRAPH = (
         PROJECT_ROOT / "Agents" / "sentinel"
