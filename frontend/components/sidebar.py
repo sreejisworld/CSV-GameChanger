@@ -29,6 +29,7 @@ NAV_GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
         ("8", "fa-chart-bar",   "Demo Comparison"),
         ("9", "fa-shield-halved", "Command Center"),
         ("10", "fa-file-shield", "VSR"),
+        ("11", "fa-satellite-dish", "EVOLV Sentinel"),
     ]),
 ]
 

@@ -5257,3 +5257,247 @@ elif page.startswith("10"):
                         unsafe_allow_html=True,
                     )
                 _card_close()
+
+
+# ===================================================================
+# Page 11 — EVOLV Sentinel
+# ===================================================================
+elif page.startswith("11"):
+
+    breadcrumb(["Home", "EVOLV Sentinel"])
+    page_header(
+        "EVOLV Sentinel",
+        "Change Impact Assessment — GxP Traceability & IAR Engine",
+    )
+
+    # ── Load traceability graph ───────────────────────────────────
+    SENTINEL_GRAPH = (
+        PROJECT_ROOT / "Agents" / "sentinel"
+        / "traceability_sample.json"
+    )
+    _sentinel_graph_ok = SENTINEL_GRAPH.exists()
+    if not _sentinel_graph_ok:
+        st.error(
+            f"Traceability graph not found: `{SENTINEL_GRAPH}`. "
+            "Run `scripts/setup_sentinel.py` to initialise."
+        )
+
+    # ── Diff Input ───────────────────────────────────────────────
+    _card_open("Paste Git Diff", icon="fa-code-compare")
+    diff_text = st.text_area(
+        "Paste git diff",
+        height=200,
+        placeholder="git diff HEAD~1",
+        key="sentinel_diff_input",
+        label_visibility="collapsed",
+    )
+    st.caption(
+        "Tip: run `git diff HEAD~1` in your project root "
+        "and paste the output here."
+    )
+    run_btn = st.button(
+        "Run Impact Analysis",
+        type="primary",
+        key="sentinel_run",
+        disabled=not _sentinel_graph_ok,
+    )
+    _card_close()
+
+    # ── Analysis ─────────────────────────────────────────────────
+    if run_btn and diff_text.strip():
+        try:
+            from Agents.sentinel import (
+                ImpactEngine,
+                JustificationEngine,
+            )
+            _ie = ImpactEngine.from_file(SENTINEL_GRAPH)
+            _report = _ie.analyze(diff_text)
+            st.session_state["sentinel_report"] = (
+                _ie.to_dict(_report)
+            )
+            st.session_state["sentinel_report_obj"] = _report
+            st.session_state["sentinel_diff_text"] = diff_text
+        except Exception as _exc:
+            st.error(f"Impact analysis failed: {_exc}")
+
+    # ── Results ──────────────────────────────────────────────────
+    if "sentinel_report" in st.session_state:
+        _rpt = st.session_state["sentinel_report"]
+        _summary = _rpt.get("summary", {})
+        _at_risk = _rpt.get("at_risk_requirements", [])
+        _scripts = _rpt.get("test_scripts_to_execute", [])
+
+        # Metric row
+        _mc1, _mc2, _mc3, _mc4 = st.columns(4)
+        with _mc1:
+            st.metric(
+                "Files Changed",
+                len(_rpt.get("modified_modules", [])),
+            )
+        with _mc2:
+            st.metric("At-Risk Requirements", len(_at_risk))
+        with _mc3:
+            st.metric("Test Scripts Required", len(_scripts))
+        with _mc4:
+            _band_parts = ", ".join(
+                f"{b}:{_summary.get(b, 0)}"
+                for b in ("CRITICAL", "HIGH", "MEDIUM", "LOW")
+                if _summary.get(b, 0) > 0
+            ) or "None"
+            st.metric("Risk Bands", _band_parts)
+
+        st.markdown("---")
+
+        # At-Risk Requirements table
+        if _at_risk:
+            _card_open(
+                "At-Risk Requirements",
+                icon="fa-triangle-exclamation",
+            )
+            import pandas as _pd_s
+            _req_rows = [
+                {
+                    "Req ID": r.get("req_id", ""),
+                    "Title": r.get("title", ""),
+                    "Risk Level": r.get("risk_level", ""),
+                    "GxP Category": r.get("gxp_category", ""),
+                    "Criticality": r.get(
+                        "criticality_score", ""
+                    ),
+                    "Scope": round(
+                        r.get("scope_of_change", 0.0), 3
+                    ),
+                    "Impact Score": round(
+                        r.get("impact_score", 0.0), 3
+                    ),
+                    "Risk Band": r.get("risk_band", ""),
+                }
+                for r in _at_risk
+            ]
+            st.dataframe(
+                _pd_s.DataFrame(_req_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+            _card_close()
+
+        # Consolidated Test Execution Plan table
+        if _scripts:
+            _card_open(
+                "Consolidated Test Execution Plan",
+                icon="fa-clipboard-check",
+            )
+            _script_rows = [
+                {
+                    "Script ID": s.get("script_id", ""),
+                    "Phase": s.get("phase", ""),
+                    "Title": s.get("title", ""),
+                    "Priority": s.get(
+                        "execution_priority", ""
+                    ),
+                    "Automation": s.get(
+                        "automation_status", ""
+                    ),
+                }
+                for s in _scripts
+            ]
+            st.dataframe(
+                _pd_s.DataFrame(_script_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+            _card_close()
+
+        # IAR Generation
+        st.markdown("---")
+        _card_open(
+            "Generate Impact Assessment Report (IAR)",
+            icon="fa-file-waveform",
+        )
+        _ic1, _ic2 = st.columns(2)
+        with _ic1:
+            iar_author = st.text_input(
+                "Prepared By",
+                value="EVOLV Sentinel",
+                key="sentinel_author",
+            )
+        with _ic2:
+            iar_project = st.text_input(
+                "Project Name",
+                value="EVOLV Validation Factory",
+                key="sentinel_project",
+            )
+
+        import os as _os_s
+        _use_llm = bool(
+            _os_s.environ.get("ANTHROPIC_API_KEY")
+        )
+        _mode_label = (
+            "LLM (Claude)" if _use_llm
+            else "Dry-run (template)"
+        )
+        st.caption(f"Generation mode: {_mode_label}")
+
+        gen_iar_btn = st.button(
+            "Generate IAR",
+            key="sentinel_gen_iar",
+            type="primary",
+        )
+        if gen_iar_btn:
+            try:
+                from Agents.sentinel import JustificationEngine
+                _je = JustificationEngine.from_file(
+                    SENTINEL_GRAPH
+                )
+                _iar = _je.generate_iar(
+                    impact_report=st.session_state[
+                        "sentinel_report_obj"
+                    ],
+                    diff_text=st.session_state.get(
+                        "sentinel_diff_text", diff_text
+                    ),
+                    author=iar_author,
+                    project_name=iar_project,
+                    dry_run=not _use_llm,
+                )
+                _md = JustificationEngine.render_to_markdown(
+                    _iar
+                )
+                st.session_state["sentinel_iar_md"] = _md
+                st.session_state["sentinel_iar_id"] = (
+                    _iar.iar_id
+                )
+                st.success("IAR generated successfully.")
+            except Exception as _exc:
+                st.error(f"IAR generation failed: {_exc}")
+
+        _card_close()
+
+        # IAR display + download
+        if "sentinel_iar_md" in st.session_state:
+            _card_open(
+                "Impact Assessment Report",
+                icon="fa-file-alt",
+            )
+            st.markdown(
+                st.session_state["sentinel_iar_md"]
+            )
+            st.download_button(
+                label="Download IAR (.md)",
+                data=st.session_state["sentinel_iar_md"],
+                file_name=(
+                    f"{st.session_state['sentinel_iar_id']}"
+                    ".md"
+                ),
+                mime="text/markdown",
+                key="sentinel_iar_dl",
+            )
+            _card_close()
+
+    else:
+        empty_state(
+            "No Diff Loaded",
+            "Paste a git diff above and click "
+            "Run Impact Analysis.",
+            icon="satellite-dish",
+        )
