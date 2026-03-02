@@ -7,6 +7,13 @@ from .justification_engine import (
     InScopeTest,
     ExcludedModule,
 )
+from .watcher import (
+    WatcherEngine,
+    WatcherReport,
+    RequirementDelta,
+    TCImpactDetail,
+    DEMO_V2_REPORT,
+)
 
 __all__ = [
     "ImpactEngine",
@@ -18,4 +25,9 @@ __all__ = [
     "ChangeSummary",
     "InScopeTest",
     "ExcludedModule",
+    "WatcherEngine",
+    "WatcherReport",
+    "RequirementDelta",
+    "TCImpactDetail",
+    "DEMO_V2_REPORT",
 ]

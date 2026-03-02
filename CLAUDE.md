@@ -936,6 +936,14 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-19.5 | Inject AI output into .docx templates | `utils/demo_comparison.py:inject_into_docx()` |
 | URS-19.6 | Display side-by-side comparison with cost analysis | `frontend/app.py` (Page 8) |
 | URS-19.7 | Provide CSV, PDF, and Word Factory exports | `frontend/app.py` (Page 8) |
+| URS-20.1 | Generate intelligence from requirements context | `Agents/intelligence_engine.py:IntelligenceEngine.generate_intelligence()` |
+| URS-20.2 | Validate LLM dependencies for Intelligence Engine | `Agents/intelligence_engine.py:IntelligenceEngine.__init__()` |
+| URS-20.3 | Produce structured intelligence package | `Agents/intelligence_engine.py:IntelligenceResult` |
+| URS-20.4 | Generate Mermaid.js workflow diagram | `Agents/intelligence_engine.py:IntelligenceEngine._generate_mermaid_diagram()` |
+| URS-20.5 | Categorise requirements and generate acceptance criteria | `Agents/intelligence_engine.py:IntelligenceEngine._analyse_requirements()` |
+| URS-20.6 | Find security gaps in workflow vs. security matrix | `Agents/intelligence_engine.py:IntelligenceEngine._find_security_gaps()` |
+| URS-20.7 | Display split-screen Intelligence Dashboard in UI | `frontend/app.py` (Page 2) |
+| URS-20.8 | Provide editable Risk Rank toggle in Smart Table | `frontend/app.py` (Page 2, `p2_smart_table` data_editor) |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

@@ -14,7 +14,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+import json
 import streamlit as st
+import streamlit.components.v1 as _st_components
 import pandas as pd
 from datetime import datetime
 
@@ -1597,43 +1599,54 @@ if page == "1":
 
 
 # ===================================================================
-# Page 2 — Generate Requirements
+# Page 2 — Generate Requirements (100x Intelligence Engine)
 # ===================================================================
 elif page.startswith("2"):
     breadcrumb(["Home", "Requirements", "Generate URS"])
     page_header(
         "Generate Requirements (URS)",
-        "Describe a requirement in plain English "
-        "and the engine produces a GAMP 5 compliant URS",
+        "Describe requirements in plain English — "
+        "the 100x Intelligence Engine produces GAMP 5 compliant URS, "
+        "workflow diagrams, acceptance criteria, and gap analysis.",
     )
 
-    _expert_p2 = st.session_state.get(
-        "expert_mode", False,
-    )
+    _expert_p2 = st.session_state.get("expert_mode", False)
 
     if st.session_state.get("demo_mode", False):
+        st.info("Demo Mode \u2014 showing sample LIMS data")
+        st.session_state.generated_urs = DEMO_DATA["generated_urs"]
+
+    if _expert_p2 and not st.session_state.get("demo_mode", False):
         st.info(
-            "Demo Mode \u2014 showing sample LIMS data"
-        )
-        st.session_state.generated_urs = (
-            DEMO_DATA["generated_urs"]
+            "Expert Mode \u2014 skipping external document lookup; "
+            "using deterministic GAMP 5 / CSA logic"
         )
 
-    if _expert_p2 and not st.session_state.get(
-        "demo_mode", False
-    ):
-        st.info(
-            "Expert Mode \u2014 skipping external "
-            "document lookup; using deterministic "
-            "GAMP 5 / CSA logic"
+    # ---- Primary input row -----------------------------------------
+    _col_req, _col_sys = st.columns([3, 2])
+    with _col_req:
+        requirement = st.text_area(
+            "Requirement description",
+            placeholder=(
+                "Enter one or more requirements (one per line).\n"
+                "e.g. The system shall monitor warehouse temperature "
+                "in real time.\n"
+                "e.g. The system shall enforce role-based access control."
+            ),
+            height=140,
+            key="p2_requirement",
         )
-
-    requirement = st.text_area(
-        "Requirement description",
-        placeholder="e.g. The system shall monitor warehouse "
-                    "temperature in real time.",
-        height=120,
-    )
+    with _col_sys:
+        _p2_sys_desc = st.text_area(
+            "System description",
+            placeholder=(
+                "Describe the system under validation.\n"
+                "e.g. A LIMS for pharmaceutical laboratory "
+                "sample management."
+            ),
+            height=140,
+            key="p2_system_description",
+        )
 
     if not _expert_p2:
         min_score = st.slider(
@@ -1646,62 +1659,179 @@ elif page.startswith("2"):
                  "may reduce relevance.",
         )
     else:
-        min_score = 0.35  # default; unused in expert mode
+        min_score = 0.35
 
+    # ---- Workflow & Security Intelligence expander -----------------
+    _DEFAULT_SECURITY_MATRIX = json.dumps(
+        [
+            {
+                "step": "User Login",
+                "security_requirements": [
+                    "MFA required",
+                    "Session timeout after 15 minutes",
+                ],
+            },
+            {
+                "step": "Data Entry",
+                "security_requirements": [
+                    "Role-based access control enforced",
+                ],
+            },
+            {
+                "step": "Report Export",
+                "security_requirements": [],
+            },
+        ],
+        indent=2,
+    )
+    with st.expander(
+        "Workflow & Security Intelligence "
+        "(optional \u2014 powers the diagram and gap finder)",
+        expanded=False,
+    ):
+        _wi_col, _sm_col = st.columns(2)
+        with _wi_col:
+            _p2_workflow = st.text_area(
+                "Workflow text",
+                placeholder=(
+                    "Describe the workflow steps in order.\n"
+                    "1. User logs in with MFA\n"
+                    "2. System validates credentials\n"
+                    "3. User enters sample data\n"
+                    "4. System records audit trail\n"
+                    "5. Supervisor approves record\n"
+                    "6. Report exported to PDF"
+                ),
+                height=190,
+                key="p2_workflow_text",
+            )
+        with _sm_col:
+            _p2_sec_matrix = st.text_area(
+                "Security matrix (JSON)",
+                value=_DEFAULT_SECURITY_MATRIX,
+                height=190,
+                key="p2_security_matrix",
+                help=(
+                    'Format: [{"step": "...", '
+                    '"security_requirements": ["..."]}]'
+                ),
+            )
+
+    # ---- Session state init ----------------------------------------
     if "generated_urs" not in st.session_state:
         st.session_state.generated_urs = None
+    if "intelligence_result" not in st.session_state:
+        st.session_state.intelligence_result = None
 
-    if st.button("Generate URS", type="primary"):
-        if not requirement.strip():
-            st.warning(
-                "Please enter a requirement description."
-            )
+    # ---- Action buttons -------------------------------------------
+    _p2_btn1, _p2_btn2, _p2_spacer = st.columns([2, 3, 5])
+    with _p2_btn1:
+        _p2_gen_urs = st.button("Generate URS", type="primary")
+    with _p2_btn2:
+        _p2_gen_intel = st.button(
+            "\u2728 Generate Intelligence",
+            help=(
+                "Runs the 100x Intelligence Engine: Mermaid workflow "
+                "diagram, requirement categorisation, acceptance "
+                "criteria (Positive / Negative / Edge), and "
+                "Proactive Gap Finder."
+            ),
+        )
+
+    # ---- Generate URS (single requirement, existing flow) ----------
+    if _p2_gen_urs:
+        _p2_first_req = next(
+            (
+                ln.strip()
+                for ln in requirement.splitlines()
+                if ln.strip()
+            ),
+            "",
+        )
+        if not _p2_first_req:
+            st.warning("Please enter a requirement description.")
         else:
             with st.spinner("Generating URS..."):
                 try:
                     ctrl = AgentController()
-                    st.session_state.generated_urs = (
-                        ctrl.generate_urs(
-                            requirement=requirement.strip(),
-                            min_score=min_score,
-                            expert_mode=_expert_p2,
+                    st.session_state.generated_urs = ctrl.generate_urs(
+                        requirement=_p2_first_req,
+                        min_score=min_score,
+                        expert_mode=_expert_p2,
+                    )
+                except Exception as exc:
+                    st.error(f"URS generation failed: {exc}")
+
+    # ---- Generate Intelligence (multi-requirement) -----------------
+    if _p2_gen_intel:
+        _p2_reqs = [
+            ln.strip(" -\u2022*0123456789.")
+            for ln in requirement.splitlines()
+            if ln.strip()
+        ]
+        if not _p2_reqs:
+            st.warning(
+                "Please enter at least one requirement to run "
+                "the Intelligence Engine."
+            )
+        else:
+            # Parse security matrix JSON
+            try:
+                _p2_matrix = json.loads(_p2_sec_matrix)
+                if not isinstance(_p2_matrix, list):
+                    _p2_matrix = []
+            except Exception:
+                _p2_matrix = []
+                st.warning(
+                    "Security matrix JSON is invalid \u2014 "
+                    "gap analysis will run without it."
+                )
+
+            with st.spinner(
+                "Running 100x Intelligence Engine\u2026"
+            ):
+                try:
+                    from Agents.intelligence_engine import (
+                        IntelligenceEngine,
+                    )
+                    _p2_engine = IntelligenceEngine()
+                    st.session_state.intelligence_result = (
+                        _p2_engine.generate_intelligence(
+                            requirements=_p2_reqs,
+                            system_description=_p2_sys_desc,
+                            workflow_text=_p2_workflow,
+                            security_matrix=_p2_matrix,
                         )
                     )
                 except Exception as exc:
                     st.error(
-                        f"URS generation failed: {exc}"
+                        f"Intelligence Engine failed: {exc}"
                     )
 
+    # ================================================================
+    # URS Output (single-requirement path)
+    # ================================================================
     urs = st.session_state.generated_urs
     if urs is not None:
         st.markdown("#### Generated URS")
-
-        # Summary metrics
         c1, c2, c3 = st.columns(3)
         c1.metric("URS ID", urs.get("URS_ID", "-"))
         crit = urs.get("Criticality", "-")
         c2.metric("Criticality", crit)
-        versions = urs.get(
-            "Reg_Versions_Cited", []
-        )
+        versions = urs.get("Reg_Versions_Cited", [])
         c3.metric(
             "Reg Versions",
             ", ".join(versions) if versions else "-",
         )
-
         st.markdown("**Requirement Statement**")
-        st.info(
-            urs.get("Requirement_Statement", "-")
-        )
+        st.info(urs.get("Requirement_Statement", "-"))
         st.markdown("**Regulatory Rationale**")
-        st.markdown(
-            urs.get("Regulatory_Rationale", "-")
-        )
+        st.markdown(urs.get("Regulatory_Rationale", "-"))
         st.markdown("---")
         with st.expander("Raw JSON"):
             st.json(urs)
 
-        # ---- PDF Download ------------------------------------
+        # PDF Download
         st.markdown("#### Download Approved URS")
         signer_name = st.text_input(
             "Signer Name",
@@ -1713,12 +1843,8 @@ elif page.startswith("2"):
             "Signature Meaning",
             value="Approval of Requirements",
         )
-
         if signer_name.strip():
-            from utils.pdf_generator import (
-                generate_urs_pdf,
-            )
-
+            from utils.pdf_generator import generate_urs_pdf
             pdf_bytes = generate_urs_pdf(
                 urs=urs,
                 signer_name=signer_name.strip(),
@@ -1734,9 +1860,216 @@ elif page.startswith("2"):
             )
         else:
             st.caption(
-                "Enter a signer name to enable "
-                "PDF download."
+                "Enter a signer name to enable PDF download."
             )
+
+    # ================================================================
+    # Intelligence Dashboard
+    # ================================================================
+    _p2_intel = st.session_state.intelligence_result
+    if _p2_intel is not None:
+        st.markdown("---")
+        st.markdown("### \u2728 Intelligence Dashboard")
+
+        # Risk colour map (used in multiple sections below)
+        _P2_RISK_ICONS = {
+            "High": "\U0001f534",
+            "Medium": "\U0001f7e1",
+            "Low": "\U0001f7e2",
+        }
+        _P2_TEST_MAP = {
+            "High": "Scripted OQ / UAT",
+            "Medium": "Hybrid (Scripted + Unscripted)",
+            "Low": "Unscripted / Ad-hoc",
+        }
+
+        # ---- Split-screen: Mermaid left | Smart Table right ------
+        _p2_diag_col, _p2_tbl_col = st.columns([4, 6])
+
+        with _p2_diag_col:
+            st.markdown("#### Workflow Diagram")
+            # Build Mermaid HTML — use concatenation to avoid
+            # f-string collision with Mermaid's {curly} syntax.
+            _p2_diag_html = (
+                '<html>'
+                '<body style="margin:0;padding:8px;'
+                'background:#0e1117;">'
+                '<div class="mermaid" '
+                'style="font-family:sans-serif;font-size:13px;">'
+                + _p2_intel.mermaid_diagram
+                + '</div>'
+                '<script type="module">'
+                'import mermaid from '
+                "'https://cdn.jsdelivr.net/npm/"
+                "mermaid@10/dist/mermaid.esm.min.mjs';"
+                'mermaid.initialize({'
+                "startOnLoad:true,"
+                "theme:'dark',"
+                'flowchart:{curve:"basis",htmlLabels:true}'
+                '});'
+                '</script>'
+                '</body>'
+                '</html>'
+            )
+            _st_components.html(
+                _p2_diag_html, height=380, scrolling=True
+            )
+            if _p2_intel.workflow_steps:
+                with st.expander(
+                    f"Detected steps "
+                    f"({len(_p2_intel.workflow_steps)})"
+                ):
+                    for _s in _p2_intel.workflow_steps:
+                        st.markdown(f"- {_s}")
+
+        with _p2_tbl_col:
+            st.markdown("#### Smart Requirements Table")
+            _p2_tbl_rows = []
+            for _row in _p2_intel.requirements_intelligence:
+                _p2_tbl_rows.append(
+                    {
+                        "Requirement": (
+                            _row.requirement[:90] + "\u2026"
+                            if len(_row.requirement) > 90
+                            else _row.requirement
+                        ),
+                        "Category": _row.category,
+                        "Risk Rank": _row.risk_level,
+                        "Test Assurance": _row.test_assurance,
+                    }
+                )
+            _p2_df = pd.DataFrame(_p2_tbl_rows)
+            _p2_edited = st.data_editor(
+                _p2_df,
+                column_config={
+                    "Requirement": st.column_config.TextColumn(
+                        "Requirement",
+                        disabled=True,
+                        width="large",
+                    ),
+                    "Category": st.column_config.SelectboxColumn(
+                        "Category",
+                        options=[
+                            "Functional", "Security",
+                            "Regulatory", "Data Integrity",
+                            "Integration", "Performance",
+                            "Audit/Compliance", "Non-functional",
+                        ],
+                        required=True,
+                    ),
+                    "Risk Rank": st.column_config.SelectboxColumn(
+                        "Risk Rank",
+                        options=["High", "Medium", "Low"],
+                        required=True,
+                        help=(
+                            "Toggle to re-classify. Test Assurance "
+                            "updates automatically."
+                        ),
+                    ),
+                    "Test Assurance": st.column_config.TextColumn(
+                        "Test Assurance Suggestion",
+                        disabled=True,
+                        width="large",
+                    ),
+                },
+                hide_index=True,
+                use_container_width=True,
+                key="p2_smart_table",
+            )
+            # Sync Test Assurance if Risk Rank was toggled
+            if not _p2_edited["Risk Rank"].equals(
+                _p2_df["Risk Rank"]
+            ):
+                _p2_edited["Test Assurance"] = (
+                    _p2_edited["Risk Rank"].map(_P2_TEST_MAP)
+                )
+                st.caption(
+                    "Test Assurance updated to reflect new "
+                    "Risk Rank selections."
+                )
+
+        # ---- Acceptance Criteria --------------------------------
+        st.markdown("#### Acceptance Criteria")
+        for _p2_row in _p2_intel.requirements_intelligence:
+            _p2_icon = _P2_RISK_ICONS.get(
+                _p2_row.risk_level, ""
+            )
+            _p2_label = (
+                _p2_row.requirement[:72] + "\u2026"
+                if len(_p2_row.requirement) > 72
+                else _p2_row.requirement
+            )
+            with st.expander(
+                f"{_p2_icon} {_p2_label} "
+                f"[{_p2_row.category}]"
+            ):
+                _p2_ac = _p2_row.acceptance_criteria
+                _p2_ac_p, _p2_ac_n, _p2_ac_e = st.columns(3)
+                with _p2_ac_p:
+                    st.markdown("**\u2705 Positive Cases**")
+                    for _ac in _p2_ac.positive:
+                        st.success(_ac)
+                with _p2_ac_n:
+                    st.markdown("**\u274c Negative Cases**")
+                    for _ac in _p2_ac.negative:
+                        st.error(_ac)
+                with _p2_ac_e:
+                    st.markdown("**\u26a0\ufe0f Edge Cases**")
+                    for _ac in _p2_ac.edge:
+                        st.warning(_ac)
+
+        # ---- Proactive Gap Finder ------------------------------
+        st.markdown("---")
+        st.markdown(
+            "#### \U0001f50d Proactive Gap Finder"
+        )
+        if _p2_intel.security_gaps:
+            _p2_high_gaps = [
+                g for g in _p2_intel.security_gaps
+                if g.severity == "High"
+            ]
+            _p2_med_gaps = [
+                g for g in _p2_intel.security_gaps
+                if g.severity == "Medium"
+            ]
+            _gf1, _gf2, _gf3 = st.columns(3)
+            _gf1.metric(
+                "Total Gaps",
+                len(_p2_intel.security_gaps),
+            )
+            _gf2.metric(
+                "\U0001f6a8 High Severity",
+                len(_p2_high_gaps),
+            )
+            _gf3.metric(
+                "\u26a0\ufe0f Medium Severity",
+                len(_p2_med_gaps),
+            )
+            st.markdown("")
+            for _gap in _p2_intel.security_gaps:
+                if _gap.severity == "High":
+                    st.error(
+                        f"\U0001f6a8 **{_gap.step}** \u2014 "
+                        f"{_gap.gap_description}"
+                    )
+                else:
+                    st.warning(
+                        f"\u26a0\ufe0f **{_gap.step}** \u2014 "
+                        f"{_gap.gap_description}"
+                    )
+        elif _p2_intel.workflow_steps:
+            st.success(
+                "All workflow steps have corresponding security "
+                "requirements in the matrix."
+            )
+        else:
+            st.info(
+                "Provide workflow text and a security matrix to "
+                "enable gap analysis."
+            )
+
+        with st.expander("Raw Intelligence JSON"):
+            st.json(_p2_intel.to_dict())
 
 
 # ===================================================================
@@ -5518,3 +5851,252 @@ elif page.startswith("11"):
             "Run Impact Analysis.",
             icon="satellite-dish",
         )
+
+    # ══════════════════════════════════════════════════════════════
+    # Section A — Sentinel Watcher: Requirement Drift Detection
+    # ══════════════════════════════════════════════════════════════
+    st.markdown("---")
+    _card_open(
+        "Sentinel Watcher \u2014 Requirement Drift Detection",
+        icon="fa-rotate",
+    )
+
+    import os as _os_w
+    _BASELINE_PATH = (
+        PROJECT_ROOT / "output" / "sentinel" / "baseline.json"
+    )
+
+    # Baseline status
+    if _BASELINE_PATH.exists():
+        try:
+            with open(_BASELINE_PATH, "r", encoding="utf-8") as _bf:
+                _bl_meta = json.load(_bf)
+            _bl_ts = _bl_meta.get("generated_at", "unknown")[:19]
+            _bl_n = _bl_meta.get("requirement_count", "?")
+            st.caption(
+                f"Baseline set \u2014 {_bl_n} requirements "
+                f"\u2014 {_bl_ts} UTC"
+            )
+        except Exception:
+            st.caption("Baseline file exists but could not be read.")
+    else:
+        st.caption("No baseline set")
+
+    _wc1, _wc2 = st.columns(2)
+    with _wc1:
+        _set_bl_btn = st.button(
+            "Set Baseline",
+            key="sentinel_set_baseline",
+            disabled=not _sentinel_graph_ok,
+        )
+    with _wc2:
+        _sync_btn = st.button(
+            "Sync & Detect Drift",
+            key="sentinel_sync_drift",
+            disabled=(
+                not _sentinel_graph_ok
+                or not _BASELINE_PATH.exists()
+            ),
+        )
+
+    if _set_bl_btn and _sentinel_graph_ok:
+        try:
+            from Agents.sentinel import WatcherEngine as _WE
+            _we = _WE.from_file(SENTINEL_GRAPH)
+            _bl = _we.create_baseline(_BASELINE_PATH)
+            st.session_state["sentinel_baseline"] = _bl
+            st.toast(
+                f"Baseline saved \u2014 "
+                f"{_bl['requirement_count']} requirements hashed."
+            )
+            st.rerun()
+        except Exception as _exc:
+            st.error(f"Baseline creation failed: {_exc}")
+
+    if _sync_btn and _sentinel_graph_ok:
+        try:
+            from Agents.sentinel import WatcherEngine as _WE
+            _we = _WE.from_file(SENTINEL_GRAPH)
+            _deltas = _we.detect_deltas(_BASELINE_PATH)
+            st.session_state["sentinel_deltas"] = _deltas
+            st.session_state.pop("sentinel_watcher_report", None)
+        except Exception as _exc:
+            st.error(f"Drift detection failed: {_exc}")
+
+    # Show deltas / drift results
+    if "sentinel_deltas" in st.session_state:
+        _deltas = st.session_state["sentinel_deltas"]
+        if _deltas:
+            st.warning(
+                f"\u26a0\ufe0f  {len(_deltas)} requirement(s) "
+                "drifted from baseline."
+            )
+            import pandas as _pd_w
+            _delta_rows = [
+                {
+                    "Req ID": d.req_id,
+                    "Title": d.title,
+                    "Old Hash": d.old_hash,
+                    "New Hash": d.new_hash,
+                }
+                for d in _deltas
+            ]
+            st.dataframe(
+                _pd_w.DataFrame(_delta_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+            _analyze_btn = st.button(
+                "Analyze TC Impact",
+                key="sentinel_analyze_tc",
+                type="primary",
+            )
+            if _analyze_btn:
+                try:
+                    from Agents.sentinel import WatcherEngine as _WE
+                    _we = _WE.from_file(SENTINEL_GRAPH)
+                    _use_llm_w = bool(
+                        _os_w.environ.get("ANTHROPIC_API_KEY")
+                    )
+                    _wr = _we.analyze_tc_impact(
+                        _deltas,
+                        dry_run=not _use_llm_w,
+                    )
+                    st.session_state[
+                        "sentinel_watcher_report"
+                    ] = _wr
+                except Exception as _exc:
+                    st.error(f"TC impact analysis failed: {_exc}")
+        else:
+            st.success(
+                "All requirements match baseline. "
+                "No drift detected."
+            )
+
+    # Show WatcherReport
+    if "sentinel_watcher_report" in st.session_state:
+        _wr = st.session_state["sentinel_watcher_report"]
+        _wm1, _wm2 = st.columns(2)
+        with _wm1:
+            st.metric(
+                "Impacted TCs",
+                len(_wr.impacted_tc_ids),
+            )
+        with _wm2:
+            _rd_label = (
+                "\ud83d\udd34 Yes" if _wr.risk_drift
+                else "\ud83d\udfe2 No"
+            )
+            st.metric("Risk Drift", _rd_label)
+
+        if _wr.tc_impact_details:
+            import pandas as _pd_wi
+            _status_colours = {
+                "Invalidated": "\ud83d\udd34 Invalidated",
+                "Partially Impacted": "\ud83d\udfe0 Partially Impacted",
+                "Unaffected": "\ud83d\udfe2 Unaffected",
+            }
+            _detail_rows = [
+                {
+                    "TC ID": d.tc_id,
+                    "Status": _status_colours.get(
+                        d.impact_status, d.impact_status
+                    ),
+                    "Rationale": d.rationale,
+                }
+                for d in _wr.tc_impact_details
+            ]
+            st.dataframe(
+                _pd_wi.DataFrame(_detail_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        st.info(_wr.regression_rationale)
+
+    _card_close()
+
+    # ══════════════════════════════════════════════════════════════
+    # Section B — Demo: Simulate Vendor v2.0 Ingest
+    # ══════════════════════════════════════════════════════════════
+    _card_open(
+        "Demo: Simulate Vendor v2.0 Ingest",
+        icon="fa-vial-circle-check",
+    )
+    st.caption(
+        "Simulates ingesting a vendor software update that changes "
+        "3 requirements."
+    )
+    _demo_btn = st.button(
+        "Ingest v2.0",
+        key="sentinel_demo_ingest",
+        type="primary",
+    )
+    if _demo_btn:
+        st.session_state["sentinel_demo_triggered"] = True
+
+    if st.session_state.get("sentinel_demo_triggered"):
+        from Agents.sentinel import DEMO_V2_REPORT as _DEMO
+
+        with st.expander(
+            "\ud83d\udd14 Sentinel Alert",
+            expanded=True,
+        ):
+            st.warning(
+                "\u26a0\ufe0f  Alert: 3 Requirements have drifted."
+            )
+            st.success(
+                "\u2705  Regression Suite Optimized: "
+                "Rerun TC-05, TC-09."
+            )
+            st.info(
+                "\ud83d\udccb  88% of documentation remains valid."
+            )
+
+        import pandas as _pd_d
+        # Drifted requirements table
+        st.markdown("**Drifted Requirements**")
+        _demo_delta_rows = [
+            {
+                "Req ID": d.req_id,
+                "Title": d.title,
+                "Old Hash": d.old_hash,
+                "New Hash": d.new_hash,
+            }
+            for d in _DEMO.deltas
+        ]
+        st.dataframe(
+            _pd_d.DataFrame(_demo_delta_rows),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # TC Impact Details table
+        st.markdown("**TC Impact Details**")
+        _demo_status_colours = {
+            "Invalidated": "\ud83d\udd34 Invalidated",
+            "Partially Impacted": "\ud83d\udfe0 Partially Impacted",
+            "Unaffected": "\ud83d\udfe2 Unaffected",
+        }
+        _demo_detail_rows = [
+            {
+                "TC ID": d.tc_id,
+                "Status": _demo_status_colours.get(
+                    d.impact_status, d.impact_status
+                ),
+                "Rationale": d.rationale,
+            }
+            for d in _DEMO.tc_impact_details
+        ]
+        st.dataframe(
+            _pd_d.DataFrame(_demo_detail_rows),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # Risk Drift badge
+        st.markdown(
+            "\ud83d\udfe2 **Risk Drift:** None Detected"
+        )
+
+    _card_close()
