@@ -15,7 +15,9 @@ from typing import Dict, Any
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+import json
 import streamlit as st
+import streamlit.components.v1 as _st_components
 import pandas as pd
 from datetime import datetime
 
@@ -830,19 +832,29 @@ page = render_sidebar(audit_csv=AUDIT_CSV)
 # -------------------------------------------------------------------
 # Helper: generate negative-testing and data-drift scenarios
 # -------------------------------------------------------------------
-def generate_adversarial_scenarios(ur_fr: dict) -> list:
-    """Generate negative-testing and data-drift scenarios.
+def generate_adversarial_scenarios(
+    ur_fr: dict,
+    limitations: list = None,
+) -> list:
+    """Generate negative-testing, data-drift, and vendor-constraint scenarios.
 
-    Targets two specific failure classes:
+    Targets three failure classes:
 
     * **Negative Testing** — cases where the system *should* reject
       the input (invalid fields, missing mandatories, type mismatches).
     * **Data Drift** — how the system handles out-of-range values
       that silently corrupt QC records over time.
+    * **Vendor Constraints (LIM-N)** — each vendor-stated limitation
+      becomes an enforcement scenario; the system must actively reject
+      or block the prohibited action.
 
     :param ur_fr: UR/FR document from RequirementArchitect.
-    :return: List of two adversarial scenario dicts.
+    :param limitations: Optional list of vendor limitation strings
+                        extracted by IngestorAgent (from ingest_result
+                        or gap_analysis_report).  Capped at 5.
+    :return: List of adversarial scenario dicts.
     :requirement: URS-21.2 - Negative testing and drift scenarios.
+    :requirement: URS-21.3 - Vendor constraint enforcement scenarios.
     """
     ur = ur_fr.get("user_requirement", {})
     frs = ur_fr.get("functional_requirements", [])
@@ -903,7 +915,38 @@ def generate_adversarial_scenarios(ur_fr: dict) -> list:
         ),
     }
 
-    return [neg_1, drift_1]
+    scenarios = [neg_1, drift_1]
+
+    # ── LIM-N: Vendor Constraint Enforcement ───────────────────
+    for idx, lim in enumerate(
+        (limitations or [])[:5], start=1
+    ):
+        lim_short = lim.strip()
+        scenarios.append({
+            "scenario_id": f"LIM-{idx}",
+            "type": "Vendor Constraint",
+            "title": (
+                f"Enforce: {lim_short[:60]}"
+                f"{'...' if len(lim_short) > 60 else ''}"
+            ),
+            "description": (
+                f"The vendor document states: "
+                f"\"{lim_short[:120]}"
+                f"{'...' if len(lim_short) > 120 else ''}\". "
+                f"Attempt to exercise this prohibited action "
+                f"against '{ur_stmt[:60]}' and confirm the "
+                f"system rejects it with an auditable error. "
+                f"Verify no partial state is persisted."
+            ),
+            "failure_mode": (
+                f"Failure to enforce vendor constraint "
+                f"'{lim_short[:50]}...' creates a compliance "
+                f"gap that invalidates the system's stated "
+                f"intended-use boundary."
+            ),
+        })
+
+    return scenarios
 
 
 # -------------------------------------------------------------------
@@ -1289,7 +1332,7 @@ if page == "1":
     if ingest is not None:
         st.markdown("---")
         st.markdown("### Document Structure")
-        im1, im2, im3 = st.columns(3)
+        im1, im2, im3, im4 = st.columns(4)
         im1.metric("Title", ingest.get("title", "-"))
         im2.metric(
             "Pages", ingest.get("total_pages", "-")
@@ -1297,6 +1340,10 @@ if page == "1":
         im3.metric(
             "Sections",
             len(ingest.get("sections", [])),
+        )
+        im4.metric(
+            "Limitations",
+            len(ingest.get("limitations", [])),
         )
 
         sections = ingest.get("sections", [])
@@ -1311,6 +1358,7 @@ if page == "1":
                         "section_index",
                         "heading",
                         "page_number",
+                        "section_type",
                         "content",
                     ]
                     if c in sec_df.columns
@@ -1336,6 +1384,26 @@ if page == "1":
                 for i, r in enumerate(reqs, 1):
                     st.markdown(f"{i}. {r}")
 
+        lims = ingest.get("limitations", [])
+        if lims:
+            # Bridge: make limitations available to Page 6
+            # adversarial engine across page navigation
+            st.session_state.vendor_limitations = lims
+            with st.expander(
+                f"Extracted Limitations ({len(lims)})"
+            ):
+                st.caption(
+                    "These constraints are automatically "
+                    "loaded into the Adversarial Red-Teaming "
+                    "engine on the Validation Factory page."
+                )
+                for lim in lims:
+                    st.markdown(
+                        f'<span class="badge badge-high">'
+                        f"&#x26A0;</span>&nbsp;{lim}",
+                        unsafe_allow_html=True,
+                    )
+
         with st.expander("Raw JSON"):
             st.json(ingest)
 
@@ -1346,13 +1414,15 @@ if page == "1":
         st.markdown("### GAMP 5 Gap Analysis")
 
         # Summary metrics
-        gm1, gm2, gm3 = st.columns(3)
+        gm1, gm2, gm3, gm4 = st.columns(4)
         total_cat = gap.get("total_categories", 0)
         covered = gap.get("covered", 0)
+        partial_count = gap.get("partial", 0)
         gaps_count = gap.get("gaps", 0)
         gm1.metric("Categories Assessed", total_cat)
         gm2.metric("Covered", covered)
-        gm3.metric("Gaps Found", gaps_count)
+        gm3.metric("Partial", partial_count)
+        gm4.metric("Gaps Found", gaps_count)
 
         # Coverage bar
         if total_cat > 0:
@@ -1400,6 +1470,7 @@ if page == "1":
                 for i, f in enumerate(findings):
                     cat = f.get("category", "Unknown")
                     status = f.get("status", "-")
+                    sim_score = f.get("similarity_score", 0.0)
                     badge = _status_badge(status)
 
                     with st.expander(
@@ -1408,6 +1479,10 @@ if page == "1":
                         st.markdown(
                             f"**Status:** {badge}",
                             unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f"**Similarity Score:** "
+                            f"`{sim_score:.4f} / 1.00`"
                         )
                         st.markdown(
                             f"**Vendor Evidence:** "
@@ -1421,6 +1496,51 @@ if page == "1":
                             f"**Recommendation:** "
                             f"{f.get('recommendation', '-')}"
                         )
+                        clause_map = f.get(
+                            "regulatory_clause_mapping", []
+                        )
+                        if clause_map:
+                            with st.expander(
+                                "Regulatory Clause Mapping"
+                            ):
+                                clause_rows = [
+                                    {
+                                        "Rank": c.get("rank", ""),
+                                        "Source": c.get(
+                                            "source", ""
+                                        ),
+                                        "Page": c.get("page", ""),
+                                        "Score": round(
+                                            float(
+                                                c.get(
+                                                    "similarity_score",
+                                                    0,
+                                                )
+                                            ),
+                                            4,
+                                        ),
+                                        "Excerpt": (
+                                            c.get(
+                                                "text_excerpt", ""
+                                            )[:120] + "…"
+                                            if len(
+                                                c.get(
+                                                    "text_excerpt",
+                                                    "",
+                                                )
+                                            ) > 120
+                                            else c.get(
+                                                "text_excerpt", ""
+                                            )
+                                        ),
+                                    }
+                                    for c in clause_map
+                                ]
+                                st.dataframe(
+                                    pd.DataFrame(clause_rows),
+                                    use_container_width=True,
+                                    hide_index=True,
+                                )
 
             # Downloadable findings table
             findings_df = pd.DataFrame(findings)
@@ -1435,48 +1555,99 @@ if page == "1":
                 mime="text/csv",
             )
 
+        # Requirement → GAMP 5 Clause Mapping
+        req_mappings = gap.get("requirement_mappings", [])
+        if req_mappings:
+            with st.expander(
+                f"Requirement \u2192 GAMP 5 Clause Mapping "
+                f"({len(req_mappings)})"
+            ):
+                for rm in req_mappings:
+                    req_text = rm.get("requirement", "")
+                    clauses = rm.get("regulatory_clauses", [])
+                    top_clause = clauses[0] if clauses else {}
+                    src = top_clause.get("source", "-")
+                    pg = top_clause.get("page", "-")
+                    score = round(
+                        float(
+                            top_clause.get("similarity_score", 0)
+                        ),
+                        4,
+                    )
+                    st.markdown(
+                        f"**{req_text[:100]}"
+                        f"{'…' if len(req_text) > 100 else ''}**"
+                        f" &nbsp;→&nbsp; "
+                        f"`{src}` p.{pg} "
+                        f"(score: `{score}`)",
+                        unsafe_allow_html=True,
+                    )
+
+        # Bridge gap-result limitations into Page 6 feed
+        # (merges with any already set by ingest result)
+        gap_lims = gap.get("limitations", [])
+        if gap_lims:
+            existing = st.session_state.get(
+                "vendor_limitations", []
+            )
+            merged = list(
+                dict.fromkeys(existing + gap_lims)
+            )
+            st.session_state.vendor_limitations = merged
+
         with st.expander("Raw JSON"):
             st.json(gap)
 
 
 # ===================================================================
-# Page 2 — Generate Requirements
+# Page 2 — Generate Requirements (100x Intelligence Engine)
 # ===================================================================
 elif page.startswith("2"):
     breadcrumb(["Home", "Requirements", "Generate URS"])
     page_header(
         "Generate Requirements (URS)",
-        "Describe a requirement in plain English "
-        "and the engine produces a GAMP 5 compliant URS",
+        "Describe requirements in plain English — "
+        "the 100x Intelligence Engine produces GAMP 5 compliant URS, "
+        "workflow diagrams, acceptance criteria, and gap analysis.",
     )
 
-    _expert_p2 = st.session_state.get(
-        "expert_mode", False,
-    )
+    _expert_p2 = st.session_state.get("expert_mode", False)
 
     if st.session_state.get("demo_mode", False):
+        st.info("Demo Mode \u2014 showing sample LIMS data")
+        st.session_state.generated_urs = DEMO_DATA["generated_urs"]
+
+    if _expert_p2 and not st.session_state.get("demo_mode", False):
         st.info(
-            "Demo Mode \u2014 showing sample LIMS data"
-        )
-        st.session_state.generated_urs = (
-            DEMO_DATA["generated_urs"]
+            "Expert Mode \u2014 skipping external document lookup; "
+            "using deterministic GAMP 5 / CSA logic"
         )
 
-    if _expert_p2 and not st.session_state.get(
-        "demo_mode", False
-    ):
-        st.info(
-            "Expert Mode \u2014 skipping external "
-            "document lookup; using deterministic "
-            "GAMP 5 / CSA logic"
+    # ---- Primary input row -----------------------------------------
+    _col_req, _col_sys = st.columns([3, 2])
+    with _col_req:
+        requirement = st.text_area(
+            "Requirement description",
+            placeholder=(
+                "Enter one or more requirements (one per line).\n"
+                "e.g. The system shall monitor warehouse temperature "
+                "in real time.\n"
+                "e.g. The system shall enforce role-based access control."
+            ),
+            height=140,
+            key="p2_requirement",
         )
-
-    requirement = st.text_area(
-        "Requirement description",
-        placeholder="e.g. The system shall monitor warehouse "
-                    "temperature in real time.",
-        height=120,
-    )
+    with _col_sys:
+        _p2_sys_desc = st.text_area(
+            "System description",
+            placeholder=(
+                "Describe the system under validation.\n"
+                "e.g. A LIMS for pharmaceutical laboratory "
+                "sample management."
+            ),
+            height=140,
+            key="p2_system_description",
+        )
 
     if not _expert_p2:
         min_score = st.slider(
@@ -1489,62 +1660,179 @@ elif page.startswith("2"):
                  "may reduce relevance.",
         )
     else:
-        min_score = 0.35  # default; unused in expert mode
+        min_score = 0.35
 
+    # ---- Workflow & Security Intelligence expander -----------------
+    _DEFAULT_SECURITY_MATRIX = json.dumps(
+        [
+            {
+                "step": "User Login",
+                "security_requirements": [
+                    "MFA required",
+                    "Session timeout after 15 minutes",
+                ],
+            },
+            {
+                "step": "Data Entry",
+                "security_requirements": [
+                    "Role-based access control enforced",
+                ],
+            },
+            {
+                "step": "Report Export",
+                "security_requirements": [],
+            },
+        ],
+        indent=2,
+    )
+    with st.expander(
+        "Workflow & Security Intelligence "
+        "(optional \u2014 powers the diagram and gap finder)",
+        expanded=False,
+    ):
+        _wi_col, _sm_col = st.columns(2)
+        with _wi_col:
+            _p2_workflow = st.text_area(
+                "Workflow text",
+                placeholder=(
+                    "Describe the workflow steps in order.\n"
+                    "1. User logs in with MFA\n"
+                    "2. System validates credentials\n"
+                    "3. User enters sample data\n"
+                    "4. System records audit trail\n"
+                    "5. Supervisor approves record\n"
+                    "6. Report exported to PDF"
+                ),
+                height=190,
+                key="p2_workflow_text",
+            )
+        with _sm_col:
+            _p2_sec_matrix = st.text_area(
+                "Security matrix (JSON)",
+                value=_DEFAULT_SECURITY_MATRIX,
+                height=190,
+                key="p2_security_matrix",
+                help=(
+                    'Format: [{"step": "...", '
+                    '"security_requirements": ["..."]}]'
+                ),
+            )
+
+    # ---- Session state init ----------------------------------------
     if "generated_urs" not in st.session_state:
         st.session_state.generated_urs = None
+    if "intelligence_result" not in st.session_state:
+        st.session_state.intelligence_result = None
 
-    if st.button("Generate URS", type="primary"):
-        if not requirement.strip():
-            st.warning(
-                "Please enter a requirement description."
-            )
+    # ---- Action buttons -------------------------------------------
+    _p2_btn1, _p2_btn2, _p2_spacer = st.columns([2, 3, 5])
+    with _p2_btn1:
+        _p2_gen_urs = st.button("Generate URS", type="primary")
+    with _p2_btn2:
+        _p2_gen_intel = st.button(
+            "\u2728 Generate Intelligence",
+            help=(
+                "Runs the 100x Intelligence Engine: Mermaid workflow "
+                "diagram, requirement categorisation, acceptance "
+                "criteria (Positive / Negative / Edge), and "
+                "Proactive Gap Finder."
+            ),
+        )
+
+    # ---- Generate URS (single requirement, existing flow) ----------
+    if _p2_gen_urs:
+        _p2_first_req = next(
+            (
+                ln.strip()
+                for ln in requirement.splitlines()
+                if ln.strip()
+            ),
+            "",
+        )
+        if not _p2_first_req:
+            st.warning("Please enter a requirement description.")
         else:
             with st.spinner("Generating URS..."):
                 try:
                     ctrl = AgentController()
-                    st.session_state.generated_urs = (
-                        ctrl.generate_urs(
-                            requirement=requirement.strip(),
-                            min_score=min_score,
-                            expert_mode=_expert_p2,
+                    st.session_state.generated_urs = ctrl.generate_urs(
+                        requirement=_p2_first_req,
+                        min_score=min_score,
+                        expert_mode=_expert_p2,
+                    )
+                except Exception as exc:
+                    st.error(f"URS generation failed: {exc}")
+
+    # ---- Generate Intelligence (multi-requirement) -----------------
+    if _p2_gen_intel:
+        _p2_reqs = [
+            ln.strip(" -\u2022*0123456789.")
+            for ln in requirement.splitlines()
+            if ln.strip()
+        ]
+        if not _p2_reqs:
+            st.warning(
+                "Please enter at least one requirement to run "
+                "the Intelligence Engine."
+            )
+        else:
+            # Parse security matrix JSON
+            try:
+                _p2_matrix = json.loads(_p2_sec_matrix)
+                if not isinstance(_p2_matrix, list):
+                    _p2_matrix = []
+            except Exception:
+                _p2_matrix = []
+                st.warning(
+                    "Security matrix JSON is invalid \u2014 "
+                    "gap analysis will run without it."
+                )
+
+            with st.spinner(
+                "Running 100x Intelligence Engine\u2026"
+            ):
+                try:
+                    from Agents.intelligence_engine import (
+                        IntelligenceEngine,
+                    )
+                    _p2_engine = IntelligenceEngine()
+                    st.session_state.intelligence_result = (
+                        _p2_engine.generate_intelligence(
+                            requirements=_p2_reqs,
+                            system_description=_p2_sys_desc,
+                            workflow_text=_p2_workflow,
+                            security_matrix=_p2_matrix,
                         )
                     )
                 except Exception as exc:
                     st.error(
-                        f"URS generation failed: {exc}"
+                        f"Intelligence Engine failed: {exc}"
                     )
 
+    # ================================================================
+    # URS Output (single-requirement path)
+    # ================================================================
     urs = st.session_state.generated_urs
     if urs is not None:
         st.markdown("#### Generated URS")
-
-        # Summary metrics
         c1, c2, c3 = st.columns(3)
         c1.metric("URS ID", urs.get("URS_ID", "-"))
         crit = urs.get("Criticality", "-")
         c2.metric("Criticality", crit)
-        versions = urs.get(
-            "Reg_Versions_Cited", []
-        )
+        versions = urs.get("Reg_Versions_Cited", [])
         c3.metric(
             "Reg Versions",
             ", ".join(versions) if versions else "-",
         )
-
         st.markdown("**Requirement Statement**")
-        st.info(
-            urs.get("Requirement_Statement", "-")
-        )
+        st.info(urs.get("Requirement_Statement", "-"))
         st.markdown("**Regulatory Rationale**")
-        st.markdown(
-            urs.get("Regulatory_Rationale", "-")
-        )
+        st.markdown(urs.get("Regulatory_Rationale", "-"))
         st.markdown("---")
         with st.expander("Raw JSON"):
             st.json(urs)
 
-        # ---- PDF Download ------------------------------------
+        # PDF Download
         st.markdown("#### Download Approved URS")
         signer_name = st.text_input(
             "Signer Name",
@@ -1556,12 +1844,8 @@ elif page.startswith("2"):
             "Signature Meaning",
             value="Approval of Requirements",
         )
-
         if signer_name.strip():
-            from utils.pdf_generator import (
-                generate_urs_pdf,
-            )
-
+            from utils.pdf_generator import generate_urs_pdf
             pdf_bytes = generate_urs_pdf(
                 urs=urs,
                 signer_name=signer_name.strip(),
@@ -1577,9 +1861,216 @@ elif page.startswith("2"):
             )
         else:
             st.caption(
-                "Enter a signer name to enable "
-                "PDF download."
+                "Enter a signer name to enable PDF download."
             )
+
+    # ================================================================
+    # Intelligence Dashboard
+    # ================================================================
+    _p2_intel = st.session_state.intelligence_result
+    if _p2_intel is not None:
+        st.markdown("---")
+        st.markdown("### \u2728 Intelligence Dashboard")
+
+        # Risk colour map (used in multiple sections below)
+        _P2_RISK_ICONS = {
+            "High": "\U0001f534",
+            "Medium": "\U0001f7e1",
+            "Low": "\U0001f7e2",
+        }
+        _P2_TEST_MAP = {
+            "High": "Scripted OQ / UAT",
+            "Medium": "Hybrid (Scripted + Unscripted)",
+            "Low": "Unscripted / Ad-hoc",
+        }
+
+        # ---- Split-screen: Mermaid left | Smart Table right ------
+        _p2_diag_col, _p2_tbl_col = st.columns([4, 6])
+
+        with _p2_diag_col:
+            st.markdown("#### Workflow Diagram")
+            # Build Mermaid HTML — use concatenation to avoid
+            # f-string collision with Mermaid's {curly} syntax.
+            _p2_diag_html = (
+                '<html>'
+                '<body style="margin:0;padding:8px;'
+                'background:#0e1117;">'
+                '<div class="mermaid" '
+                'style="font-family:sans-serif;font-size:13px;">'
+                + _p2_intel.mermaid_diagram
+                + '</div>'
+                '<script type="module">'
+                'import mermaid from '
+                "'https://cdn.jsdelivr.net/npm/"
+                "mermaid@10/dist/mermaid.esm.min.mjs';"
+                'mermaid.initialize({'
+                "startOnLoad:true,"
+                "theme:'dark',"
+                'flowchart:{curve:"basis",htmlLabels:true}'
+                '});'
+                '</script>'
+                '</body>'
+                '</html>'
+            )
+            _st_components.html(
+                _p2_diag_html, height=380, scrolling=True
+            )
+            if _p2_intel.workflow_steps:
+                with st.expander(
+                    f"Detected steps "
+                    f"({len(_p2_intel.workflow_steps)})"
+                ):
+                    for _s in _p2_intel.workflow_steps:
+                        st.markdown(f"- {_s}")
+
+        with _p2_tbl_col:
+            st.markdown("#### Smart Requirements Table")
+            _p2_tbl_rows = []
+            for _row in _p2_intel.requirements_intelligence:
+                _p2_tbl_rows.append(
+                    {
+                        "Requirement": (
+                            _row.requirement[:90] + "\u2026"
+                            if len(_row.requirement) > 90
+                            else _row.requirement
+                        ),
+                        "Category": _row.category,
+                        "Risk Rank": _row.risk_level,
+                        "Test Assurance": _row.test_assurance,
+                    }
+                )
+            _p2_df = pd.DataFrame(_p2_tbl_rows)
+            _p2_edited = st.data_editor(
+                _p2_df,
+                column_config={
+                    "Requirement": st.column_config.TextColumn(
+                        "Requirement",
+                        disabled=True,
+                        width="large",
+                    ),
+                    "Category": st.column_config.SelectboxColumn(
+                        "Category",
+                        options=[
+                            "Functional", "Security",
+                            "Regulatory", "Data Integrity",
+                            "Integration", "Performance",
+                            "Audit/Compliance", "Non-functional",
+                        ],
+                        required=True,
+                    ),
+                    "Risk Rank": st.column_config.SelectboxColumn(
+                        "Risk Rank",
+                        options=["High", "Medium", "Low"],
+                        required=True,
+                        help=(
+                            "Toggle to re-classify. Test Assurance "
+                            "updates automatically."
+                        ),
+                    ),
+                    "Test Assurance": st.column_config.TextColumn(
+                        "Test Assurance Suggestion",
+                        disabled=True,
+                        width="large",
+                    ),
+                },
+                hide_index=True,
+                use_container_width=True,
+                key="p2_smart_table",
+            )
+            # Sync Test Assurance if Risk Rank was toggled
+            if not _p2_edited["Risk Rank"].equals(
+                _p2_df["Risk Rank"]
+            ):
+                _p2_edited["Test Assurance"] = (
+                    _p2_edited["Risk Rank"].map(_P2_TEST_MAP)
+                )
+                st.caption(
+                    "Test Assurance updated to reflect new "
+                    "Risk Rank selections."
+                )
+
+        # ---- Acceptance Criteria --------------------------------
+        st.markdown("#### Acceptance Criteria")
+        for _p2_row in _p2_intel.requirements_intelligence:
+            _p2_icon = _P2_RISK_ICONS.get(
+                _p2_row.risk_level, ""
+            )
+            _p2_label = (
+                _p2_row.requirement[:72] + "\u2026"
+                if len(_p2_row.requirement) > 72
+                else _p2_row.requirement
+            )
+            with st.expander(
+                f"{_p2_icon} {_p2_label} "
+                f"[{_p2_row.category}]"
+            ):
+                _p2_ac = _p2_row.acceptance_criteria
+                _p2_ac_p, _p2_ac_n, _p2_ac_e = st.columns(3)
+                with _p2_ac_p:
+                    st.markdown("**\u2705 Positive Cases**")
+                    for _ac in _p2_ac.positive:
+                        st.success(_ac)
+                with _p2_ac_n:
+                    st.markdown("**\u274c Negative Cases**")
+                    for _ac in _p2_ac.negative:
+                        st.error(_ac)
+                with _p2_ac_e:
+                    st.markdown("**\u26a0\ufe0f Edge Cases**")
+                    for _ac in _p2_ac.edge:
+                        st.warning(_ac)
+
+        # ---- Proactive Gap Finder ------------------------------
+        st.markdown("---")
+        st.markdown(
+            "#### \U0001f50d Proactive Gap Finder"
+        )
+        if _p2_intel.security_gaps:
+            _p2_high_gaps = [
+                g for g in _p2_intel.security_gaps
+                if g.severity == "High"
+            ]
+            _p2_med_gaps = [
+                g for g in _p2_intel.security_gaps
+                if g.severity == "Medium"
+            ]
+            _gf1, _gf2, _gf3 = st.columns(3)
+            _gf1.metric(
+                "Total Gaps",
+                len(_p2_intel.security_gaps),
+            )
+            _gf2.metric(
+                "\U0001f6a8 High Severity",
+                len(_p2_high_gaps),
+            )
+            _gf3.metric(
+                "\u26a0\ufe0f Medium Severity",
+                len(_p2_med_gaps),
+            )
+            st.markdown("")
+            for _gap in _p2_intel.security_gaps:
+                if _gap.severity == "High":
+                    st.error(
+                        f"\U0001f6a8 **{_gap.step}** \u2014 "
+                        f"{_gap.gap_description}"
+                    )
+                else:
+                    st.warning(
+                        f"\u26a0\ufe0f **{_gap.step}** \u2014 "
+                        f"{_gap.gap_description}"
+                    )
+        elif _p2_intel.workflow_steps:
+            st.success(
+                "All workflow steps have corresponding security "
+                "requirements in the matrix."
+            )
+        else:
+            st.info(
+                "Provide workflow text and a security matrix to "
+                "enable gap analysis."
+            )
+
+        with st.expander("Raw Intelligence JSON"):
+            st.json(_p2_intel.to_dict())
 
 
 # ===================================================================
@@ -2326,9 +2817,15 @@ elif page.startswith("6"):
                                 "thresholds..."
                             ),
                         )
+                        _vendor_lims = (
+                            st.session_state.get(
+                                "vendor_limitations", []
+                            )
+                        )
                         _extra = (
                             generate_adversarial_scenarios(
-                                ur_fr
+                                ur_fr,
+                                limitations=_vendor_lims,
                             )
                         )
                         _time.sleep(0.3)
@@ -2770,6 +3267,29 @@ elif page.startswith("6"):
                 "CSA test script here."
             )
 
+    # ---- Vendor Limitations Feed indicator ----
+    if _adversarial_vf:
+        _vl = st.session_state.get("vendor_limitations", [])
+        if _vl:
+            with st.expander(
+                f"⚡ Vendor Limitations Feed "
+                f"({len(_vl)} constraints loaded)",
+                expanded=False,
+            ):
+                st.caption(
+                    "These constraints were extracted from "
+                    "your ingested vendor document and are "
+                    "injected as LIM-N scenarios into the "
+                    "adversarial engine."
+                )
+                for _i, _lim in enumerate(_vl, 1):
+                    st.markdown(
+                        f'<span class="badge badge-high" '
+                        f'style="font-size:0.7rem;">'
+                        f"LIM-{_i}</span>&nbsp;{_lim}",
+                        unsafe_allow_html=True,
+                    )
+
     # ---- Adversarial Stress Test Results ----
     _adv_res = st.session_state.get(
         "vf_adversarial_result"
@@ -2803,9 +3323,19 @@ elif page.startswith("6"):
 
         _sts = _adv_res.get("stress_tests", [])
         if _sts:
+            # ST-1 / ST-2 / ST-3 — standard 3-column grid
+            _base = [
+                s for s in _sts
+                if not s.get("scenario_id",
+                              "").startswith("LIM")
+            ]
+            _lim_sts = [
+                s for s in _sts
+                if s.get("scenario_id", "").startswith("LIM")
+            ]
             _ac1, _ac2, _ac3 = st.columns(3)
             _adv_cols = [_ac1, _ac2, _ac3]
-            for _i, _st_item in enumerate(_sts[:3]):
+            for _i, _st_item in enumerate(_base[:3]):
                 with _adv_cols[_i]:
                     st.markdown(
                         f'<span class="badge '
@@ -2832,6 +3362,79 @@ elif page.startswith("6"):
                         f'</span>',
                         unsafe_allow_html=True,
                     )
+
+            # NEG-1 / DRIFT-1 — extra generated scenarios
+            _extra_sts = [
+                s for s in _sts
+                if not s.get("scenario_id", "").startswith(
+                    "LIM"
+                ) and s not in _base
+            ]
+            if _extra_sts:
+                _ec1, _ec2 = st.columns(2)
+                _extra_cols = [_ec1, _ec2]
+                for _i, _st_item in enumerate(
+                    _extra_sts[:2]
+                ):
+                    with _extra_cols[_i]:
+                        st.markdown(
+                            f'<span class="badge '
+                            f'badge-medium" '
+                            f'style="font-size:0.7rem;">'
+                            f'{_st_item.get("scenario_id","")} '
+                            f'— {_st_item.get("type","")}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f'**{_st_item.get("title","")}**'
+                        )
+                        st.markdown(
+                            _st_item.get("description", "")
+                        )
+                        _fm = _st_item.get(
+                            "failure_mode", ""
+                        )
+                        st.markdown(
+                            f'<span style="color:#c0392b;'
+                            f'font-size:0.78rem;">'
+                            f'⚠ Failure Mode: {_fm}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
+
+            # LIM-N — vendor constraint enforcement scenarios
+            if _lim_sts:
+                st.markdown(
+                    "##### ⚡ Vendor Constraint Scenarios"
+                )
+                for _st_item in _lim_sts:
+                    with st.expander(
+                        f'{_st_item.get("scenario_id","")} '
+                        f'— {_st_item.get("title","")}',
+                        expanded=False,
+                    ):
+                        st.markdown(
+                            f'<span class="badge badge-high" '
+                            f'style="font-size:0.7rem;">'
+                            f'{_st_item.get("scenario_id","")} '
+                            f'— {_st_item.get("type","")}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            _st_item.get("description", "")
+                        )
+                        _fm = _st_item.get(
+                            "failure_mode", ""
+                        )
+                        st.markdown(
+                            f'<span style="color:#c0392b;'
+                            f'font-size:0.78rem;">'
+                            f'⚠ Failure Mode: {_fm}'
+                            f'</span>',
+                            unsafe_allow_html=True,
+                        )
 
     # ---- Download Validation Report (combined PDF) ----
     vr_ur = st.session_state.vf_ur_fr
@@ -5159,3 +5762,1034 @@ elif page.startswith("10"):
                         unsafe_allow_html=True,
                     )
                 _card_close()
+
+
+# ===================================================================
+# Page 11 — EVOLV Sentinel
+# ===================================================================
+elif page.startswith("11"):
+
+    breadcrumb(["Home", "EVOLV Sentinel"])
+    page_header(
+        "EVOLV Sentinel",
+        "Change Impact Assessment — GxP Traceability & IAR Engine",
+    )
+
+    # ── Local card helpers ────────────────────────────────────────
+    def _card_open(title: str, icon: str = "") -> None:
+        _ico = (
+            f'<i class="fa-solid {icon}"'
+            f' style="margin-right:0.4rem;"></i>'
+            if icon else ""
+        )
+        st.markdown(
+            f'<div class="vsr-section-card">'
+            f'<div class="vsr-section-title">'
+            f"{_ico}{title}</div>",
+            unsafe_allow_html=True,
+        )
+
+    def _card_close() -> None:
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Load traceability graph ───────────────────────────────────
+    SENTINEL_GRAPH = (
+        PROJECT_ROOT / "Agents" / "sentinel"
+        / "traceability_sample.json"
+    )
+    _sentinel_graph_ok = SENTINEL_GRAPH.exists()
+    if not _sentinel_graph_ok:
+        st.error(
+            f"Traceability graph not found: `{SENTINEL_GRAPH}`. "
+            "Run `scripts/setup_sentinel.py` to initialise."
+        )
+
+    # ── Diff Input ───────────────────────────────────────────────
+    _card_open("Paste Git Diff", icon="fa-code-compare")
+    diff_text = st.text_area(
+        "Paste git diff",
+        height=200,
+        placeholder="git diff HEAD~1",
+        key="sentinel_diff_input",
+        label_visibility="collapsed",
+    )
+    st.caption(
+        "Tip: run `git diff HEAD~1` in your project root "
+        "and paste the output here."
+    )
+    run_btn = st.button(
+        "Run Impact Analysis",
+        type="primary",
+        key="sentinel_run",
+        disabled=not _sentinel_graph_ok,
+    )
+    _card_close()
+
+    # ── Analysis ─────────────────────────────────────────────────
+    if run_btn and diff_text.strip():
+        try:
+            from Agents.sentinel import (
+                ImpactEngine,
+                JustificationEngine,
+            )
+            _ie = ImpactEngine.from_file(SENTINEL_GRAPH)
+            _report = _ie.analyze(diff_text)
+            st.session_state["sentinel_report"] = (
+                _ie.to_dict(_report)
+            )
+            st.session_state["sentinel_report_obj"] = _report
+            st.session_state["sentinel_diff_text"] = diff_text
+        except Exception as _exc:
+            st.error(f"Impact analysis failed: {_exc}")
+
+    # ── Results ──────────────────────────────────────────────────
+    if "sentinel_report" in st.session_state:
+        _rpt = st.session_state["sentinel_report"]
+        _summary = _rpt.get("summary", {})
+        _at_risk = _rpt.get("at_risk_requirements", [])
+        _scripts = _rpt.get("test_scripts_to_execute", [])
+
+        # Metric row
+        _mc1, _mc2, _mc3, _mc4 = st.columns(4)
+        with _mc1:
+            st.metric(
+                "Files Changed",
+                len(_rpt.get("modified_modules", [])),
+            )
+        with _mc2:
+            st.metric("At-Risk Requirements", len(_at_risk))
+        with _mc3:
+            st.metric("Test Scripts Required", len(_scripts))
+        with _mc4:
+            _band_parts = ", ".join(
+                f"{b}:{_summary.get(b, 0)}"
+                for b in ("CRITICAL", "HIGH", "MEDIUM", "LOW")
+                if _summary.get(b, 0) > 0
+            ) or "None"
+            st.metric("Risk Bands", _band_parts)
+
+        st.markdown("---")
+
+        # At-Risk Requirements table
+        if _at_risk:
+            _card_open(
+                "At-Risk Requirements",
+                icon="fa-triangle-exclamation",
+            )
+            import pandas as _pd_s
+            _req_rows = [
+                {
+                    "Req ID": r.get("req_id", ""),
+                    "Title": r.get("title", ""),
+                    "Risk Level": r.get("risk_level", ""),
+                    "GxP Category": r.get("gxp_category", ""),
+                    "Criticality": r.get(
+                        "criticality_score", ""
+                    ),
+                    "Scope": round(
+                        r.get("scope_of_change", 0.0), 3
+                    ),
+                    "Impact Score": round(
+                        r.get("impact_score", 0.0), 3
+                    ),
+                    "Risk Band": r.get("risk_band", ""),
+                }
+                for r in _at_risk
+            ]
+            st.dataframe(
+                _pd_s.DataFrame(_req_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+            _card_close()
+
+        # Consolidated Test Execution Plan table
+        if _scripts:
+            _card_open(
+                "Consolidated Test Execution Plan",
+                icon="fa-clipboard-check",
+            )
+            _script_rows = [
+                {
+                    "Script ID": s.get("script_id", ""),
+                    "Phase": s.get("phase", ""),
+                    "Title": s.get("title", ""),
+                    "Priority": s.get(
+                        "execution_priority", ""
+                    ),
+                    "Automation": s.get(
+                        "automation_status", ""
+                    ),
+                }
+                for s in _scripts
+            ]
+            st.dataframe(
+                _pd_s.DataFrame(_script_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+            _card_close()
+
+        # IAR Generation
+        st.markdown("---")
+        _card_open(
+            "Generate Impact Assessment Report (IAR)",
+            icon="fa-file-waveform",
+        )
+        _ic1, _ic2 = st.columns(2)
+        with _ic1:
+            iar_author = st.text_input(
+                "Prepared By",
+                value="EVOLV Sentinel",
+                key="sentinel_author",
+            )
+        with _ic2:
+            iar_project = st.text_input(
+                "Project Name",
+                value="EVOLV Validation Factory",
+                key="sentinel_project",
+            )
+
+        import os as _os_s
+        _use_llm = bool(
+            _os_s.environ.get("ANTHROPIC_API_KEY")
+        )
+        _mode_label = (
+            "LLM (Claude)" if _use_llm
+            else "Dry-run (template)"
+        )
+        st.caption(f"Generation mode: {_mode_label}")
+
+        gen_iar_btn = st.button(
+            "Generate IAR",
+            key="sentinel_gen_iar",
+            type="primary",
+        )
+        if gen_iar_btn:
+            try:
+                from Agents.sentinel import JustificationEngine
+                _je = JustificationEngine.from_file(
+                    SENTINEL_GRAPH
+                )
+                _iar = _je.generate_iar(
+                    impact_report=st.session_state[
+                        "sentinel_report_obj"
+                    ],
+                    diff_text=st.session_state.get(
+                        "sentinel_diff_text", diff_text
+                    ),
+                    author=iar_author,
+                    project_name=iar_project,
+                    dry_run=not _use_llm,
+                )
+                _md = JustificationEngine.render_to_markdown(
+                    _iar
+                )
+                st.session_state["sentinel_iar_md"] = _md
+                st.session_state["sentinel_iar_id"] = (
+                    _iar.iar_id
+                )
+                st.success("IAR generated successfully.")
+            except Exception as _exc:
+                st.error(f"IAR generation failed: {_exc}")
+
+        _card_close()
+
+        # IAR display + download
+        if "sentinel_iar_md" in st.session_state:
+            _card_open(
+                "Impact Assessment Report",
+                icon="fa-file-alt",
+            )
+            st.markdown(
+                st.session_state["sentinel_iar_md"]
+            )
+            st.download_button(
+                label="Download IAR (.md)",
+                data=st.session_state["sentinel_iar_md"],
+                file_name=(
+                    f"{st.session_state['sentinel_iar_id']}"
+                    ".md"
+                ),
+                mime="text/markdown",
+                key="sentinel_iar_dl",
+            )
+            _card_close()
+
+    else:
+        empty_state(
+            "No Diff Loaded",
+            "Paste a git diff above and click "
+            "Run Impact Analysis.",
+            icon="satellite-dish",
+        )
+
+    # ══════════════════════════════════════════════════════════════
+    # Section A — Sentinel Watcher: Requirement Drift Detection
+    # ══════════════════════════════════════════════════════════════
+    st.markdown("---")
+    _card_open(
+        "Sentinel Watcher \u2014 Requirement Drift Detection",
+        icon="fa-rotate",
+    )
+
+    import os as _os_w
+    _BASELINE_PATH = (
+        PROJECT_ROOT / "output" / "sentinel" / "baseline.json"
+    )
+
+    # Baseline status
+    if _BASELINE_PATH.exists():
+        try:
+            with open(_BASELINE_PATH, "r", encoding="utf-8") as _bf:
+                _bl_meta = json.load(_bf)
+            _bl_ts = _bl_meta.get("generated_at", "unknown")[:19]
+            _bl_n = _bl_meta.get("requirement_count", "?")
+            st.caption(
+                f"Baseline set \u2014 {_bl_n} requirements "
+                f"\u2014 {_bl_ts} UTC"
+            )
+        except Exception:
+            st.caption("Baseline file exists but could not be read.")
+    else:
+        st.caption("No baseline set")
+
+    _wc1, _wc2 = st.columns(2)
+    with _wc1:
+        _set_bl_btn = st.button(
+            "Set Baseline",
+            key="sentinel_set_baseline",
+            disabled=not _sentinel_graph_ok,
+        )
+    with _wc2:
+        _sync_btn = st.button(
+            "Sync & Detect Drift",
+            key="sentinel_sync_drift",
+            disabled=(
+                not _sentinel_graph_ok
+                or not _BASELINE_PATH.exists()
+            ),
+        )
+
+    if _set_bl_btn and _sentinel_graph_ok:
+        try:
+            from Agents.sentinel import WatcherEngine as _WE
+            _we = _WE.from_file(SENTINEL_GRAPH)
+            _bl = _we.create_baseline(_BASELINE_PATH)
+            st.session_state["sentinel_baseline"] = _bl
+            st.toast(
+                f"Baseline saved \u2014 "
+                f"{_bl['requirement_count']} requirements hashed."
+            )
+            st.rerun()
+        except Exception as _exc:
+            st.error(f"Baseline creation failed: {_exc}")
+
+    if _sync_btn and _sentinel_graph_ok:
+        try:
+            from Agents.sentinel import WatcherEngine as _WE
+            _we = _WE.from_file(SENTINEL_GRAPH)
+            _deltas = _we.detect_deltas(_BASELINE_PATH)
+            st.session_state["sentinel_deltas"] = _deltas
+            st.session_state.pop("sentinel_watcher_report", None)
+        except Exception as _exc:
+            st.error(f"Drift detection failed: {_exc}")
+
+    # Show deltas / drift results
+    if "sentinel_deltas" in st.session_state:
+        _deltas = st.session_state["sentinel_deltas"]
+        if _deltas:
+            st.warning(
+                f"\u26a0\ufe0f  {len(_deltas)} requirement(s) "
+                "drifted from baseline."
+            )
+            import pandas as _pd_w
+            _delta_rows = [
+                {
+                    "Req ID": d.req_id,
+                    "Title": d.title,
+                    "Old Hash": d.old_hash,
+                    "New Hash": d.new_hash,
+                }
+                for d in _deltas
+            ]
+            st.dataframe(
+                _pd_w.DataFrame(_delta_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+            _analyze_btn = st.button(
+                "Analyze TC Impact",
+                key="sentinel_analyze_tc",
+                type="primary",
+            )
+            if _analyze_btn:
+                try:
+                    from Agents.sentinel import WatcherEngine as _WE
+                    _we = _WE.from_file(SENTINEL_GRAPH)
+                    _use_llm_w = bool(
+                        _os_w.environ.get("ANTHROPIC_API_KEY")
+                    )
+                    _wr = _we.analyze_tc_impact(
+                        _deltas,
+                        dry_run=not _use_llm_w,
+                    )
+                    st.session_state[
+                        "sentinel_watcher_report"
+                    ] = _wr
+                except Exception as _exc:
+                    st.error(f"TC impact analysis failed: {_exc}")
+        else:
+            st.success(
+                "All requirements match baseline. "
+                "No drift detected."
+            )
+
+    # Show WatcherReport
+    if "sentinel_watcher_report" in st.session_state:
+        _wr = st.session_state["sentinel_watcher_report"]
+        _wm1, _wm2 = st.columns(2)
+        with _wm1:
+            st.metric(
+                "Impacted TCs",
+                len(_wr.impacted_tc_ids),
+            )
+        with _wm2:
+            _rd_label = (
+                "\ud83d\udd34 Yes" if _wr.risk_drift
+                else "\ud83d\udfe2 No"
+            )
+            st.metric("Risk Drift", _rd_label)
+
+        if _wr.tc_impact_details:
+            import pandas as _pd_wi
+            _status_colours = {
+                "Invalidated": "\ud83d\udd34 Invalidated",
+                "Partially Impacted": "\ud83d\udfe0 Partially Impacted",
+                "Unaffected": "\ud83d\udfe2 Unaffected",
+            }
+            _detail_rows = [
+                {
+                    "TC ID": d.tc_id,
+                    "Status": _status_colours.get(
+                        d.impact_status, d.impact_status
+                    ),
+                    "Rationale": d.rationale,
+                }
+                for d in _wr.tc_impact_details
+            ]
+            st.dataframe(
+                _pd_wi.DataFrame(_detail_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        st.info(_wr.regression_rationale)
+
+    _card_close()
+
+    # ══════════════════════════════════════════════════════════════
+    # Section B — Demo: Simulate Vendor v2.0 Ingest
+    # ══════════════════════════════════════════════════════════════
+    _card_open(
+        "Demo: Simulate Vendor v2.0 Ingest",
+        icon="fa-vial-circle-check",
+    )
+    st.caption(
+        "Simulates ingesting a vendor software update that changes "
+        "3 requirements."
+    )
+    _demo_btn = st.button(
+        "Ingest v2.0",
+        key="sentinel_demo_ingest",
+        type="primary",
+    )
+    if _demo_btn:
+        st.session_state["sentinel_demo_triggered"] = True
+
+    if st.session_state.get("sentinel_demo_triggered"):
+        from Agents.sentinel import DEMO_V2_REPORT as _DEMO
+
+        with st.expander(
+            "\ud83d\udd14 Sentinel Alert",
+            expanded=True,
+        ):
+            st.warning(
+                "\u26a0\ufe0f  Alert: 3 Requirements have drifted."
+            )
+            st.success(
+                "\u2705  Regression Suite Optimized: "
+                "Rerun TC-05, TC-09."
+            )
+            st.info(
+                "\ud83d\udccb  88% of documentation remains valid."
+            )
+
+        import pandas as _pd_d
+        # Drifted requirements table
+        st.markdown("**Drifted Requirements**")
+        _demo_delta_rows = [
+            {
+                "Req ID": d.req_id,
+                "Title": d.title,
+                "Old Hash": d.old_hash,
+                "New Hash": d.new_hash,
+            }
+            for d in _DEMO.deltas
+        ]
+        st.dataframe(
+            _pd_d.DataFrame(_demo_delta_rows),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # TC Impact Details table
+        st.markdown("**TC Impact Details**")
+        _demo_status_colours = {
+            "Invalidated": "\ud83d\udd34 Invalidated",
+            "Partially Impacted": "\ud83d\udfe0 Partially Impacted",
+            "Unaffected": "\ud83d\udfe2 Unaffected",
+        }
+        _demo_detail_rows = [
+            {
+                "TC ID": d.tc_id,
+                "Status": _demo_status_colours.get(
+                    d.impact_status, d.impact_status
+                ),
+                "Rationale": d.rationale,
+            }
+            for d in _DEMO.tc_impact_details
+        ]
+        st.dataframe(
+            _pd_d.DataFrame(_demo_detail_rows),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # Risk Drift badge
+        st.markdown(
+            "\ud83d\udfe2 **Risk Drift:** None Detected"
+        )
+
+    _card_close()
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PAGE 12 — Requirements Engine (Validation Factory)
+# Single-column progressive disclosure with 14 GxP types, inline help
+# drawers, Claude LLM transformation, and FDA/EMA 2026 AI auto-tagging.
+# ═══════════════════════════════════════════════════════════════════════════
+elif page.startswith("12"):
+    from Agents.smart_requirements_engine import (
+        REQUIREMENT_TYPES as _REQ_TYPES,
+        SMARTRequirementsEngine as _SREEngine,
+        SMARTEngineError as _SREError,
+        SmartPackage as _SmartPackage,
+    )
+
+    breadcrumb(["Home", "Requirements", "Requirements Engine"])
+    page_header(
+        "Requirements Engine",
+        "14 GxP categories \u00b7 SMART rewrite via Claude"
+        " \u00b7 FDA/EMA 2026 AI Guidance auto-tagging",
+    )
+
+    # ── Custom CSS for help drawer panel ─────────────────────────
+    st.markdown(
+        """
+<style>
+.req-help-panel {
+    background: linear-gradient(135deg,#0d1b2a,#162032);
+    border:1px solid #1e3a5f;
+    border-left:3px solid #3b82f6;
+    border-radius:8px;
+    padding:0.9rem 1.1rem;
+    margin:0.3rem 0 0.8rem 0;
+    font-size:0.82rem;
+    line-height:1.55;
+}
+.req-help-title  { color:#60a5fa; font-weight:700; margin-bottom:0.4rem; }
+.req-help-def    { color:#94a3b8; margin-bottom:0.6rem; }
+.req-help-ref    { color:#64748b; font-style:italic; font-size:0.76rem; }
+.req-help-ex     { color:#fbbf24; font-weight:600; font-size:0.76rem;
+                   margin-top:0.6rem; margin-bottom:0.2rem; }
+.req-help-pit    { color:#f87171; font-weight:600; font-size:0.76rem;
+                   margin-top:0.5rem; margin-bottom:0.2rem; }
+.req-help-li     { color:#94a3b8; margin-left:1rem; font-size:0.78rem; }
+.ai-tag-badge {
+    display:inline-block;
+    background:#7c3aed;color:#ede9fe;
+    font-size:0.7rem;font-weight:700;letter-spacing:.04em;
+    padding:2px 9px;border-radius:20px;margin-left:0.4rem;
+    vertical-align:middle;
+}
+.risk-badge-high   { background:#ef4444; }
+.risk-badge-medium { background:#f0a500; }
+.risk-badge-low    { background:#22c55e; }
+.risk-badge {
+    display:inline-block;color:#fff;font-size:0.72rem;
+    font-weight:700;padding:2px 10px;border-radius:20px;
+    margin-right:0.3rem;
+}
+.fda-badge {
+    display:inline-block;
+    background:#1e40af;color:#bfdbfe;font-size:0.70rem;
+    padding:2px 9px;border-radius:20px;margin-right:0.3rem;
+}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
+    # ── FDA/EMA 2026 notice bar ───────────────────────────────────
+    st.markdown(
+        '<div style="background:linear-gradient('
+        '90deg,#1a1a2e,#16213e);border-left:4px solid #f0a500;'
+        'border-radius:6px;padding:0.6rem 1rem;margin-bottom:0.6rem;">'
+        '<span style="color:#f0a500;font-weight:700;font-size:0.85rem;">'
+        'FDA/EMA 2026 AI Guidance</span>'
+        '<span style="color:#c0c8d8;font-size:0.78rem;'
+        'margin-left:0.8rem;">'
+        'Requirements involving AI inference, automated decisions, '
+        'patient safety, bias monitoring, or PCCP are auto-tagged '
+        'and receive a mandatory Negative Test Scenario.'
+        '</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Section 1: System Context ─────────────────────────────────
+    st.markdown(
+        '<p style="font-size:0.72rem;color:#64748b;'
+        'letter-spacing:.08em;text-transform:uppercase;'
+        'margin-bottom:0.3rem;margin-top:0.6rem;">'
+        'SYSTEM CONTEXT</p>',
+        unsafe_allow_html=True,
+    )
+    _sre12_name = st.text_input(
+        "System Name",
+        placeholder="e.g. Clinical LIMS v3.2",
+        key="sre12_system_name",
+    )
+    _sre12_risk = st.selectbox(
+        "Overall Risk Level",
+        ["High", "Medium", "Low"],
+        index=0,
+        key="sre12_risk_level",
+        help=(
+            "High = patient safety / regulatory impact. "
+            "Medium = quality / audit functions. "
+            "Low = administrative / non-GxP."
+        ),
+    )
+    _sre12_has_ai = st.checkbox(
+        "\u26a1 System uses AI/ML or automated decision-making "
+        "(applies FDA/EMA 2026 AI Guidance to all sections)",
+        key="sre12_has_ai",
+        value=False,
+    )
+    _sre12_process_map = st.text_area(
+        "Process Map",
+        placeholder=(
+            "Describe the business process flow this system supports.\n"
+            "e.g. Sample received \u2192 Lab analysis \u2192 "
+            "QC review \u2192 Release decision"
+        ),
+        height=90,
+        key="sre12_process_map",
+    )
+    _sre12_data_flow = st.text_area(
+        "Data Flow",
+        placeholder=(
+            "Describe how data moves through the system.\n"
+            "e.g. Instrument CSV \u2192 LIMS import \u2192 "
+            "QC check \u2192 ERP release record"
+        ),
+        height=90,
+        key="sre12_data_flow",
+    )
+
+    st.markdown(
+        '<hr style="border-color:#1e3a5f;margin:1rem 0 0.6rem 0;">',
+        unsafe_allow_html=True,
+    )
+
+    # ── Section 2: 14 Requirement Type Sections ───────────────────
+    st.markdown(
+        '<p style="font-size:0.72rem;color:#64748b;'
+        'letter-spacing:.08em;text-transform:uppercase;'
+        'margin-bottom:0.6rem;">'
+        'REQUIREMENTS \u2014 enter your notes; '
+        'leave blank to skip a category</p>',
+        unsafe_allow_html=True,
+    )
+
+    def _sre12_help_html(type_key: str) -> str:
+        """Render help-drawer HTML for one requirement type."""
+        td = _REQ_TYPES.get(type_key, {})
+        defn = td.get("definition", "")
+        gref = td.get("gamp5_ref", "")
+        examples = td.get("examples", [])
+        pitfalls = td.get("pitfalls", [])
+        ex_html = "".join(
+            f'<div class="req-help-li">\u2022 {ex}</div>'
+            for ex in examples
+        )
+        pit_html = "".join(
+            f'<div class="req-help-li">\u2022 {pit}</div>'
+            for pit in pitfalls
+        )
+        return (
+            '<div class="req-help-panel">'
+            f'<div class="req-help-title">{type_key}</div>'
+            f'<div class="req-help-def">{defn}</div>'
+            f'<div class="req-help-ref">{gref}</div>'
+            f'<div class="req-help-ex">Example Requirements</div>'
+            f'{ex_html}'
+            f'<div class="req-help-pit">Common Pitfalls</div>'
+            f'{pit_html}'
+            "</div>"
+        )
+
+    for _t_key, _t_meta in _REQ_TYPES.items():
+        _t_num = _t_meta["number"]
+        _t_icon = _t_meta["icon"]
+        _t_tag = _t_meta["tagline"]
+        _sre12_help_key = f"sre12_help_{_t_key.lower().replace(' ', '_')}"
+        _sre12_notes_key = (
+            f"sre12_notes_{_t_key.lower().replace(' ', '_')}"
+        )
+
+        # Check if this section already has notes (for progress hint)
+        _existing_notes = st.session_state.get(
+            _sre12_notes_key, ""
+        ).strip()
+        _has_notes_indicator = (
+            " \u2705" if _existing_notes else ""
+        )
+
+        with st.expander(
+            f"{_t_icon} {_t_num}. {_t_key}"
+            f" \u2014 {_t_tag}{_has_notes_indicator}",
+            expanded=False,
+        ):
+            # Help toggle button (inline, single-column)
+            _help_open = st.session_state.get(
+                _sre12_help_key, False
+            )
+            _help_label = (
+                "\u25bc Hide Help" if _help_open
+                else "\u003f Show Help"
+            )
+            if st.button(
+                _help_label,
+                key=f"btn_help_{_t_key}",
+                type="secondary",
+            ):
+                st.session_state[_sre12_help_key] = not _help_open
+                st.rerun()
+
+            # Help drawer (inline panel)
+            if st.session_state.get(_sre12_help_key, False):
+                st.markdown(
+                    _sre12_help_html(_t_key),
+                    unsafe_allow_html=True,
+                )
+
+            # User notes textarea
+            st.text_area(
+                "Your Notes",
+                placeholder=(
+                    "Enter one requirement idea per line "
+                    "(vague language is fine — Claude will "
+                    "transform it to SMART format).\n"
+                    "e.g. System should back up data regularly\n"
+                    "     Users need to log in securely"
+                ),
+                height=130,
+                key=_sre12_notes_key,
+                label_visibility="collapsed",
+            )
+
+    # ── Progress indicator ────────────────────────────────────────
+    _sre12_filled = sum(
+        1
+        for _tk in _REQ_TYPES
+        if st.session_state.get(
+            f"sre12_notes_{_tk.lower().replace(' ', '_')}", ""
+        ).strip()
+    )
+    st.markdown(
+        f'<p style="font-size:0.75rem;color:#64748b;'
+        f'margin:0.4rem 0 0.8rem 0;">'
+        f'{_sre12_filled} of {len(_REQ_TYPES)} '
+        f'categories populated</p>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Transform button ──────────────────────────────────────────
+    st.markdown(
+        '<hr style="border-color:#1e3a5f;margin:0.6rem 0;">',
+        unsafe_allow_html=True,
+    )
+    _sre12_transform = st.button(
+        "\u2728 Transform to SMART Requirements",
+        type="primary",
+        key="sre12_transform_btn",
+        use_container_width=True,
+    )
+
+    if _sre12_transform:
+        _sre12_notes_collected: dict = {}
+        for _tk in _REQ_TYPES:
+            _n_key = (
+                f"sre12_notes_{_tk.lower().replace(' ', '_')}"
+            )
+            _raw = st.session_state.get(_n_key, "").strip()
+            if _raw:
+                _sre12_notes_collected[_tk] = _raw
+
+        if not _sre12_notes_collected:
+            st.warning(
+                "Open at least one section and enter your "
+                "requirements before transforming."
+            )
+        else:
+            _sre12_ctx = {
+                "system_name": st.session_state.get(
+                    "sre12_system_name", ""
+                ),
+                "process_map": st.session_state.get(
+                    "sre12_process_map", ""
+                ),
+                "data_flow": st.session_state.get(
+                    "sre12_data_flow", ""
+                ),
+                "overall_risk": st.session_state.get(
+                    "sre12_risk_level", "Medium"
+                ),
+            }
+            with st.spinner(
+                "Transforming to SMART format "
+                "(Claude \u2192 GxP-compliant output)..."
+            ):
+                try:
+                    _sre12_eng = _SREEngine()
+                    _sre12_pkg = _sre12_eng.transform_to_smart(
+                        context=_sre12_ctx,
+                        notes_by_type=_sre12_notes_collected,
+                        risk_level=_sre12_ctx["overall_risk"],
+                        has_ai=st.session_state.get(
+                            "sre12_has_ai", False
+                        ),
+                    )
+                    st.session_state["sre12_package"] = (
+                        _sre12_pkg.to_dict()
+                    )
+                except _SREError as _sre12_e:
+                    st.error(
+                        f"Requirements Engine error "
+                        f"(CSV-021): {_sre12_e}"
+                    )
+                except Exception as _sre12_ex:
+                    st.error(
+                        f"Unexpected error: {_sre12_ex}"
+                    )
+
+    # ── Results ───────────────────────────────────────────────────
+    _sre12_pkg_data = st.session_state.get("sre12_package")
+    if _sre12_pkg_data:
+        _pkg_stats = _sre12_pkg_data.get("stats", {})
+        _pkg_sections = _sre12_pkg_data.get("sections", [])
+        _pkg_ctx = _sre12_pkg_data.get("context", {})
+
+        st.markdown(
+            '<hr style="border-color:#1e3a5f;margin:0.8rem 0;">',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<p style="font-size:0.72rem;color:#64748b;'
+            'letter-spacing:.08em;text-transform:uppercase;'
+            'margin-bottom:0.6rem;">'
+            'RESULTS</p>',
+            unsafe_allow_html=True,
+        )
+
+        # KPI row
+        _r1, _r2, _r3, _r4 = st.columns(4)
+        _r1.metric("Requirements", _pkg_stats.get("total", 0))
+        _r2.metric("High Risk", _pkg_stats.get("high_risk", 0))
+        _r3.metric(
+            "AI/2026 Flagged",
+            _pkg_stats.get("fda_ema_flagged", 0),
+        )
+        _r4.metric(
+            "Sections",
+            _pkg_stats.get("sections_populated", 0),
+        )
+
+        st.markdown(
+            '<hr style="border-color:#1e3a5f;margin:0.6rem 0;">',
+            unsafe_allow_html=True,
+        )
+
+        # Per-section results
+        for _sec_data in _pkg_sections:
+            _sname = _sec_data.get("type_name", "")
+            _sreqs = _sec_data.get("requirements", [])
+            _sai = _sec_data.get("ai_guidance_tagged", False)
+
+            if not _sreqs:
+                continue
+
+            _smeta = _REQ_TYPES.get(_sname, {})
+            _sicon = _smeta.get("icon", "")
+            _stag = _smeta.get("tagline", "")
+            _snum = _smeta.get("number", "")
+
+            _section_label = (
+                f"{_sicon} {_snum}. {_sname} \u2014 "
+                f"{len(_sreqs)} requirement"
+                f"{'s' if len(_sreqs) != 1 else ''}"
+            )
+            if _sai:
+                _section_label += " \u26a1 AI Guidance"
+
+            with st.expander(_section_label, expanded=False):
+                for _req_d in _sreqs:
+                    _smart = _req_d.get("smart_text", "")
+                    _risk = _req_d.get("risk_level", "Low")
+                    _ai_tag = _req_d.get(
+                        "ai_guidance_tagged", False
+                    )
+                    _flags = _req_d.get("fda_ema_flags", [])
+                    _ac = _req_d.get("acceptance_criteria", {})
+                    _neg_test = _req_d.get(
+                        "negative_test_scenario"
+                    )
+
+                    # SMART requirement text
+                    st.success(_smart)
+
+                    # Badges row
+                    _risk_cls = {
+                        "High": "risk-badge-high",
+                        "Medium": "risk-badge-medium",
+                        "Low": "risk-badge-low",
+                    }.get(_risk, "risk-badge-low")
+                    _badges = (
+                        f'<div style="margin:0.25rem 0 '
+                        f'0.5rem 0;display:flex;gap:0.4rem;'
+                        f'flex-wrap:wrap;">'
+                        f'<span class="risk-badge '
+                        f'{_risk_cls}">{_risk} Risk</span>'
+                    )
+                    for _fl in _flags:
+                        _badges += (
+                            f'<span class="fda-badge">'
+                            f'2026 AI: {_fl}</span>'
+                        )
+                    if _ai_tag and not _flags:
+                        _badges += (
+                            '<span class="ai-tag-badge">'
+                            "2026 AI Guidance</span>"
+                        )
+                    _badges += "</div>"
+                    st.markdown(_badges, unsafe_allow_html=True)
+
+                    # Acceptance criteria — 3 tabs
+                    _ac_pos = _ac.get("positive", [])
+                    _ac_neg = _ac.get("negative", [])
+                    _ac_edg = _ac.get("edge", [])
+                    if _ac_pos or _ac_neg or _ac_edg:
+                        _tab_p, _tab_n, _tab_e = st.tabs(
+                            [
+                                "\u2705 Positive",
+                                "\u274c Negative",
+                                "\u26a0 Edge Case",
+                            ]
+                        )
+                        with _tab_p:
+                            for _p in _ac_pos:
+                                st.success(_p)
+                        with _tab_n:
+                            for _n in _ac_neg:
+                                st.error(_n)
+                        with _tab_e:
+                            for _e in _ac_edg:
+                                st.warning(_e)
+
+                    # Mandatory Negative Test Scenario
+                    if _neg_test:
+                        st.markdown(
+                            '<div style="background:#1a0a0a;'
+                            'border-left:3px solid #ef4444;'
+                            'border-radius:6px;'
+                            'padding:0.6rem 0.9rem;'
+                            'margin:0.4rem 0;">'
+                            '<span style="color:#ef4444;'
+                            'font-weight:700;font-size:0.78rem;">'
+                            'FDA/EMA 2026 — Mandatory '
+                            'Negative Test Scenario</span>'
+                            f'<div style="color:#fca5a5;'
+                            f'font-size:0.8rem;margin-top:'
+                            f'0.35rem;">{_neg_test}</div>'
+                            "</div>",
+                            unsafe_allow_html=True,
+                        )
+
+                    st.markdown(
+                        '<hr style="border-color:#1e2d40;'
+                        'margin:0.5rem 0;">',
+                        unsafe_allow_html=True,
+                    )
+
+        # ── Export actions ────────────────────────────────────────
+        st.markdown(
+            '<hr style="border-color:#1e3a5f;margin:0.8rem 0;">',
+            unsafe_allow_html=True,
+        )
+        _exp_a, _exp_b = st.columns(2)
+        with _exp_a:
+            if st.button(
+                "\u27a1 Send to Validation Factory",
+                key="sre12_export_vf",
+                type="primary",
+                use_container_width=True,
+            ):
+                # Flatten all SMART texts for Validation Factory
+                _all_smart = []
+                for _s in _pkg_sections:
+                    for _r in _s.get("requirements", []):
+                        _t = _r.get("smart_text", "")
+                        if _t:
+                            _all_smart.append(_t)
+                st.session_state["p2_requirement"] = (
+                    "\n".join(_all_smart)
+                )
+                st.session_state["page"] = "6"
+                st.rerun()
+        with _exp_b:
+            if st.button(
+                "\u2192 Send to Generate Reqs",
+                key="sre12_export_p2",
+                type="secondary",
+                use_container_width=True,
+            ):
+                _all_smart2 = []
+                for _s in _pkg_sections:
+                    for _r in _s.get("requirements", []):
+                        _t = _r.get("smart_text", "")
+                        if _t:
+                            _all_smart2.append(_t)
+                st.session_state["p2_requirement"] = (
+                    "\n".join(_all_smart2)
+                )
+                st.session_state["page"] = "2"
+                st.rerun()
+
+        # Raw JSON
+        with st.expander("Raw JSON", expanded=False):
+            import json as _sre12_json
+            st.code(
+                _sre12_json.dumps(_sre12_pkg_data, indent=2),
+                language="json",
+            )

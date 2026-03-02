@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evolv.wingstartech.com/schemas/sentinel/traceability-graph/1.0.0",
+  "title": "EVOLV Sentinel Traceability Graph",
+  "description": "GxP-compliant bidirectional traceability graph linking URS/FS requirements to code modules and IQ/OQ/PQ test scripts. Supports forward (code → test) and backward (test → requirement) tracing for change impact analysis.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "graph_id",
+    "generated_at",
+    "generated_by",
+    "requirements",
+    "code_modules",
+    "test_scripts",
+    "traceability_links"
+  ],
+  "properties": {
+
+    "schema_version": {
+      "type": "string",
+      "description": "Semantic version of this schema. Increment minor for backward-compatible additions; major for breaking changes.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+
+    "graph_id": {
+      "type": "string",
+      "description": "Unique identifier for this traceability graph instance. Used to cross-reference audit trail records.",
+      "pattern": "^TG-[A-Z0-9\\-]+$",
+      "examples": ["TG-EVOLV-2026-001"]
+    },
+
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of graph generation."
+    },
+
+    "generated_by": {
+      "type": "string",
+      "description": "Agent or user ID that created or last modified this graph. Supports 21 CFR Part 11 audit trail linkage."
+    },
+
+    "integrity_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the serialized graph content (excluding this field). Used for tamper detection.",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+
+    "requirements": {
+      "type": "array",
+      "description": "All URS and FS requirements covered by this traceability graph.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "req_id", "req_type", "title",
+          "risk_level", "criticality_score", "gxp_category"
+        ],
+        "properties": {
+          "req_id": {
+            "type": "string",
+            "description": "Unique requirement identifier. Format: URS-X.Y or FS-X.Y",
+            "pattern": "^(URS|FS|FR|DS)-\\d+\\.\\d+$",
+            "examples": ["URS-6.1", "FS-2.3"]
+          },
+          "req_type": {
+            "type": "string",
+            "description": "Requirement document type.",
+            "enum": ["URS", "FS", "FR", "DS"]
+          },
+          "title": {
+            "type": "string",
+            "description": "Short, human-readable requirement title."
+          },
+          "statement": {
+            "type": "string",
+            "description": "Full 'The system shall...' requirement statement."
+          },
+          "risk_level": {
+            "type": "string",
+            "description": "GAMP 5 risk classification.",
+            "enum": ["High", "Medium", "Low"]
+          },
+          "criticality_score": {
+            "type": "integer",
+            "description": "Numeric weight used in Impact Score formula. High=3, Medium=2, Low=1.",
+            "enum": [1, 2, 3]
+          },
+          "gxp_category": {
+            "type": "string",
+            "description": "GxP direct impact classification per GAMP 5 Appendix M.",
+            "enum": ["GxP Direct", "GxP Indirect", "GxP None"]
+          },
+          "regulatory_reference": {
+            "type": "string",
+            "description": "Citation to the regulatory source (e.g., GAMP 5 section, 21 CFR Part 11)."
+          },
+          "parent_req_id": {
+            "type": ["string", "null"],
+            "description": "Parent requirement ID for hierarchical decomposition (null if top-level)."
+          },
+          "status": {
+            "type": "string",
+            "description": "Lifecycle status of the requirement.",
+            "enum": ["Draft", "Approved", "Superseded", "Retired"],
+            "default": "Approved"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "code_modules": {
+      "type": "array",
+      "description": "All code modules and specific functions tracked in this graph.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["module_id", "file_path", "functions"],
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "description": "Unique identifier for this code module.",
+            "pattern": "^MOD-[A-Z0-9\\-]+$",
+            "examples": ["MOD-REQ-ARCH", "MOD-RISK-STRAT"]
+          },
+          "file_path": {
+            "type": "string",
+            "description": "Relative path from project root. Used to match against git diff output.",
+            "examples": ["Agents/requirement_architect.py"]
+          },
+          "module_name": {
+            "type": "string",
+            "description": "Python module dotted path.",
+            "examples": ["Agents.requirement_architect"]
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of module purpose."
+          },
+          "functions": {
+            "type": "array",
+            "description": "List of tracked functions/methods within this module.",
+            "items": {
+              "type": "object",
+              "required": ["function_name"],
+              "properties": {
+                "function_name": {
+                  "type": "string",
+                  "description": "Exact Python function or method name.",
+                  "examples": ["generate_urs", "_determine_criticality"]
+                },
+                "class_name": {
+                  "type": ["string", "null"],
+                  "description": "Parent class name if this is a method; null for module-level functions."
+                },
+                "line_start": {
+                  "type": "integer",
+                  "description": "Starting line number in the source file (for diff matching).",
+                  "minimum": 1
+                },
+                "line_end": {
+                  "type": "integer",
+                  "description": "Ending line number in the source file (for diff matching).",
+                  "minimum": 1
+                },
+                "criticality_override": {
+                  "type": ["string", "null"],
+                  "description": "Optional function-level risk override (e.g., a low-risk module may contain a single high-risk function).",
+                  "enum": ["High", "Medium", "Low", null]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "test_scripts": {
+      "type": "array",
+      "description": "All IQ/OQ/PQ/UAT test scripts that validate requirements in this graph.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["script_id", "phase", "title", "execution_priority"],
+        "properties": {
+          "script_id": {
+            "type": "string",
+            "description": "Unique test script identifier. Matches DeltaAgent output script_id.",
+            "pattern": "^(TS|TC|IQ|OQ|PQ|UAT)-[A-Z0-9\\-\\.]+$",
+            "examples": ["TS-URS-6.1", "OQ-RISK-001"]
+          },
+          "phase": {
+            "type": "string",
+            "description": "Validation phase per GAMP 5 V-model.",
+            "enum": ["IQ", "OQ", "PQ", "UAT", "Informal"]
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable test script title."
+          },
+          "execution_priority": {
+            "type": "string",
+            "description": "Priority for re-execution scheduling after a change impact.",
+            "enum": ["Critical", "High", "Medium", "Low"]
+          },
+          "test_type": {
+            "type": "string",
+            "description": "CSA test classification per DeltaAgent.",
+            "enum": ["Informal", "Formal OQ", "Formal UAT", "Scripted", "Charter"]
+          },
+          "automation_status": {
+            "type": "string",
+            "description": "Whether the test can be executed automatically.",
+            "enum": ["Automated", "Manual", "Semi-Automated"],
+            "default": "Manual"
+          },
+          "owner": {
+            "type": "string",
+            "description": "Role or team responsible for executing this test script."
+          },
+          "last_executed_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Timestamp of last execution. Used to calculate test staleness."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "traceability_links": {
+      "type": "array",
+      "description": "The core traceability edges of the graph. Each link connects one requirement to one code module to one or more test scripts.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "link_id", "req_id", "module_id",
+          "test_script_ids", "change_impact_type"
+        ],
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "Unique identifier for this traceability edge.",
+            "pattern": "^LINK-[A-Z0-9\\-]+$",
+            "examples": ["LINK-URS6.1-REQARCH-TS001"]
+          },
+          "req_id": {
+            "type": "string",
+            "description": "Foreign key → requirements[].req_id"
+          },
+          "module_id": {
+            "type": "string",
+            "description": "Foreign key → code_modules[].module_id"
+          },
+          "function_names": {
+            "type": "array",
+            "description": "Specific functions within the module that implement this requirement. Empty array means the entire module is implicated.",
+            "items": { "type": "string" }
+          },
+          "test_script_ids": {
+            "type": "array",
+            "description": "Foreign keys → test_scripts[].script_id. All scripts that must be re-executed if this link's module changes.",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "change_impact_type": {
+            "type": "string",
+            "description": "Whether a change to the linked module directly or indirectly affects the requirement.",
+            "enum": ["Direct", "Indirect"]
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Free-text explanation of why this module implements this requirement."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verified_by": {
+            "type": "string",
+            "description": "User ID who verified this link (21 CFR Part 11 attestation)."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

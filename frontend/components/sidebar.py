@@ -15,8 +15,9 @@ from pathlib import Path
 # ── Navigation structure ─────────────────────────────────────────
 NAV_GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
     ("DATA", [
-        ("1", "fa-file-lines",      "Ingest Docs"),
-        ("2", "fa-pen-to-square",   "Generate Reqs"),
+        ("1",  "fa-file-lines",             "Ingest Docs"),
+        ("2",  "fa-pen-to-square",          "Generate Reqs"),
+        ("12", "fa-wand-magic-sparkles",    "SMART Req. Engine"),
     ]),
     ("ANALYSIS", [
         ("3", "fa-scale-balanced",      "Risk Assessment"),
@@ -29,6 +30,7 @@ NAV_GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
         ("8", "fa-chart-bar",   "Demo Comparison"),
         ("9", "fa-shield-halved", "Command Center"),
         ("10", "fa-file-shield", "VSR"),
+        ("11", "fa-satellite-dish", "EVOLV Sentinel"),
     ]),
 ]
 

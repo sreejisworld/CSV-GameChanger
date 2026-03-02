@@ -964,6 +964,29 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-19.5 | Inject AI output into .docx templates | `utils/demo_comparison.py:inject_into_docx()` |
 | URS-19.6 | Display side-by-side comparison with cost analysis | `frontend/app.py` (Page 8) |
 | URS-19.7 | Provide CSV, PDF, and Word Factory exports | `frontend/app.py` (Page 8) |
+| URS-20.1 | Generate intelligence from requirements context | `Agents/intelligence_engine.py:IntelligenceEngine.generate_intelligence()` |
+| URS-20.2 | Validate LLM dependencies for Intelligence Engine | `Agents/intelligence_engine.py:IntelligenceEngine.__init__()` |
+| URS-20.3 | Produce structured intelligence package | `Agents/intelligence_engine.py:IntelligenceResult` |
+| URS-20.4 | Generate Mermaid.js workflow diagram | `Agents/intelligence_engine.py:IntelligenceEngine._generate_mermaid_diagram()` |
+| URS-20.5 | Categorise requirements and generate acceptance criteria | `Agents/intelligence_engine.py:IntelligenceEngine._analyse_requirements()` |
+| URS-20.6 | Find security gaps in workflow vs. security matrix | `Agents/intelligence_engine.py:IntelligenceEngine._find_security_gaps()` |
+| URS-20.7 | Display split-screen Intelligence Dashboard in UI | `frontend/app.py` (Page 2) |
+| URS-20.8 | Provide editable Risk Rank toggle in Smart Table | `frontend/app.py` (Page 2, `p2_smart_table` data_editor) |
+| URS-21.1 | Accept multi-section GxP requirement input | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine.refine_to_smart()` |
+| URS-21.2 | Detect FDA/EMA 2026 AI Guidance triggers | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._detect_fda_ema_flags()` |
+| URS-21.3 | Rewrite vague requirements to SMART format | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._deterministic_refine()` |
+| URS-21.4 | Generate Negative Test Scenarios for high-risk requirements | `Agents/smart_requirements_engine.py:_NEGATIVE_TEST_TEMPLATES` |
+| URS-21.5 | Support LLM and deterministic refinement modes | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._llm_refine()` |
+| URS-21.6 | Produce structured SMART requirement output | `Agents/smart_requirements_engine.py:SMARTRequirement` |
+| URS-21.7 | Return aggregate summary statistics | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._compute_stats()` |
+| URS-21.8 | Raise typed errors for engine failures | `Agents/smart_requirements_engine.py:SMARTEngineError` |
+| URS-21.9 | Classify requirement risk level by keyword | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._keyword_risk()` |
+| URS-21.10 | Generate template acceptance criteria | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._build_template_ac()` |
+| URS-21.11 | Apply vague-word substitution to requirement text | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._apply_vague_substitutions()` |
+| URS-21.12 | Ensure 'The system shall' prefix on all SMART requirements | `Agents/smart_requirements_engine.py:SMARTRequirementsEngine._ensure_shall_prefix()` |
+| URS-21.13 | Display SMART Requirements Engine UI on Page 12 | `frontend/app.py` (Page 12) |
+| URS-21.14 | Provide section tabs with SMART guidance help text | `frontend/app.py` (Page 12, `SMART_HELP_TEXT`) |
+| URS-21.15 | Export SMART requirements to Generate Reqs page | `frontend/app.py` (Page 12, `sre_export_to_p2`) |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 
