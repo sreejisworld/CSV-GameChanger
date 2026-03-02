@@ -6100,3 +6100,524 @@ elif page.startswith("11"):
         )
 
     _card_close()
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PAGE 12 — Requirements Engine (Validation Factory)
+# Single-column progressive disclosure with 14 GxP types, inline help
+# drawers, Claude LLM transformation, and FDA/EMA 2026 AI auto-tagging.
+# ═══════════════════════════════════════════════════════════════════════════
+elif page.startswith("12"):
+    from Agents.smart_requirements_engine import (
+        REQUIREMENT_TYPES as _REQ_TYPES,
+        SMARTRequirementsEngine as _SREEngine,
+        SMARTEngineError as _SREError,
+        SmartPackage as _SmartPackage,
+    )
+
+    breadcrumb(["Home", "Requirements", "Requirements Engine"])
+    page_header(
+        "Requirements Engine",
+        "14 GxP categories \u00b7 SMART rewrite via Claude"
+        " \u00b7 FDA/EMA 2026 AI Guidance auto-tagging",
+    )
+
+    # ── Custom CSS for help drawer panel ─────────────────────────
+    st.markdown(
+        """
+<style>
+.req-help-panel {
+    background: linear-gradient(135deg,#0d1b2a,#162032);
+    border:1px solid #1e3a5f;
+    border-left:3px solid #3b82f6;
+    border-radius:8px;
+    padding:0.9rem 1.1rem;
+    margin:0.3rem 0 0.8rem 0;
+    font-size:0.82rem;
+    line-height:1.55;
+}
+.req-help-title  { color:#60a5fa; font-weight:700; margin-bottom:0.4rem; }
+.req-help-def    { color:#94a3b8; margin-bottom:0.6rem; }
+.req-help-ref    { color:#64748b; font-style:italic; font-size:0.76rem; }
+.req-help-ex     { color:#fbbf24; font-weight:600; font-size:0.76rem;
+                   margin-top:0.6rem; margin-bottom:0.2rem; }
+.req-help-pit    { color:#f87171; font-weight:600; font-size:0.76rem;
+                   margin-top:0.5rem; margin-bottom:0.2rem; }
+.req-help-li     { color:#94a3b8; margin-left:1rem; font-size:0.78rem; }
+.ai-tag-badge {
+    display:inline-block;
+    background:#7c3aed;color:#ede9fe;
+    font-size:0.7rem;font-weight:700;letter-spacing:.04em;
+    padding:2px 9px;border-radius:20px;margin-left:0.4rem;
+    vertical-align:middle;
+}
+.risk-badge-high   { background:#ef4444; }
+.risk-badge-medium { background:#f0a500; }
+.risk-badge-low    { background:#22c55e; }
+.risk-badge {
+    display:inline-block;color:#fff;font-size:0.72rem;
+    font-weight:700;padding:2px 10px;border-radius:20px;
+    margin-right:0.3rem;
+}
+.fda-badge {
+    display:inline-block;
+    background:#1e40af;color:#bfdbfe;font-size:0.70rem;
+    padding:2px 9px;border-radius:20px;margin-right:0.3rem;
+}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
+    # ── FDA/EMA 2026 notice bar ───────────────────────────────────
+    st.markdown(
+        '<div style="background:linear-gradient('
+        '90deg,#1a1a2e,#16213e);border-left:4px solid #f0a500;'
+        'border-radius:6px;padding:0.6rem 1rem;margin-bottom:0.6rem;">'
+        '<span style="color:#f0a500;font-weight:700;font-size:0.85rem;">'
+        'FDA/EMA 2026 AI Guidance</span>'
+        '<span style="color:#c0c8d8;font-size:0.78rem;'
+        'margin-left:0.8rem;">'
+        'Requirements involving AI inference, automated decisions, '
+        'patient safety, bias monitoring, or PCCP are auto-tagged '
+        'and receive a mandatory Negative Test Scenario.'
+        '</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Section 1: System Context ─────────────────────────────────
+    st.markdown(
+        '<p style="font-size:0.72rem;color:#64748b;'
+        'letter-spacing:.08em;text-transform:uppercase;'
+        'margin-bottom:0.3rem;margin-top:0.6rem;">'
+        'SYSTEM CONTEXT</p>',
+        unsafe_allow_html=True,
+    )
+    _sre12_name = st.text_input(
+        "System Name",
+        placeholder="e.g. Clinical LIMS v3.2",
+        key="sre12_system_name",
+    )
+    _sre12_risk = st.selectbox(
+        "Overall Risk Level",
+        ["High", "Medium", "Low"],
+        index=0,
+        key="sre12_risk_level",
+        help=(
+            "High = patient safety / regulatory impact. "
+            "Medium = quality / audit functions. "
+            "Low = administrative / non-GxP."
+        ),
+    )
+    _sre12_has_ai = st.checkbox(
+        "\u26a1 System uses AI/ML or automated decision-making "
+        "(applies FDA/EMA 2026 AI Guidance to all sections)",
+        key="sre12_has_ai",
+        value=False,
+    )
+    _sre12_process_map = st.text_area(
+        "Process Map",
+        placeholder=(
+            "Describe the business process flow this system supports.\n"
+            "e.g. Sample received \u2192 Lab analysis \u2192 "
+            "QC review \u2192 Release decision"
+        ),
+        height=90,
+        key="sre12_process_map",
+    )
+    _sre12_data_flow = st.text_area(
+        "Data Flow",
+        placeholder=(
+            "Describe how data moves through the system.\n"
+            "e.g. Instrument CSV \u2192 LIMS import \u2192 "
+            "QC check \u2192 ERP release record"
+        ),
+        height=90,
+        key="sre12_data_flow",
+    )
+
+    st.markdown(
+        '<hr style="border-color:#1e3a5f;margin:1rem 0 0.6rem 0;">',
+        unsafe_allow_html=True,
+    )
+
+    # ── Section 2: 14 Requirement Type Sections ───────────────────
+    st.markdown(
+        '<p style="font-size:0.72rem;color:#64748b;'
+        'letter-spacing:.08em;text-transform:uppercase;'
+        'margin-bottom:0.6rem;">'
+        'REQUIREMENTS \u2014 enter your notes; '
+        'leave blank to skip a category</p>',
+        unsafe_allow_html=True,
+    )
+
+    def _sre12_help_html(type_key: str) -> str:
+        """Render help-drawer HTML for one requirement type."""
+        td = _REQ_TYPES.get(type_key, {})
+        defn = td.get("definition", "")
+        gref = td.get("gamp5_ref", "")
+        examples = td.get("examples", [])
+        pitfalls = td.get("pitfalls", [])
+        ex_html = "".join(
+            f'<div class="req-help-li">\u2022 {ex}</div>'
+            for ex in examples
+        )
+        pit_html = "".join(
+            f'<div class="req-help-li">\u2022 {pit}</div>'
+            for pit in pitfalls
+        )
+        return (
+            '<div class="req-help-panel">'
+            f'<div class="req-help-title">{type_key}</div>'
+            f'<div class="req-help-def">{defn}</div>'
+            f'<div class="req-help-ref">{gref}</div>'
+            f'<div class="req-help-ex">Example Requirements</div>'
+            f'{ex_html}'
+            f'<div class="req-help-pit">Common Pitfalls</div>'
+            f'{pit_html}'
+            "</div>"
+        )
+
+    for _t_key, _t_meta in _REQ_TYPES.items():
+        _t_num = _t_meta["number"]
+        _t_icon = _t_meta["icon"]
+        _t_tag = _t_meta["tagline"]
+        _sre12_help_key = f"sre12_help_{_t_key.lower().replace(' ', '_')}"
+        _sre12_notes_key = (
+            f"sre12_notes_{_t_key.lower().replace(' ', '_')}"
+        )
+
+        # Check if this section already has notes (for progress hint)
+        _existing_notes = st.session_state.get(
+            _sre12_notes_key, ""
+        ).strip()
+        _has_notes_indicator = (
+            " \u2705" if _existing_notes else ""
+        )
+
+        with st.expander(
+            f"{_t_icon} {_t_num}. {_t_key}"
+            f" \u2014 {_t_tag}{_has_notes_indicator}",
+            expanded=False,
+        ):
+            # Help toggle button (inline, single-column)
+            _help_open = st.session_state.get(
+                _sre12_help_key, False
+            )
+            _help_label = (
+                "\u25bc Hide Help" if _help_open
+                else "\u003f Show Help"
+            )
+            if st.button(
+                _help_label,
+                key=f"btn_help_{_t_key}",
+                type="secondary",
+            ):
+                st.session_state[_sre12_help_key] = not _help_open
+                st.rerun()
+
+            # Help drawer (inline panel)
+            if st.session_state.get(_sre12_help_key, False):
+                st.markdown(
+                    _sre12_help_html(_t_key),
+                    unsafe_allow_html=True,
+                )
+
+            # User notes textarea
+            st.text_area(
+                "Your Notes",
+                placeholder=(
+                    "Enter one requirement idea per line "
+                    "(vague language is fine — Claude will "
+                    "transform it to SMART format).\n"
+                    "e.g. System should back up data regularly\n"
+                    "     Users need to log in securely"
+                ),
+                height=130,
+                key=_sre12_notes_key,
+                label_visibility="collapsed",
+            )
+
+    # ── Progress indicator ────────────────────────────────────────
+    _sre12_filled = sum(
+        1
+        for _tk in _REQ_TYPES
+        if st.session_state.get(
+            f"sre12_notes_{_tk.lower().replace(' ', '_')}", ""
+        ).strip()
+    )
+    st.markdown(
+        f'<p style="font-size:0.75rem;color:#64748b;'
+        f'margin:0.4rem 0 0.8rem 0;">'
+        f'{_sre12_filled} of {len(_REQ_TYPES)} '
+        f'categories populated</p>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Transform button ──────────────────────────────────────────
+    st.markdown(
+        '<hr style="border-color:#1e3a5f;margin:0.6rem 0;">',
+        unsafe_allow_html=True,
+    )
+    _sre12_transform = st.button(
+        "\u2728 Transform to SMART Requirements",
+        type="primary",
+        key="sre12_transform_btn",
+        use_container_width=True,
+    )
+
+    if _sre12_transform:
+        _sre12_notes_collected: dict = {}
+        for _tk in _REQ_TYPES:
+            _n_key = (
+                f"sre12_notes_{_tk.lower().replace(' ', '_')}"
+            )
+            _raw = st.session_state.get(_n_key, "").strip()
+            if _raw:
+                _sre12_notes_collected[_tk] = _raw
+
+        if not _sre12_notes_collected:
+            st.warning(
+                "Open at least one section and enter your "
+                "requirements before transforming."
+            )
+        else:
+            _sre12_ctx = {
+                "system_name": st.session_state.get(
+                    "sre12_system_name", ""
+                ),
+                "process_map": st.session_state.get(
+                    "sre12_process_map", ""
+                ),
+                "data_flow": st.session_state.get(
+                    "sre12_data_flow", ""
+                ),
+                "overall_risk": st.session_state.get(
+                    "sre12_risk_level", "Medium"
+                ),
+            }
+            with st.spinner(
+                "Transforming to SMART format "
+                "(Claude \u2192 GxP-compliant output)..."
+            ):
+                try:
+                    _sre12_eng = _SREEngine()
+                    _sre12_pkg = _sre12_eng.transform_to_smart(
+                        context=_sre12_ctx,
+                        notes_by_type=_sre12_notes_collected,
+                        risk_level=_sre12_ctx["overall_risk"],
+                        has_ai=st.session_state.get(
+                            "sre12_has_ai", False
+                        ),
+                    )
+                    st.session_state["sre12_package"] = (
+                        _sre12_pkg.to_dict()
+                    )
+                except _SREError as _sre12_e:
+                    st.error(
+                        f"Requirements Engine error "
+                        f"(CSV-021): {_sre12_e}"
+                    )
+                except Exception as _sre12_ex:
+                    st.error(
+                        f"Unexpected error: {_sre12_ex}"
+                    )
+
+    # ── Results ───────────────────────────────────────────────────
+    _sre12_pkg_data = st.session_state.get("sre12_package")
+    if _sre12_pkg_data:
+        _pkg_stats = _sre12_pkg_data.get("stats", {})
+        _pkg_sections = _sre12_pkg_data.get("sections", [])
+        _pkg_ctx = _sre12_pkg_data.get("context", {})
+
+        st.markdown(
+            '<hr style="border-color:#1e3a5f;margin:0.8rem 0;">',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<p style="font-size:0.72rem;color:#64748b;'
+            'letter-spacing:.08em;text-transform:uppercase;'
+            'margin-bottom:0.6rem;">'
+            'RESULTS</p>',
+            unsafe_allow_html=True,
+        )
+
+        # KPI row
+        _r1, _r2, _r3, _r4 = st.columns(4)
+        _r1.metric("Requirements", _pkg_stats.get("total", 0))
+        _r2.metric("High Risk", _pkg_stats.get("high_risk", 0))
+        _r3.metric(
+            "AI/2026 Flagged",
+            _pkg_stats.get("fda_ema_flagged", 0),
+        )
+        _r4.metric(
+            "Sections",
+            _pkg_stats.get("sections_populated", 0),
+        )
+
+        st.markdown(
+            '<hr style="border-color:#1e3a5f;margin:0.6rem 0;">',
+            unsafe_allow_html=True,
+        )
+
+        # Per-section results
+        for _sec_data in _pkg_sections:
+            _sname = _sec_data.get("type_name", "")
+            _sreqs = _sec_data.get("requirements", [])
+            _sai = _sec_data.get("ai_guidance_tagged", False)
+
+            if not _sreqs:
+                continue
+
+            _smeta = _REQ_TYPES.get(_sname, {})
+            _sicon = _smeta.get("icon", "")
+            _stag = _smeta.get("tagline", "")
+            _snum = _smeta.get("number", "")
+
+            _section_label = (
+                f"{_sicon} {_snum}. {_sname} \u2014 "
+                f"{len(_sreqs)} requirement"
+                f"{'s' if len(_sreqs) != 1 else ''}"
+            )
+            if _sai:
+                _section_label += " \u26a1 AI Guidance"
+
+            with st.expander(_section_label, expanded=False):
+                for _req_d in _sreqs:
+                    _smart = _req_d.get("smart_text", "")
+                    _risk = _req_d.get("risk_level", "Low")
+                    _ai_tag = _req_d.get(
+                        "ai_guidance_tagged", False
+                    )
+                    _flags = _req_d.get("fda_ema_flags", [])
+                    _ac = _req_d.get("acceptance_criteria", {})
+                    _neg_test = _req_d.get(
+                        "negative_test_scenario"
+                    )
+
+                    # SMART requirement text
+                    st.success(_smart)
+
+                    # Badges row
+                    _risk_cls = {
+                        "High": "risk-badge-high",
+                        "Medium": "risk-badge-medium",
+                        "Low": "risk-badge-low",
+                    }.get(_risk, "risk-badge-low")
+                    _badges = (
+                        f'<div style="margin:0.25rem 0 '
+                        f'0.5rem 0;display:flex;gap:0.4rem;'
+                        f'flex-wrap:wrap;">'
+                        f'<span class="risk-badge '
+                        f'{_risk_cls}">{_risk} Risk</span>'
+                    )
+                    for _fl in _flags:
+                        _badges += (
+                            f'<span class="fda-badge">'
+                            f'2026 AI: {_fl}</span>'
+                        )
+                    if _ai_tag and not _flags:
+                        _badges += (
+                            '<span class="ai-tag-badge">'
+                            "2026 AI Guidance</span>"
+                        )
+                    _badges += "</div>"
+                    st.markdown(_badges, unsafe_allow_html=True)
+
+                    # Acceptance criteria — 3 tabs
+                    _ac_pos = _ac.get("positive", [])
+                    _ac_neg = _ac.get("negative", [])
+                    _ac_edg = _ac.get("edge", [])
+                    if _ac_pos or _ac_neg or _ac_edg:
+                        _tab_p, _tab_n, _tab_e = st.tabs(
+                            [
+                                "\u2705 Positive",
+                                "\u274c Negative",
+                                "\u26a0 Edge Case",
+                            ]
+                        )
+                        with _tab_p:
+                            for _p in _ac_pos:
+                                st.success(_p)
+                        with _tab_n:
+                            for _n in _ac_neg:
+                                st.error(_n)
+                        with _tab_e:
+                            for _e in _ac_edg:
+                                st.warning(_e)
+
+                    # Mandatory Negative Test Scenario
+                    if _neg_test:
+                        st.markdown(
+                            '<div style="background:#1a0a0a;'
+                            'border-left:3px solid #ef4444;'
+                            'border-radius:6px;'
+                            'padding:0.6rem 0.9rem;'
+                            'margin:0.4rem 0;">'
+                            '<span style="color:#ef4444;'
+                            'font-weight:700;font-size:0.78rem;">'
+                            'FDA/EMA 2026 — Mandatory '
+                            'Negative Test Scenario</span>'
+                            f'<div style="color:#fca5a5;'
+                            f'font-size:0.8rem;margin-top:'
+                            f'0.35rem;">{_neg_test}</div>'
+                            "</div>",
+                            unsafe_allow_html=True,
+                        )
+
+                    st.markdown(
+                        '<hr style="border-color:#1e2d40;'
+                        'margin:0.5rem 0;">',
+                        unsafe_allow_html=True,
+                    )
+
+        # ── Export actions ────────────────────────────────────────
+        st.markdown(
+            '<hr style="border-color:#1e3a5f;margin:0.8rem 0;">',
+            unsafe_allow_html=True,
+        )
+        _exp_a, _exp_b = st.columns(2)
+        with _exp_a:
+            if st.button(
+                "\u27a1 Send to Validation Factory",
+                key="sre12_export_vf",
+                type="primary",
+                use_container_width=True,
+            ):
+                # Flatten all SMART texts for Validation Factory
+                _all_smart = []
+                for _s in _pkg_sections:
+                    for _r in _s.get("requirements", []):
+                        _t = _r.get("smart_text", "")
+                        if _t:
+                            _all_smart.append(_t)
+                st.session_state["p2_requirement"] = (
+                    "\n".join(_all_smart)
+                )
+                st.session_state["page"] = "6"
+                st.rerun()
+        with _exp_b:
+            if st.button(
+                "\u2192 Send to Generate Reqs",
+                key="sre12_export_p2",
+                type="secondary",
+                use_container_width=True,
+            ):
+                _all_smart2 = []
+                for _s in _pkg_sections:
+                    for _r in _s.get("requirements", []):
+                        _t = _r.get("smart_text", "")
+                        if _t:
+                            _all_smart2.append(_t)
+                st.session_state["p2_requirement"] = (
+                    "\n".join(_all_smart2)
+                )
+                st.session_state["page"] = "2"
+                st.rerun()
+
+        # Raw JSON
+        with st.expander("Raw JSON", expanded=False):
+            import json as _sre12_json
+            st.code(
+                _sre12_json.dumps(_sre12_pkg_data, indent=2),
+                language="json",
+            )

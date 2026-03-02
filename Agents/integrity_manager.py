@@ -73,6 +73,8 @@ _IMPACT_MAP = {
     "URS_VERIFIED": "Regulatory Compliance",
     "COMPLIANCE_EXCEPTION": "Compliance Exception",
     "URS_BATCH_VERIFIED": "Regulatory Compliance",
+    # SMARTRequirementsEngine
+    "SMART_REQUIREMENTS_REFINED": "GxP Documentation",
 }
 
 DEFAULT_IMPACT = "Operational"
