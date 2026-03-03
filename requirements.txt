@@ -6,3 +6,7 @@ anthropic
 streamlit
 python-docx
 pypdf
+pdfplumber
+pandas
+openpyxl
+Pillow
