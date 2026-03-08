@@ -6285,11 +6285,13 @@ elif page.startswith("12"):
         SMARTEngineError as _SREError,
         SmartPackage as _SmartPackage,
     )
+    import re as _sre12_re
 
     breadcrumb(["Home", "Requirements", "Requirements Engine"])
     page_header(
         "Requirements Engine",
-        "14 GxP categories \u00b7 SMART rewrite via Claude"
+        "14 GxP categories \u00b7 SMART rewrite via EVOLV"
+        " Intelligence Engine"
         " \u00b7 FDA/EMA 2026 AI Guidance auto-tagging",
     )
 
@@ -6307,6 +6309,9 @@ elif page.startswith("12"):
     font-size:0.82rem;
     line-height:1.55;
 }
+.req-help-brand  { color:#3b82f6; font-size:0.65rem; font-weight:700;
+                   letter-spacing:.1em; text-transform:uppercase;
+                   margin-bottom:0.55rem; }
 .req-help-title  { color:#60a5fa; font-weight:700; margin-bottom:0.4rem; }
 .req-help-def    { color:#94a3b8; margin-bottom:0.6rem; }
 .req-help-ref    { color:#64748b; font-style:italic; font-size:0.76rem; }
@@ -6335,6 +6340,40 @@ elif page.startswith("12"):
     background:#1e40af;color:#bfdbfe;font-size:0.70rem;
     padding:2px 9px;border-radius:20px;margin-right:0.3rem;
 }
+
+/* ── Compliance Shield ─────────────────────────────────── */
+.shield-badge {
+    display:inline-flex;align-items:center;gap:0.25rem;
+    font-size:0.72rem;font-weight:700;padding:2px 10px;
+    border-radius:20px;margin-right:0.3rem;cursor:help;
+    vertical-align:middle;
+}
+.shield-green { background:#14532d;color:#bbf7d0;
+                border:1px solid #22c55e; }
+.shield-amber { background:#78350f;color:#fef3c7;
+                border:1px solid #f59e0b; }
+.shield-red   { background:#7f1d1d;color:#fecaca;
+                border:1px solid #ef4444; }
+
+/* ── Auto-Links Panel ──────────────────────────────────── */
+.auto-link-panel {
+    background:linear-gradient(135deg,#0f172a,#1e293b);
+    border:1px solid #334155;border-left:3px solid #6366f1;
+    border-radius:8px;padding:0.7rem 1rem;font-size:0.8rem;
+    line-height:1.6;
+}
+.auto-link-section {
+    color:#a5b4fc;font-weight:700;font-size:0.72rem;
+    letter-spacing:.07em;text-transform:uppercase;
+    margin-bottom:0.3rem;margin-top:0.5rem;
+}
+.auto-link-section:first-child { margin-top:0; }
+.auto-link-item { color:#94a3b8;margin-left:0.8rem;
+                  margin-bottom:0.15rem; }
+
+/* ── Template hint text ────────────────────────────────── */
+.tmpl-hint { color:#64748b;font-size:0.7rem;margin:0.3rem 0 0;
+             font-style:italic;text-align:center; }
 </style>
 """,
         unsafe_allow_html=True,
@@ -6439,6 +6478,9 @@ elif page.startswith("12"):
         )
         return (
             '<div class="req-help-panel">'
+            '<div class="req-help-brand">'
+            "EVOLV \u00b7 Compliance Intelligence"
+            "</div>"
             f'<div class="req-help-title">{type_key}</div>'
             f'<div class="req-help-def">{defn}</div>'
             f'<div class="req-help-ref">{gref}</div>'
@@ -6446,6 +6488,181 @@ elif page.startswith("12"):
             f'{ex_html}'
             f'<div class="req-help-pit">Common Pitfalls</div>'
             f'{pit_html}'
+            "</div>"
+        )
+
+    def _smart_compliance_check(req_d: dict) -> dict:
+        """Evaluate SMART + 2026 AI compliance for one requirement.
+
+        :requirement: URS-21.13
+        """
+        txt = req_d.get("smart_text", "")
+        flags = req_d.get("fda_ema_flags", [])
+        neg = req_d.get("negative_test_scenario") or ""
+        ac = req_d.get("acceptance_criteria", {})
+        checks = {
+            "Specific": txt.lower().startswith(
+                "the system shall"
+            ),
+            "Measurable": bool(
+                _sre12_re.search(
+                    r"\d+\s*(?:ms|s|%|days?|hours?"
+                    r"|records?|users?)"
+                    r"|\bwithin\b|\bSLA\b|\buptime\b"
+                    r"|\bthreshold\b|\b<=\b|\b>=\b",
+                    txt,
+                    _sre12_re.IGNORECASE,
+                )
+            ),
+            "Achievable": len(ac.get("positive", [])) > 0,
+            "Relevant": bool(
+                req_d.get("category", "")
+                or req_d.get("risk_level", "")
+            ),
+            "Traceable": (
+                len(ac.get("negative", [])) > 0
+                or len(ac.get("edge", [])) > 0
+            ),
+            "2026 AI Std": (bool(neg) if flags else True),
+        }
+        score = sum(1 for v in checks.values() if v)
+        mx = len(checks)
+        level = (
+            "green" if score == mx
+            else "amber" if score >= mx - 1
+            else "red"
+        )
+        return {
+            "score": score,
+            "max": mx,
+            "level": level,
+            "checks": checks,
+        }
+
+    def _shield_html(c: dict) -> str:
+        """Return shield badge HTML for a compliance result.
+
+        :requirement: URS-21.13
+        """
+        lvl = c.get("level", "red")
+        score = c.get("score", 0)
+        mx = c.get("max", 6)
+        checks = c.get("checks", {})
+        tip = " | ".join(
+            f"{'OK' if v else 'FAIL'}: {k}"
+            for k, v in checks.items()
+        )
+        label = {
+            "green": "\U0001f6e1 SMART + AI Compliant",
+            "amber": "\U0001f6e1 Partial",
+            "red": "\U0001f6e1 Needs Review",
+        }.get(lvl, "\U0001f6e1")
+        return (
+            f'<span class="shield-badge shield-{lvl}"'
+            f' title="{tip}">'
+            f"{label} {score}/{mx}</span>"
+        )
+
+    def _auto_links(req_d: dict, type_name: str) -> dict:
+        """Deterministic risk + TC suggestions for a requirement.
+
+        :requirement: URS-21.13
+        """
+        risk = req_d.get("risk_level", "Low")
+        flags = req_d.get("fda_ema_flags", [])
+        ai_tag = req_d.get("ai_guidance_tagged", False)
+        risks, tcs = [], []
+
+        if risk == "High":
+            risks += [
+                "RISK-GXP-01: GxP Compliance Breach"
+                " \u2014 Rigorous validation required"
+                " (GAMP 5 §5)",
+                "RISK-AUD-01: Audit Trail Integrity"
+                " \u2014 21 CFR Part 11 obligation",
+            ]
+        if "Patient Safety" in flags:
+            risks.append(
+                "RISK-SAF-01: Patient Safety Impact"
+                " \u2014 Severity = HIGH override"
+            )
+        if "AI Inference" in flags:
+            risks.append(
+                "RISK-AI-01: Model Drift / Bias"
+                " \u2014 Continuous monitoring required"
+            )
+        if "Automated Decision" in flags:
+            risks.append(
+                "RISK-AI-02: Autonomous Decision Error"
+                " \u2014 Human-in-the-loop control"
+            )
+        if "PCCP" in flags:
+            risks.append(
+                "RISK-AI-03: PCCP Change Control"
+                " \u2014 Predetermined Change Control Plan"
+            )
+        if risk == "Medium" and not risks:
+            risks.append(
+                "RISK-QUA-01: Quality System Deviation"
+                " \u2014 CAPA pathway"
+            )
+        if not risks:
+            risks.append(
+                "RISK-OPS-01: Operational Continuity"
+                " \u2014 Standard monitoring"
+            )
+
+        if risk == "High":
+            tcs += [
+                "TC-OQ-001: Formal OQ"
+                " \u2014 Positive execution path",
+                "TC-OQ-002: Formal OQ"
+                " \u2014 Negative / boundary test",
+                "TC-UAT-001: UAT"
+                " \u2014 Business-process walkthrough",
+            ]
+        elif risk == "Medium":
+            tcs += [
+                "TC-INF-001: Informal Charter"
+                " \u2014 Exploratory testing",
+                "TC-HYB-001: Hybrid OQ/UAT"
+                " \u2014 Key flow verification",
+            ]
+        else:
+            tcs.append(
+                "TC-SUP-001: Supplier-Provided Evidence"
+                " \u2014 CoV review"
+            )
+        if ai_tag or flags:
+            tcs += [
+                "TC-AI-001: AI Boundary Test"
+                " \u2014 Out-of-distribution inputs",
+                "TC-AI-002: Adversarial Scenario"
+                " \u2014 Bias / edge-case probing",
+            ]
+        return {"risks": risks, "test_cases": tcs}
+
+    def _auto_links_html(links: dict) -> str:
+        """Return styled HTML panel for auto-link display.
+
+        :requirement: URS-21.13
+        """
+        risks_html = "".join(
+            f'<div class="auto-link-item">\u2022 {r}</div>'
+            for r in links.get("risks", [])
+        )
+        tcs_html = "".join(
+            f'<div class="auto-link-item">\u2022 {t}</div>'
+            for t in links.get("test_cases", [])
+        )
+        return (
+            '<div class="auto-link-panel">'
+            '<div class="auto-link-section">'
+            "Linked Risks</div>"
+            f"{risks_html}"
+            '<div class="auto-link-section">'
+            "Suggested Test Cases</div>"
+            f"{tcs_html}"
             "</div>"
         )
 
@@ -6493,14 +6710,36 @@ elif page.startswith("12"):
                     _sre12_help_html(_t_key),
                     unsafe_allow_html=True,
                 )
+                # Template button — pre-fill textarea
+                _tmpl_examples = _REQ_TYPES.get(
+                    _t_key, {}
+                ).get("examples", [])
+                if _tmpl_examples:
+                    if st.button(
+                        "\U0001f4cb Use as Template",
+                        key=f"btn_tmpl_{_t_key}",
+                        type="secondary",
+                        use_container_width=True,
+                    ):
+                        st.session_state[
+                            _sre12_notes_key
+                        ] = "\n".join(_tmpl_examples)
+                        st.rerun()
+                    st.markdown(
+                        '<p class="tmpl-hint">Pre-fills the'
+                        " notes field with SMART-standard"
+                        " examples from the EVOLV"
+                        " Intelligence Engine.</p>",
+                        unsafe_allow_html=True,
+                    )
 
             # User notes textarea
             st.text_area(
                 "Your Notes",
                 placeholder=(
-                    "Enter one requirement idea per line "
-                    "(vague language is fine — Claude will "
-                    "transform it to SMART format).\n"
+                    "Input your raw requirements below \u2014 the"
+                    " EVOLV Intelligence Engine will refactor them"
+                    " into SMART, audit-ready standards.\n"
                     "e.g. System should back up data regularly\n"
                     "     Users need to log in securely"
                 ),
@@ -6666,6 +6905,15 @@ elif page.startswith("12"):
                         "negative_test_scenario"
                     )
 
+                    # Compliance shield + auto-links
+                    _compliance = _smart_compliance_check(
+                        _req_d
+                    )
+                    _links = _auto_links(
+                        _req_d,
+                        _sec_data.get("type_name", ""),
+                    )
+
                     # SMART requirement text
                     st.success(_smart)
 
@@ -6676,10 +6924,11 @@ elif page.startswith("12"):
                         "Low": "risk-badge-low",
                     }.get(_risk, "risk-badge-low")
                     _badges = (
-                        f'<div style="margin:0.25rem 0 '
-                        f'0.5rem 0;display:flex;gap:0.4rem;'
-                        f'flex-wrap:wrap;">'
-                        f'<span class="risk-badge '
+                        '<div style="margin:0.25rem 0 '
+                        '0.5rem 0;display:flex;gap:0.4rem;'
+                        'flex-wrap:wrap;align-items:center;">'
+                        + _shield_html(_compliance)
+                        + f'<span class="risk-badge '
                         f'{_risk_cls}">{_risk} Risk</span>'
                     )
                     for _fl in _flags:
@@ -6700,12 +6949,15 @@ elif page.startswith("12"):
                     _ac_neg = _ac.get("negative", [])
                     _ac_edg = _ac.get("edge", [])
                     if _ac_pos or _ac_neg or _ac_edg:
-                        _tab_p, _tab_n, _tab_e = st.tabs(
-                            [
-                                "\u2705 Positive",
-                                "\u274c Negative",
-                                "\u26a0 Edge Case",
-                            ]
+                        _tab_p, _tab_n, _tab_e, _tab_l = (
+                            st.tabs(
+                                [
+                                    "\u2705 Positive",
+                                    "\u274c Negative",
+                                    "\u26a0 Edge Case",
+                                    "\U0001f517 Auto-Links",
+                                ]
+                            )
                         )
                         with _tab_p:
                             for _p in _ac_pos:
@@ -6716,6 +6968,11 @@ elif page.startswith("12"):
                         with _tab_e:
                             for _e in _ac_edg:
                                 st.warning(_e)
+                        with _tab_l:
+                            st.markdown(
+                                _auto_links_html(_links),
+                                unsafe_allow_html=True,
+                            )
 
                     # Mandatory Negative Test Scenario
                     if _neg_test:

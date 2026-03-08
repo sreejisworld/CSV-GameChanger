@@ -1,0 +1,12 @@
+﻿fastapi
+fastapi-cli
+uvicorn
+boto3
+anthropic
+streamlit
+python-docx
+pypdf
+pdfplumber
+pandas
+openpyxl
+Pillow
