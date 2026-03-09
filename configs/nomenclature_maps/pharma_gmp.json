@@ -1,0 +1,24 @@
+{
+  "tenant_id": "pharma_gmp",
+  "tenant_name": "Pharma GMP (Default)",
+  "industry": "pharma",
+  "compliance_mode": "GMP",
+  "sop_guidelines": "",
+  "labels": {
+    "requirement":         "Requirement",
+    "test_case":           "Test Case",
+    "audit":               "Audit",
+    "review":              "Review",
+    "urs":                 "URS",
+    "ur":                  "User Requirement",
+    "fr":                  "Functional Requirement",
+    "validation_report":   "Validation Report",
+    "test_script":         "Test Script",
+    "gap_analysis":        "Gap Analysis",
+    "traceability_matrix": "Traceability Matrix",
+    "change_request":      "Change Request",
+    "impact_assessment":   "Impact Assessment",
+    "deviation":           "Deviation",
+    "capa":                "CAPA"
+  }
+}

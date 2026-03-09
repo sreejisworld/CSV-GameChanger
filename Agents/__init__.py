@@ -64,3 +64,30 @@ from Agents.auditor_agent import (
     AuditorAgent,
     AuditorAgentError
 )
+from Agents.metadata_mapper import (
+    TenantConfig,
+    MetadataMapper,
+    ConfigService,
+)
+from Agents.compliance_context import (
+    ComplianceMode,
+    ComplianceContext,
+)
+from Agents.sentinel_impact_agent import (
+    SentinelImpactAgent,
+    BlastRadiusReport,
+    ImpactedItem,
+    RegressionSeverity,
+    ChangeCategory,
+    ImpactTier,
+)
+from Agents.policy_engine import (
+    PolicyEngine,
+    PolicyDecision,
+    PolicyVerdict,
+    UserContext,
+    ResourceContext,
+    LifecycleState,
+    SiteContext,
+    GxPCriticality,
+)

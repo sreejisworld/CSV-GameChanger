@@ -32,6 +32,10 @@ NAV_GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
         ("10", "fa-file-shield", "VSR"),
         ("11", "fa-satellite-dish", "EVOLV Sentinel"),
     ]),
+    ("ENTERPRISE", [
+        ("13", "fa-sliders",        "Enterprise Config"),
+        ("14", "fa-circle-nodes",   "Blast Radius"),
+    ]),
 ]
 
 
@@ -150,6 +154,31 @@ def render_sidebar(
             )
         else:
             st.caption("Adversarial Mode: Off")
+
+        # ---- Compliance Mode Toggle ----
+        st.markdown("---")
+        st.caption("Compliance Mode")
+        _compliance_opts = ["GMP", "GCP", "GLP", "ISO13485"]
+        _compliance_labels = {
+            "GMP":      "GMP — 21 CFR Part 211",
+            "GCP":      "GCP — ICH E6",
+            "GLP":      "GLP — 21 CFR Part 58",
+            "ISO13485": "ISO 13485 — MedTech",
+        }
+        _current_mode = st.session_state.get(
+            "compliance_mode", "GMP"
+        )
+        _selected = st.selectbox(
+            "Active Regulation",
+            options=_compliance_opts,
+            index=_compliance_opts.index(_current_mode),
+            format_func=lambda x: _compliance_labels[x],
+            key="compliance_mode_selector",
+            label_visibility="collapsed",
+        )
+        if _selected != _current_mode:
+            st.session_state["compliance_mode"] = _selected
+            st.rerun()
 
         # ---- Load Demo Project ----
         st.markdown("---")

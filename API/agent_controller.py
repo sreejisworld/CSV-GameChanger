@@ -23,6 +23,7 @@ from Agents.verification_agent import VerificationAgent
 from Agents.delta_agent import DeltaAgent
 from Agents.auditor_agent import AuditorAgent
 from Agents.ingestor_agent import IngestorAgent
+from Agents.sentinel_impact_agent import SentinelImpactAgent
 
 
 class AgentController:
@@ -58,6 +59,9 @@ class AgentController:
         self._delta_agent: Optional[DeltaAgent] = None
         self._auditor_agent: Optional[AuditorAgent] = None
         self._ingestor_agent: Optional[IngestorAgent] = None
+        self._sentinel_agent: Optional[
+            SentinelImpactAgent
+        ] = None
 
     # ----------------------------------------------------------
     # Lazy agent accessors
@@ -117,6 +121,17 @@ class AgentController:
         if self._ingestor_agent is None:
             self._ingestor_agent = IngestorAgent()
         return self._ingestor_agent
+
+    def _get_sentinel_agent(self) -> SentinelImpactAgent:
+        """
+        Return the cached SentinelImpactAgent, creating it on
+        first access.
+
+        :return: SentinelImpactAgent instance.
+        """
+        if self._sentinel_agent is None:
+            self._sentinel_agent = SentinelImpactAgent()
+        return self._sentinel_agent
 
     # ----------------------------------------------------------
     # Audit helper
@@ -482,6 +497,43 @@ class AgentController:
             model=model,
             verbose=verbose,
         )
+
+    # ----------------------------------------------------------
+    # SentinelImpactAgent wrapper
+    # ----------------------------------------------------------
+
+    def sentinel_scan(
+        self,
+        old_requirement: str,
+        new_requirement: str,
+        requirement_id: str,
+        traceability_matrix: Optional[Dict[str, Any]] = None,
+        change_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run a Sentinel blast-radius scan on a requirement change.
+
+        :param old_requirement: Original requirement text.
+        :param new_requirement: Updated requirement text.
+        :param requirement_id: Identifier, e.g. "URS-7.1".
+        :param traceability_matrix: Optional trace matrix dict.
+        :param change_id: Optional external change identifier.
+        :return: BlastRadiusReport as a dictionary.
+        :requirement: URS-24.1 - URS-24.5 Sentinel impact engine.
+        """
+        self._log_request(
+            "sentinel_scan",
+            f"req={requirement_id}",
+        )
+        agent = self._get_sentinel_agent()
+        report = agent.analyze_blast_radius(
+            old_requirement=old_requirement,
+            new_requirement=new_requirement,
+            requirement_id=requirement_id,
+            traceability_matrix=traceability_matrix,
+            change_id=change_id,
+        )
+        return report.to_dict()
 
     # ----------------------------------------------------------
     # IntegrityManager pass-through

@@ -7050,3 +7050,830 @@ elif page.startswith("12"):
                 _sre12_json.dumps(_sre12_pkg_data, indent=2),
                 language="json",
             )
+
+# ===================================================================
+# Page 13 — Enterprise Configuration
+#   • Nomenclature Mapper  (Task 1 / ServiceNow strategy)
+#   • Compliance Mode      (Task 3 / GMP vs GCP)
+#   • SOP Plugin           (Task 4 / Co-Innovation)
+# ===================================================================
+elif page.startswith("13"):
+    page_header(
+        "Enterprise Configuration",
+        "Adapt EVOLV to your team's language, regulations, "
+        "and internal quality guidelines.",
+    )
+
+    _cfg_tab1, _cfg_tab2, _cfg_tab3 = st.tabs([
+        "Nomenclature Mapper",
+        "Compliance Mode",
+        "SOP Plugin",
+    ])
+
+    # ── Tab 1: Nomenclature Mapper ─────────────────────────────
+    with _cfg_tab1:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.85rem;'
+            'margin-bottom:1rem;">'
+            "Map EVOLV's internal labels to your team's "
+            "exact vocabulary.  Changes take effect in the "
+            "UI and all AI-generated exports immediately."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+        # Preset selector
+        _nm_presets_dir = (
+            PROJECT_ROOT / "configs" / "nomenclature_maps"
+        )
+        _nm_preset_files = sorted(
+            _nm_presets_dir.glob("*.json")
+        ) if _nm_presets_dir.exists() else []
+        _nm_preset_names = (
+            ["— Select preset —"]
+            + [p.stem for p in _nm_preset_files]
+        )
+
+        _nm_col_a, _nm_col_b = st.columns([2, 1])
+        with _nm_col_a:
+            _nm_chosen = st.selectbox(
+                "Load Preset",
+                _nm_preset_names,
+                key="nm_preset_select",
+            )
+        with _nm_col_b:
+            st.write("")
+            st.write("")
+            if st.button(
+                "Apply Preset",
+                key="nm_apply_preset",
+                disabled=_nm_chosen == "— Select preset —",
+            ):
+                try:
+                    from Agents.metadata_mapper import (
+                        MetadataMapper,
+                    )
+                    _nm_mapper = MetadataMapper.load_preset(
+                        _nm_chosen
+                    )
+                    st.session_state["nm_labels"] = (
+                        _nm_mapper.get_all_labels()
+                    )
+                    if _nm_mapper.config:
+                        st.session_state["nm_tenant_name"] = (
+                            _nm_mapper.config.tenant_name
+                        )
+                    st.success(
+                        f"Preset '{_nm_chosen}' loaded."
+                    )
+                except Exception as _nm_err:
+                    st.error(str(_nm_err))
+
+        # JSON upload
+        _nm_upload = st.file_uploader(
+            "Or upload a nomenclature JSON file",
+            type=["json"],
+            key="nm_json_upload",
+        )
+        if _nm_upload:
+            try:
+                import json as _nm_json
+                from Agents.metadata_mapper import (
+                    MetadataMapper,
+                    TenantConfig,
+                )
+                _nm_data = _nm_json.load(_nm_upload)
+                _nm_mapper_u = MetadataMapper(
+                    config=TenantConfig.from_dict(_nm_data)
+                )
+                st.session_state["nm_labels"] = (
+                    _nm_mapper_u.get_all_labels()
+                )
+                st.success("Nomenclature map loaded.")
+            except Exception as _nm_uerr:
+                st.error(str(_nm_uerr))
+
+        st.markdown("---")
+
+        # Editable label table
+        st.markdown(
+            "**Edit Labels** — change any display name below:"
+        )
+        _nm_default_labels: Dict[str, Any] = {
+            "requirement":         "Requirement",
+            "test_case":           "Test Case",
+            "audit":               "Audit",
+            "review":              "Review",
+            "urs":                 "URS",
+            "ur":                  "User Requirement",
+            "fr":                  "Functional Requirement",
+            "validation_report":   "Validation Report",
+            "test_script":         "Test Script",
+            "gap_analysis":        "Gap Analysis",
+            "traceability_matrix": "Traceability Matrix",
+            "change_request":      "Change Request",
+            "impact_assessment":   "Impact Assessment",
+            "deviation":           "Deviation",
+            "capa":                "CAPA",
+        }
+        _nm_current = st.session_state.get(
+            "nm_labels", _nm_default_labels
+        )
+        _nm_rows = [
+            {
+                "Internal Key": k,
+                "Display Label": _nm_current.get(k, v),
+            }
+            for k, v in _nm_default_labels.items()
+        ]
+        _nm_df = pd.DataFrame(_nm_rows)
+        _nm_edited = st.data_editor(
+            _nm_df,
+            key="nm_label_editor",
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Internal Key": st.column_config.TextColumn(
+                    disabled=True
+                ),
+                "Display Label": st.column_config.TextColumn(
+                    "Client Label"
+                ),
+            },
+        )
+
+        _nm_save_col, _nm_reset_col = st.columns(2)
+        with _nm_save_col:
+            if st.button(
+                "Save Labels",
+                key="nm_save_btn",
+                type="primary",
+                use_container_width=True,
+            ):
+                _nm_new = {
+                    row["Internal Key"]: row["Display Label"]
+                    for _, row in _nm_edited.iterrows()
+                }
+                st.session_state["nm_labels"] = _nm_new
+                try:
+                    from Agents.metadata_mapper import (
+                        ConfigService,
+                        TenantConfig,
+                    )
+                    ConfigService.get_instance().load_from_dict(
+                        {
+                            "tenant_id": "session",
+                            "tenant_name": st.session_state.get(
+                                "nm_tenant_name", "Session"
+                            ),
+                            "industry": "pharma",
+                            "compliance_mode": (
+                                st.session_state.get(
+                                    "compliance_mode", "GMP"
+                                )
+                            ),
+                            "labels": _nm_new,
+                        }
+                    )
+                    st.success(
+                        "Labels saved — active for this session."
+                    )
+                except Exception as _nm_serr:
+                    st.error(str(_nm_serr))
+
+        with _nm_reset_col:
+            if st.button(
+                "Reset to EVOLV Defaults",
+                key="nm_reset_btn",
+                use_container_width=True,
+            ):
+                st.session_state.pop("nm_labels", None)
+                try:
+                    from Agents.metadata_mapper import ConfigService
+                    ConfigService.get_instance().reset()
+                except Exception:
+                    pass
+                st.rerun()
+
+        # Live preview
+        st.markdown("---")
+        st.markdown("**Live Preview**")
+        _nm_preview_key = st.selectbox(
+            "Preview key",
+            list(_nm_default_labels.keys()),
+            key="nm_preview_key",
+        )
+        _nm_preview_labels = st.session_state.get(
+            "nm_labels", _nm_default_labels
+        )
+        _nm_display = _nm_preview_labels.get(
+            _nm_preview_key, _nm_preview_key
+        )
+        st.info(
+            f"**{_nm_preview_key}** → **{_nm_display}**"
+        )
+
+    # ── Tab 2: Compliance Mode ─────────────────────────────────
+    with _cfg_tab2:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.85rem;'
+            'margin-bottom:1rem;">'
+            "Select the active regulatory framework for this "
+            "site.  The AI will prioritise the corresponding "
+            "regulations in all generated documents and "
+            "Pinecone queries."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+        try:
+            from Agents.compliance_context import (
+                ComplianceMode,
+                ComplianceContext,
+            )
+
+            _cm_options = {
+                "GMP":      (
+                    "GMP — Good Manufacturing Practice",
+                    "21 CFR Part 211, GAMP 5, EU GMP Annex 11",
+                    "Equipment calibration, batch records, "
+                    "process validation.",
+                ),
+                "GCP":      (
+                    "GCP — Good Clinical Practice",
+                    "ICH E6 (R2), 21 CFR Part 11, GDPR/HIPAA",
+                    "Patient privacy, informed consent, "
+                    "investigator oversight.",
+                ),
+                "GLP":      (
+                    "GLP — Good Laboratory Practice",
+                    "21 CFR Part 58, OECD GLP Principles",
+                    "Study data integrity, QA unit oversight, "
+                    "ALCOA+ archival.",
+                ),
+                "ISO13485": (
+                    "ISO 13485 — Medical Device QMS",
+                    "ISO 13485:2016, 21 CFR Part 820, "
+                    "EU MDR 2017/745",
+                    "Design controls, risk management (ISO 14971)"
+                    ", complaint handling.",
+                ),
+            }
+
+            _current_cm = st.session_state.get(
+                "compliance_mode", "GMP"
+            )
+
+            for _cm_key, (_cm_title, _cm_regs, _cm_focus) in (
+                _cm_options.items()
+            ):
+                _cm_active = _cm_key == _current_cm
+                _cm_border = (
+                    "#3b82f6" if _cm_active else "#1e3a5f"
+                )
+                _cm_bg = (
+                    "#0f2137" if _cm_active else "#0d1b2a"
+                )
+                st.markdown(
+                    f'<div style="border:1px solid {_cm_border};'
+                    f"border-radius:8px;padding:0.9rem 1rem;"
+                    f"background:{_cm_bg};"
+                    f'margin-bottom:0.6rem;">'
+                    f'<div style="display:flex;align-items:'
+                    f'center;justify-content:space-between;">'
+                    f'<span style="color:#e2e8f0;font-weight:'
+                    f'600;font-size:0.95rem;">{_cm_title}'
+                    f'{"  ✓" if _cm_active else ""}</span>'
+                    f'</div><div style="color:#94a3b8;'
+                    f'font-size:0.78rem;margin-top:0.3rem;">'
+                    f"<strong>Regulations:</strong> {_cm_regs}"
+                    f"<br/><strong>Focus:</strong> {_cm_focus}"
+                    f"</div></div>",
+                    unsafe_allow_html=True,
+                )
+                if not _cm_active:
+                    if st.button(
+                        f"Activate {_cm_key}",
+                        key=f"cm_activate_{_cm_key}",
+                        use_container_width=True,
+                    ):
+                        st.session_state[
+                            "compliance_mode"
+                        ] = _cm_key
+                        st.success(
+                            f"Compliance mode set to {_cm_key}."
+                        )
+                        st.rerun()
+
+            # Show active prompt injection preview
+            st.markdown("---")
+            st.markdown("**Active System Prompt Injection**")
+            _cm_ctx = ComplianceContext(
+                mode=ComplianceMode(_current_cm),
+                site_name=st.session_state.get(
+                    "nm_tenant_name", "Your Site"
+                ),
+                sop_guidelines=st.session_state.get(
+                    "sop_guidelines", ""
+                ),
+            )
+            with st.expander(
+                "View prompt prefix (sent to AI)", expanded=False
+            ):
+                st.code(
+                    _cm_ctx.get_system_prompt_injection(),
+                    language="text",
+                )
+
+        except Exception as _cm_err:
+            st.error(f"Compliance context error: {_cm_err}")
+
+    # ── Tab 3: SOP Plugin (Co-Innovation) ─────────────────────
+    with _cfg_tab3:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.85rem;'
+            'margin-bottom:1rem;">'
+            "Upload your internal Quality Guidelines or SOP "
+            "text.  EVOLV will use these as additional "
+            "constraints when checking for gaps, rewriting "
+            "requirements, and generating test scripts."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+        _sop_file = st.file_uploader(
+            "Upload Quality Guidelines / SOP (.txt or .md)",
+            type=["txt", "md"],
+            key="sop_file_upload",
+        )
+        if _sop_file:
+            _sop_text = _sop_file.read().decode(
+                "utf-8", errors="replace"
+            )
+            st.session_state["sop_guidelines"] = _sop_text
+            st.success(
+                f"SOP loaded: {len(_sop_text):,} characters "
+                f"from '{_sop_file.name}'."
+            )
+
+        st.markdown(
+            "Or paste your guidelines directly:"
+        )
+        _sop_area = st.text_area(
+            "Quality Guidelines",
+            value=st.session_state.get("sop_guidelines", ""),
+            height=200,
+            key="sop_text_area",
+            placeholder=(
+                "e.g. All requirements must cite a risk level. "
+                "Test cases must follow the IQ/OQ/PQ format..."
+            ),
+            label_visibility="collapsed",
+        )
+
+        _sop_a, _sop_b = st.columns(2)
+        with _sop_a:
+            if st.button(
+                "Save Guidelines",
+                key="sop_save_btn",
+                type="primary",
+                use_container_width=True,
+            ):
+                st.session_state["sop_guidelines"] = _sop_area
+                st.success(
+                    "Guidelines saved — active for this session."
+                )
+        with _sop_b:
+            if st.button(
+                "Clear Guidelines",
+                key="sop_clear_btn",
+                use_container_width=True,
+            ):
+                st.session_state["sop_guidelines"] = ""
+                st.rerun()
+
+        if st.session_state.get("sop_guidelines", ""):
+            st.markdown("---")
+            st.markdown(
+                "**Active Guidelines Preview** "
+                f"({len(st.session_state['sop_guidelines']):,}"
+                " chars)"
+            )
+            st.text_area(
+                "Preview",
+                value=(
+                    st.session_state["sop_guidelines"][:800]
+                    + ("…" if len(
+                        st.session_state["sop_guidelines"]
+                    ) > 800 else "")
+                ),
+                height=150,
+                disabled=True,
+                key="sop_preview",
+                label_visibility="collapsed",
+            )
+
+# ===================================================================
+# Page 14 — Blast Radius Dashboard
+# ===================================================================
+elif page.startswith("14"):
+    page_header(
+        "Blast Radius",
+        "Visualise the regression impact of a requirement "
+        "change — optimise your test suite instantly.",
+    )
+
+    # ── Input panel ───────────────────────────────────────────
+    _br_col_left, _br_col_right = st.columns([1, 1])
+
+    with _br_col_left:
+        st.markdown("#### Requirement Change")
+        _br_req_id = st.text_input(
+            "Requirement ID",
+            value=st.session_state.get(
+                "br_req_id", "URS-7.1"
+            ),
+            key="br_req_id_input",
+            placeholder="e.g. URS-7.1",
+        )
+        _br_old = st.text_area(
+            "Original Requirement",
+            value=st.session_state.get(
+                "br_old_req",
+                "The system shall track warehouse temperature.",
+            ),
+            height=120,
+            key="br_old_input",
+        )
+        _br_new = st.text_area(
+            "Updated Requirement",
+            value=st.session_state.get(
+                "br_new_req",
+                "The system shall monitor and alert on "
+                "warehouse temperature using 21 CFR Part 211 "
+                "thresholds and log all excursions.",
+            ),
+            height=120,
+            key="br_new_input",
+        )
+        _br_source = st.selectbox(
+            "Source System",
+            ["manual", "servicenow", "sap", "jira", "other"],
+            key="br_source",
+        )
+
+        if st.button(
+            "Run Blast Radius Analysis",
+            key="br_run_btn",
+            type="primary",
+            use_container_width=True,
+        ):
+            if not _br_req_id.strip():
+                st.error("Please enter a Requirement ID.")
+            elif (
+                not _br_old.strip() or not _br_new.strip()
+            ):
+                st.error(
+                    "Please enter both original and updated "
+                    "requirement text."
+                )
+            else:
+                st.session_state["br_req_id"] = _br_req_id
+                st.session_state["br_old_req"] = _br_old
+                st.session_state["br_new_req"] = _br_new
+                try:
+                    from Agents.sentinel_impact_agent import (
+                        SentinelImpactAgent,
+                    )
+                    _br_report = (
+                        SentinelImpactAgent()
+                        .analyze_blast_radius(
+                            old_requirement=_br_old,
+                            new_requirement=_br_new,
+                            requirement_id=_br_req_id,
+                        )
+                    )
+                    st.session_state["br_report"] = (
+                        _br_report.to_dict()
+                    )
+                    st.rerun()
+                except Exception as _br_err:
+                    st.error(
+                        f"Blast radius analysis failed: "
+                        f"{_br_err}"
+                    )
+
+        # ── Context-Injection Preview (Task 3) ────────────────
+        st.markdown("---")
+        st.markdown("#### Active Compliance Context")
+        try:
+            from Agents.compliance_context import (
+                ComplianceContext,
+                ComplianceMode,
+            )
+            _br_cm = st.session_state.get(
+                "compliance_mode", "GMP"
+            )
+            _br_ctx = ComplianceContext(
+                mode=ComplianceMode(_br_cm),
+                sop_guidelines=st.session_state.get(
+                    "sop_guidelines", ""
+                ),
+            )
+            st.markdown(
+                f'<div style="background:#0d1b2a;border:1px '
+                f'solid #1e3a5f;border-radius:6px;'
+                f'padding:0.6rem 0.9rem;'
+                f'font-size:0.8rem;color:#94a3b8;">'
+                f'<strong style="color:#60a5fa;">'
+                f'Mode:</strong> {_br_cm} — '
+                f'{_br_ctx.get_description()}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            with st.expander(
+                "View rendered prompt template", expanded=False
+            ):
+                st.code(
+                    _br_ctx.render_prompt(),
+                    language="text",
+                )
+        except Exception:
+            pass
+
+    # ── Results panel ─────────────────────────────────────────
+    with _br_col_right:
+        _br_data = st.session_state.get("br_report")
+        if not _br_data:
+            st.markdown(
+                '<div style="background:#0d1b2a;border:1px '
+                'solid #1e3a5f;border-radius:8px;padding:3rem;'
+                'text-align:center;color:#64748b;">'
+                '<div style="font-size:2.5rem;">⬡</div>'
+                "<br/>Run an analysis to see the blast "
+                "radius dashboard.</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            _br_cat = _br_data.get(
+                "change_category", "Unknown"
+            )
+            _br_delta = _br_data.get("semantic_delta", "")
+            _br_score = _br_data.get("impact_score", 0)
+            _br_cat_colours = {
+                "Structural":    "#ef4444",
+                "Regulatory":    "#f97316",
+                "Behavioural":   "#eab308",
+                "Clarification": "#22c55e",
+            }
+            _br_cat_col = _br_cat_colours.get(
+                _br_cat, "#94a3b8"
+            )
+
+            # ── Sentinel Alert banner ──────────────────────────
+            st.markdown(
+                f'<div style="background:#0d1b2a;border-left:'
+                f"4px solid {_br_cat_col};border-radius:8px;"
+                f"padding:0.8rem 1.1rem;"
+                f'margin-bottom:0.6rem;">'
+                f'<span style="color:{_br_cat_col};'
+                f'font-weight:700;font-size:0.82rem;">'
+                f'SENTINEL ALERT — {_br_cat.upper()} CHANGE'
+                f"</span>"
+                f'<div style="color:#cbd5e1;font-size:0.83rem;'
+                f'margin-top:0.3rem;">{_br_delta}</div>'
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+            # ── KPI tiles + Impact Score ───────────────────────
+            (
+                _kpi_r, _kpi_y, _kpi_g,
+                _kpi_t, _kpi_s,
+            ) = st.columns(5)
+            _kpi_specs = [
+                (_kpi_r, "#ef4444", "#1a0a0a",
+                 _br_data["red_count"], "RERUN"),
+                (_kpi_y, "#eab308", "#1a1400",
+                 _br_data["yellow_count"], "REVIEW"),
+                (_kpi_g, "#22c55e", "#0a1a0a",
+                 _br_data["green_count"], "VALID"),
+                (_kpi_t, "#3b82f6", "#0f1a2e",
+                 f'{_br_data.get("time_saved_hours",0):.1f}h',
+                 "SAVED"),
+                (_kpi_s, _br_cat_col, "#0d1b2a",
+                 _br_score, "IMPACT"),
+            ]
+            for _col, _fc, _bg, _val, _lbl in _kpi_specs:
+                with _col:
+                    st.markdown(
+                        f'<div style="background:{_bg};'
+                        f"border:1px solid {_fc};"
+                        f"border-radius:8px;padding:0.6rem;"
+                        f'text-align:center;">'
+                        f'<div style="color:{_fc};'
+                        f'font-size:1.4rem;font-weight:700;">'
+                        f"{_val}</div>"
+                        f'<div style="color:{_fc};'
+                        f'opacity:0.7;font-size:0.65rem;">'
+                        f"{_lbl}</div></div>",
+                        unsafe_allow_html=True,
+                    )
+
+            # ── Visual Network Graph (D3 force graph) ─────────
+            _br_ng = _br_data.get("network_graph", {})
+            if _br_ng.get("nodes"):
+                st.markdown("#### Network Graph")
+                import json as _br_js
+                _ng_json = _br_js.dumps(_br_ng)
+                _graph_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  body {{ margin:0; background:#0a1220; overflow:hidden; }}
+  .node circle {{ stroke:#1e3a5f; stroke-width:1.5px;
+    cursor:pointer; }}
+  .node text {{ fill:#e2e8f0; font-size:10px;
+    font-family:monospace; pointer-events:none; }}
+  .link {{ stroke-opacity:0.6; }}
+  .tooltip {{ position:absolute; background:#1e293b;
+    color:#e2e8f0; padding:6px 10px; border-radius:6px;
+    font-size:11px; font-family:monospace;
+    pointer-events:none; opacity:0; transition:opacity .2s;
+    border:1px solid #334155; max-width:220px; }}
+</style>
+</head>
+<body>
+<div class="tooltip" id="tip"></div>
+<script>
+const graph = {_ng_json};
+const W = window.innerWidth, H = window.innerHeight;
+const svg = d3.select("body").append("svg")
+  .attr("width", W).attr("height", H);
+const tip = d3.select("#tip");
+
+const sim = d3.forceSimulation(graph.nodes)
+  .force("link", d3.forceLink(graph.edges)
+    .id(d => d.id).distance(90))
+  .force("charge", d3.forceManyBody().strength(-220))
+  .force("center", d3.forceCenter(W/2, H/2))
+  .force("collide", d3.forceCollide(28));
+
+const link = svg.append("g").selectAll("line")
+  .data(graph.edges).join("line")
+  .attr("class","link")
+  .attr("stroke", d => d.color)
+  .attr("stroke-width", 2);
+
+const node = svg.append("g").selectAll("g")
+  .data(graph.nodes).join("g")
+  .attr("class","node")
+  .call(d3.drag()
+    .on("start", (e,d) => {{
+      if(!e.active) sim.alphaTarget(0.3).restart();
+      d.fx=d.x; d.fy=d.y; }})
+    .on("drag", (e,d) => {{ d.fx=e.x; d.fy=e.y; }})
+    .on("end", (e,d) => {{
+      if(!e.active) sim.alphaTarget(0);
+      d.fx=null; d.fy=null; }}));
+
+node.append("circle")
+  .attr("r", d => d.size || 14)
+  .attr("fill", d => d.color)
+  .attr("fill-opacity", 0.85)
+  .on("mouseover", (e, d) => {{
+    tip.style("opacity",1)
+      .style("left",(e.pageX+12)+"px")
+      .style("top",(e.pageY-8)+"px")
+      .html("<b>"+d.id+"</b><br>"+d.label
+        +(d.severity?"<br>Severity: "+d.severity:"")
+        +(d.type?"<br>Type: "+d.type:""));
+  }})
+  .on("mouseout", () => tip.style("opacity",0));
+
+node.append("text")
+  .attr("dy","0.35em")
+  .attr("text-anchor","middle")
+  .style("font-size", d => (d.size||14)*0.6+"px")
+  .text(d => d.id);
+
+sim.on("tick", () => {{
+  link
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
+  node.attr("transform", d => `translate(${{d.x}},${{d.y}})`);
+}});
+</script>
+</body></html>"""
+                _st_components.html(
+                    _graph_html, height=340
+                )
+
+            # ── Impacted Items table ───────────────────────────
+            st.markdown("#### Impacted Items")
+            _br_items = _br_data.get("impacted_items", [])
+            if _br_items:
+                _br_rows = []
+                for _bi in _br_items:
+                    _sev_icon = {
+                        "Red": "🔴", "Yellow": "🟡",
+                        "Green": "🟢",
+                    }.get(_bi["severity"], "⚪")
+                    _tier_lbl = {
+                        1: "Tier 1", 2: "Tier 2", 3: "Tier 3",
+                    }.get(_bi["tier"], "?")
+                    _br_rows.append({
+                        "Sev": (
+                            f'{_sev_icon} {_bi["severity"]}'
+                        ),
+                        "ID":   _bi["item_id"],
+                        "Type": _bi["item_type"].replace(
+                            "_", " "
+                        ).title(),
+                        "Title": _bi["title"],
+                        "Tier": _tier_lbl,
+                    })
+                st.dataframe(
+                    pd.DataFrame(_br_rows),
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Sev": st.column_config.TextColumn(
+                            width="small"
+                        ),
+                        "ID": st.column_config.TextColumn(
+                            width="small"
+                        ),
+                    },
+                )
+
+    # ── Rationalization Log + JSON (full width) ────────────────
+    _br_data2 = st.session_state.get("br_report")
+    if _br_data2:
+        st.markdown("---")
+        _rl_tab, _bj_tab, _ctx_tab = st.tabs([
+            "Rationalization Log",
+            "Blast Radius JSON",
+            "Context-Aware Prompt",
+        ])
+
+        with _rl_tab:
+            _rl = _br_data2.get("rationalization_log", "")
+            if _rl:
+                st.markdown(
+                    '<div style="background:#0a1220;border:1px'
+                    ' solid #1e3a5f;border-radius:8px;'
+                    'padding:1.2rem;font-family:monospace;'
+                    'font-size:0.83rem;white-space:pre-wrap;'
+                    'color:#cbd5e1;line-height:1.6;">'
+                    + _rl.replace("\n", "<br/>")
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+
+        with _bj_tab:
+            st.json(
+                _br_data2.get("blast_radius_json", {}),
+                expanded=True,
+            )
+
+        with _ctx_tab:
+            try:
+                from Agents.compliance_context import (
+                    ComplianceContext, ComplianceMode,
+                )
+                _ct_cm = st.session_state.get(
+                    "compliance_mode", "GMP"
+                )
+                _ct_ctx = ComplianceContext(
+                    mode=ComplianceMode(_ct_cm),
+                    sop_guidelines=st.session_state.get(
+                        "sop_guidelines", ""
+                    ),
+                )
+                st.code(
+                    _ct_ctx.render_prompt(),
+                    language="text",
+                )
+            except Exception as _ct_err:
+                st.error(str(_ct_err))
+
+        # ── Download ──────────────────────────────────────────
+        import json as _br_json_mod
+        st.download_button(
+            "Download Full Report (JSON)",
+            data=_br_json_mod.dumps(_br_data2, indent=2),
+            file_name=(
+                "blast_radius_"
+                + _br_data2.get("requirement_id", "req")
+                + "_"
+                + _br_data2.get("change_id", "chg")
+                + ".json"
+            ),
+            mime="application/json",
+        )

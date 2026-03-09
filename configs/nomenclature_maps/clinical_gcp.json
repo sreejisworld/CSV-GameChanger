@@ -1,0 +1,24 @@
+{
+  "tenant_id": "clinical_gcp",
+  "tenant_name": "Clinical GCP Site",
+  "industry": "clinical",
+  "compliance_mode": "GCP",
+  "sop_guidelines": "",
+  "labels": {
+    "requirement":         "Protocol Requirement",
+    "test_case":           "Verification Check",
+    "audit":               "Quality Review",
+    "review":              "Clinical Review",
+    "urs":                 "User Need",
+    "ur":                  "User Need",
+    "fr":                  "System Function",
+    "validation_report":   "Verification Report",
+    "test_script":         "Verification Script",
+    "gap_analysis":        "Compliance Gap Review",
+    "traceability_matrix": "Requirements Traceability",
+    "change_request":      "Protocol Amendment",
+    "impact_assessment":   "Amendment Impact Assessment",
+    "deviation":           "Protocol Deviation",
+    "capa":                "Corrective Action"
+  }
+}

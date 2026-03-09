@@ -1,0 +1,24 @@
+{
+  "tenant_id": "medtech_iso13485",
+  "tenant_name": "MedTech ISO 13485",
+  "industry": "medtech",
+  "compliance_mode": "ISO13485",
+  "sop_guidelines": "",
+  "labels": {
+    "requirement":         "Design Input",
+    "test_case":           "Verification Test",
+    "audit":               "Quality Audit",
+    "review":              "Design Review",
+    "urs":                 "User Need",
+    "ur":                  "User Need",
+    "fr":                  "Design Output",
+    "validation_report":   "Design Verification Report",
+    "test_script":         "Test Protocol",
+    "gap_analysis":        "Design Gap Analysis",
+    "traceability_matrix": "Design Traceability Matrix",
+    "change_request":      "Engineering Change Order",
+    "impact_assessment":   "Change Impact Assessment",
+    "deviation":           "Non-Conformance Report",
+    "capa":                "Corrective and Preventive Action"
+  }
+}

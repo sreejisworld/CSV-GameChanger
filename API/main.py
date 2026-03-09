@@ -7,7 +7,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -16,6 +16,11 @@ from pydantic import BaseModel, Field
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from API.agent_controller import AgentController
+from API.middleware import TenantDictionaryMiddleware
+from Agents.sentinel_impact_agent import (
+    SentinelImpactAgent,
+    BlastRadiusReport,
+)
 
 
 # Centralized agent controller — all agent calls go through here.
@@ -59,8 +64,12 @@ class ProcessingError(CSVEngineError):
 app = FastAPI(
     title="CSV-GameChanger",
     description="GAMP 5 and CSA Compliant EVOLV Engine",
-    version="0.1.0"
+    version="0.2.0"
 )
+
+# Register TenantDictionary middleware — must be added after
+# app creation so it wraps all routes.
+app.add_middleware(TenantDictionaryMiddleware)
 
 
 class ServiceNowChangeRequest(BaseModel):
@@ -300,5 +309,223 @@ async def receive_servicenow_change(
             detail=(
                 f"[{ProcessingError.error_code}] "
                 f"Processing failed: {str(e)}"
+            ),
+        ) from e
+
+
+# =============================================================
+# Clean Core — Sentinel Scan Webhook
+# =============================================================
+
+class SentinelScanRequest(BaseModel):
+    """
+    Request model for the Sentinel blast-radius scan webhook.
+
+    Accepts a requirement change from any external system
+    (ServiceNow, SAP, Jira, etc.) and triggers an automated
+    impact analysis.
+
+    :requirement: URS-24.5 - System shall accept Sentinel scan
+                  triggers from external source systems.
+    """
+
+    change_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "External change identifier (CR, ECO, issue key). "
+            "Auto-generated when omitted."
+        ),
+        examples=["CHG0012345"],
+    )
+    requirement_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=40,
+        description="Identifier of the changed requirement.",
+        examples=["URS-7.1"],
+    )
+    old_text: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="Original requirement text.",
+        examples=[
+            "The system shall track warehouse temperature."
+        ],
+    )
+    new_text: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="Updated requirement text.",
+        examples=[
+            "The system shall monitor and alert on warehouse "
+            "temperature using 21 CFR Part 211 thresholds."
+        ],
+    )
+    source_system: Literal[
+        "servicenow", "sap", "jira", "manual", "other"
+    ] = Field(
+        default="manual",
+        description="Source system that triggered the scan.",
+        examples=["servicenow"],
+    )
+    traceability_matrix: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "Optional trace matrix keyed by requirement_id. "
+            "Falls back to demo data when omitted."
+        ),
+    )
+
+
+class ImpactItemResponse(BaseModel):
+    """Single impacted item within the blast-radius response."""
+
+    item_id: str
+    item_type: str
+    title: str
+    severity: Literal["Red", "Yellow", "Green"]
+    tier: int
+    reason: str
+    linked_requirement: str
+
+
+class SentinelScanResponse(BaseModel):
+    """
+    Response model for the Sentinel scan webhook.
+
+    :requirement: URS-24.5 - Return structured blast-radius JSON.
+    """
+
+    change_id: str
+    requirement_id: str
+    source_system: str
+    change_category: str
+    semantic_delta: str
+    red_count: int
+    yellow_count: int
+    green_count: int
+    total_test_cases: int
+    optimized_test_cases: int
+    time_saved_hours: float
+    generated_at: str
+    blast_radius_json: Dict[str, Any]
+    impacted_items: List[ImpactItemResponse]
+
+
+# Lazy singleton for the Sentinel agent
+_sentinel_agent: Optional[SentinelImpactAgent] = None
+
+
+def _get_sentinel_agent() -> SentinelImpactAgent:
+    global _sentinel_agent
+    if _sentinel_agent is None:
+        _sentinel_agent = SentinelImpactAgent()
+    return _sentinel_agent
+
+
+@app.post(
+    "/webhook/sentinel-scan",
+    response_model=SentinelScanResponse,
+)
+async def trigger_sentinel_scan(
+    scan_request: SentinelScanRequest,
+    request: Request,
+) -> SentinelScanResponse:
+    """
+    Webhook endpoint for automated Sentinel blast-radius scans.
+
+    Accepts a requirement change from any external system and
+    returns the full impact analysis as structured JSON.
+
+    :param scan_request: Sentinel scan request payload.
+    :param request: FastAPI request object.
+    :return: SentinelScanResponse with blast-radius data.
+    :requirement: URS-24.5 - Accept Sentinel triggers from
+                  external systems.
+    :raises HTTPException: On processing failure.
+    """
+    user_id = request.headers.get("X-User-ID", "SYSTEM")
+
+    try:
+        log_audit_event(
+            user_id=user_id,
+            action="SENTINEL_SCAN_RECEIVED",
+            details={
+                "requirement_id": scan_request.requirement_id,
+                "source_system":  scan_request.source_system,
+                "change_id":      scan_request.change_id,
+            },
+        )
+
+        agent = _get_sentinel_agent()
+        report = agent.analyze_blast_radius(
+            old_requirement=scan_request.old_text,
+            new_requirement=scan_request.new_text,
+            requirement_id=scan_request.requirement_id,
+            traceability_matrix=(
+                scan_request.traceability_matrix or {}
+            ),
+            change_id=scan_request.change_id,
+        )
+
+        log_audit_event(
+            user_id=user_id,
+            action="SENTINEL_SCAN_COMPLETED",
+            details={
+                "requirement_id": scan_request.requirement_id,
+                "change_category": (
+                    report.change_category.value
+                ),
+                "red_count":     report.red_count,
+                "yellow_count":  report.yellow_count,
+                "green_count":   report.green_count,
+                "time_saved_h":  report.time_saved_hours,
+            },
+        )
+
+        return SentinelScanResponse(
+            change_id=report.change_id,
+            requirement_id=report.requirement_id,
+            source_system=scan_request.source_system,
+            change_category=report.change_category.value,
+            semantic_delta=report.semantic_delta,
+            red_count=report.red_count,
+            yellow_count=report.yellow_count,
+            green_count=report.green_count,
+            total_test_cases=report.total_test_cases,
+            optimized_test_cases=report.optimized_test_cases,
+            time_saved_hours=report.time_saved_hours,
+            generated_at=report.generated_at,
+            blast_radius_json=report.blast_radius_json,
+            impacted_items=[
+                ImpactItemResponse(
+                    item_id=i.item_id,
+                    item_type=i.item_type,
+                    title=i.title,
+                    severity=i.severity.value,
+                    tier=i.tier.value,
+                    reason=i.reason,
+                    linked_requirement=i.linked_requirement,
+                )
+                for i in report.impacted_items
+            ],
+        )
+
+    except Exception as e:
+        log_audit_event(
+            user_id=user_id,
+            action="SENTINEL_SCAN_FAILED",
+            details={
+                "requirement_id": scan_request.requirement_id,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"[{ProcessingError.error_code}] "
+                f"Sentinel scan failed: {str(e)}"
             ),
         ) from e
