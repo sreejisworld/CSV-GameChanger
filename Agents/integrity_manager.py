@@ -75,6 +75,25 @@ _IMPACT_MAP = {
     "URS_BATCH_VERIFIED": "Regulatory Compliance",
     # SMARTRequirementsEngine
     "SMART_REQUIREMENTS_REFINED": "GxP Documentation",
+    # WebhookRegistry
+    "WEBHOOK_REGISTERED":        "Integration",
+    "WEBHOOK_DEREGISTERED":      "Integration",
+    "WEBHOOK_FIRED":             "Integration",
+    "WEBHOOK_RETRY_EXHAUSTED":   "Integration — Error",
+    # KeyStore
+    "API_KEY_CREATED":           "Access Control",
+    "API_KEY_USED":              "Access Control",
+    # JobStore (bulk processing)
+    "BULK_VALIDATE_STARTED":     "Validation Evidence",
+    "BULK_VALIDATE_COMPLETE":    "Validation Evidence",
+    "BULK_VALIDATE_FAILED":      "Validation Evidence",
+    # Sentinel API events
+    "SENTINEL_SCAN_RECEIVED":    "Change Control",
+    "SENTINEL_SCAN_COMPLETED":   "Change Control",
+    "SENTINEL_SCAN_FAILED":      "Change Control",
+    # Access control decisions
+    "ACCESS_PERMITTED":          "Access Control — Security",
+    "ACCESS_DENIED":             "Access Control — Denial",
 }
 
 DEFAULT_IMPACT = "Operational"
