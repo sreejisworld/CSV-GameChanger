@@ -7877,3 +7877,1012 @@ sim.on("tick", () => {{
             ),
             mime="application/json",
         )
+
+# ===================================================================
+# Page 15 — Developer Console
+#   • Client Profiles  — create / edit / save tenant configs
+#   • Webhook Registry — register, deregister, test-fire hooks
+#   • API Key Manager  — generate scoped keys, revoke
+#   • Sandbox Tester   — fire API calls without audit trail writes
+# ===================================================================
+elif page.startswith("15"):
+    page_header(
+        "Developer Console",
+        "Manage client extensions, webhooks, API keys, "
+        "and sandbox integrations.",
+    )
+
+    (
+        _dc_tab_profiles,
+        _dc_tab_webhooks,
+        _dc_tab_keys,
+        _dc_tab_sandbox,
+    ) = st.tabs([
+        "Client Profiles",
+        "Webhook Registry",
+        "API Key Manager",
+        "Sandbox Tester",
+    ])
+
+    # ── helpers ────────────────────────────────────────────────
+    _DC_PROFILES_DIR = (
+        PROJECT_ROOT / "configs" / "nomenclature_maps"
+    )
+    _DC_LABEL_KEYS = [
+        "requirement", "test_case", "audit", "review",
+        "urs", "ur", "fr", "validation_report",
+        "test_script", "gap_analysis", "traceability_matrix",
+        "change_request", "impact_assessment",
+        "deviation", "capa",
+    ]
+    _DC_DEFAULT_LABELS = {
+        "requirement":         "Requirement",
+        "test_case":           "Test Case",
+        "audit":               "Audit",
+        "review":              "Review",
+        "urs":                 "URS",
+        "ur":                  "User Requirement",
+        "fr":                  "Functional Requirement",
+        "validation_report":   "Validation Report",
+        "test_script":         "Test Script",
+        "gap_analysis":        "Gap Analysis",
+        "traceability_matrix": "Traceability Matrix",
+        "change_request":      "Change Request",
+        "impact_assessment":   "Impact Assessment",
+        "deviation":           "Deviation",
+        "capa":                "CAPA",
+    }
+    _DC_COMPLIANCE_OPTS = ["GMP", "GCP", "GLP", "ISO13485"]
+    _DC_INDUSTRY_OPTS = [
+        "pharma", "biotech", "clinical",
+        "medtech", "cmo", "other",
+    ]
+
+    # ── Tab 1: Client Profiles ─────────────────────────────────
+    with _dc_tab_profiles:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.85rem;'
+            'margin-bottom:1rem;">'
+            "Create and manage named client configurations. "
+            "Each profile defines the tenant's vocabulary, "
+            "compliance mode, and industry — saved as a JSON "
+            "preset that can be loaded instantly on any "
+            "EVOLV instance."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+        _p_col_list, _p_col_form = st.columns([1, 2])
+
+        # ── left: existing profiles list ──
+        with _p_col_list:
+            st.markdown("#### Saved Profiles")
+            _dc_profiles_dir = _DC_PROFILES_DIR
+            _dc_profile_files = (
+                sorted(_dc_profiles_dir.glob("*.json"))
+                if _dc_profiles_dir.exists() else []
+            )
+
+            if not _dc_profile_files:
+                st.info("No profiles saved yet.")
+            else:
+                for _pf in _dc_profile_files:
+                    _pf_col_a, _pf_col_b = st.columns([3, 1])
+                    with _pf_col_a:
+                        if st.button(
+                            _pf.stem,
+                            key=f"dc_load_profile_{_pf.stem}",
+                            use_container_width=True,
+                        ):
+                            try:
+                                import json as _pf_json
+                                _pf_data = _pf_json.loads(
+                                    _pf.read_text(
+                                        encoding="utf-8"
+                                    )
+                                )
+                                st.session_state[
+                                    "dc_edit_profile"
+                                ] = _pf_data
+                                st.rerun()
+                            except Exception as _pf_e:
+                                st.error(str(_pf_e))
+                    with _pf_col_b:
+                        if st.button(
+                            "🗑",
+                            key=(
+                                f"dc_del_profile_{_pf.stem}"
+                            ),
+                            help="Delete this profile",
+                        ):
+                            try:
+                                _pf.unlink()
+                                st.session_state.pop(
+                                    "dc_edit_profile", None
+                                )
+                                st.rerun()
+                            except Exception as _del_e:
+                                st.error(str(_del_e))
+
+            st.markdown("---")
+            if st.button(
+                "New Profile",
+                key="dc_new_profile_btn",
+                use_container_width=True,
+                type="primary",
+            ):
+                st.session_state["dc_edit_profile"] = {
+                    "tenant_id":       "",
+                    "tenant_name":     "",
+                    "industry":        "pharma",
+                    "compliance_mode": "GMP",
+                    "sop_guidelines":  "",
+                    "labels":          dict(_DC_DEFAULT_LABELS),
+                }
+                st.rerun()
+
+        # ── right: profile editor ──
+        with _p_col_form:
+            _ep = st.session_state.get("dc_edit_profile")
+            if _ep is None:
+                st.info(
+                    "Select a profile on the left or click "
+                    "**New Profile** to start."
+                )
+            else:
+                st.markdown("#### Profile Editor")
+
+                _ep_tid = st.text_input(
+                    "Tenant ID (filename key — no spaces)",
+                    value=_ep.get("tenant_id", ""),
+                    key="dc_ep_tenant_id",
+                    placeholder="e.g. pfizer_gmp_us",
+                )
+                _ep_tname = st.text_input(
+                    "Display Name",
+                    value=_ep.get("tenant_name", ""),
+                    key="dc_ep_tenant_name",
+                    placeholder="e.g. Pfizer — US GMP Site",
+                )
+
+                _ep_ind_idx = (
+                    _DC_INDUSTRY_OPTS.index(
+                        _ep.get("industry", "pharma")
+                    )
+                    if _ep.get("industry", "pharma")
+                    in _DC_INDUSTRY_OPTS else 0
+                )
+                _ep_industry = st.selectbox(
+                    "Industry",
+                    _DC_INDUSTRY_OPTS,
+                    index=_ep_ind_idx,
+                    key="dc_ep_industry",
+                )
+
+                _ep_cm_idx = (
+                    _DC_COMPLIANCE_OPTS.index(
+                        _ep.get("compliance_mode", "GMP")
+                    )
+                    if _ep.get("compliance_mode", "GMP")
+                    in _DC_COMPLIANCE_OPTS else 0
+                )
+                _ep_cm = st.selectbox(
+                    "Compliance Mode",
+                    _DC_COMPLIANCE_OPTS,
+                    index=_ep_cm_idx,
+                    key="dc_ep_cm",
+                )
+
+                st.markdown(
+                    "**Vocabulary Labels** "
+                    "— customize each term for this client"
+                )
+                _ep_labels_src = _ep.get(
+                    "labels", _DC_DEFAULT_LABELS
+                )
+                _ep_label_rows = [
+                    {
+                        "Key": k,
+                        "EVOLV Default": _DC_DEFAULT_LABELS.get(
+                            k, k
+                        ),
+                        "Client Label": _ep_labels_src.get(
+                            k, _DC_DEFAULT_LABELS.get(k, k)
+                        ),
+                    }
+                    for k in _DC_LABEL_KEYS
+                ]
+                _ep_df = pd.DataFrame(_ep_label_rows)
+                _ep_edited = st.data_editor(
+                    _ep_df,
+                    key="dc_ep_label_editor",
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        "Key": st.column_config.TextColumn(
+                            disabled=True, width="small"
+                        ),
+                        "EVOLV Default": (
+                            st.column_config.TextColumn(
+                                disabled=True, width="medium"
+                            )
+                        ),
+                        "Client Label": (
+                            st.column_config.TextColumn(
+                                width="medium"
+                            )
+                        ),
+                    },
+                )
+
+                _ep_sop = st.text_area(
+                    "SOP / Quality Guidelines (optional)",
+                    value=_ep.get("sop_guidelines", ""),
+                    height=80,
+                    key="dc_ep_sop",
+                    placeholder=(
+                        "Paste internal SOP text or "
+                        "quality guidance here..."
+                    ),
+                )
+
+                _ep_save, _ep_export = st.columns(2)
+                with _ep_save:
+                    if st.button(
+                        "Save Profile",
+                        key="dc_ep_save_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        _tid_clean = (
+                            _ep_tid.strip()
+                            .lower()
+                            .replace(" ", "_")
+                        )
+                        if not _tid_clean:
+                            st.error(
+                                "Tenant ID is required."
+                            )
+                        else:
+                            _ep_new_labels = {
+                                row["Key"]: row[
+                                    "Client Label"
+                                ]
+                                for _, row in (
+                                    _ep_edited.iterrows()
+                                )
+                            }
+                            _ep_payload = {
+                                "tenant_id": _tid_clean,
+                                "tenant_name": (
+                                    _ep_tname.strip()
+                                    or _tid_clean
+                                ),
+                                "industry": _ep_industry,
+                                "compliance_mode": _ep_cm,
+                                "sop_guidelines": _ep_sop,
+                                "labels": _ep_new_labels,
+                            }
+                            import json as _ep_json
+                            _save_path = (
+                                _DC_PROFILES_DIR
+                                / f"{_tid_clean}.json"
+                            )
+                            _DC_PROFILES_DIR.mkdir(
+                                parents=True, exist_ok=True
+                            )
+                            _save_path.write_text(
+                                _ep_json.dumps(
+                                    _ep_payload, indent=2
+                                ),
+                                encoding="utf-8",
+                            )
+                            st.session_state[
+                                "dc_edit_profile"
+                            ] = _ep_payload
+                            st.success(
+                                f"Profile '{_tid_clean}'"
+                                " saved."
+                            )
+                            st.rerun()
+
+                with _ep_export:
+                    if st.button(
+                        "Export JSON",
+                        key="dc_ep_export_btn",
+                        use_container_width=True,
+                    ):
+                        _exp_labels = {
+                            row["Key"]: row["Client Label"]
+                            for _, row in (
+                                _ep_edited.iterrows()
+                            )
+                        }
+                        _exp_payload = {
+                            "tenant_id": (
+                                _ep_tid.strip()
+                                .lower()
+                                .replace(" ", "_")
+                            ),
+                            "tenant_name": (
+                                _ep_tname.strip()
+                            ),
+                            "industry": _ep_industry,
+                            "compliance_mode": _ep_cm,
+                            "sop_guidelines": _ep_sop,
+                            "labels": _exp_labels,
+                        }
+                        import json as _xp_json
+                        st.download_button(
+                            "Download",
+                            data=_xp_json.dumps(
+                                _exp_payload, indent=2
+                            ),
+                            file_name=(
+                                (_ep_tid.strip() or "profile")
+                                + ".json"
+                            ),
+                            mime="application/json",
+                            key="dc_ep_dl_btn",
+                        )
+
+    # ── Tab 2: Webhook Registry ────────────────────────────────
+    with _dc_tab_webhooks:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.85rem;'
+            'margin-bottom:1rem;">'
+            "Register external endpoints to receive real-time "
+            "EVOLV events. All payloads are signed with "
+            "HMAC-SHA256. Failed deliveries retry at "
+            "1 min → 5 min → 15 min."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+        # Load existing registry
+        _wh_registry_path = (
+            PROJECT_ROOT / "output" / "webhook_registry.json"
+        )
+        _wh_records: dict = {}
+        if _wh_registry_path.exists():
+            try:
+                import json as _wh_json
+                _wh_records = _wh_json.loads(
+                    _wh_registry_path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+            except Exception:
+                _wh_records = {}
+
+        # ── existing hooks table ──
+        st.markdown("#### Registered Hooks")
+        if not _wh_records:
+            st.info(
+                "No webhooks registered yet. "
+                "Add one below."
+            )
+        else:
+            _wh_rows = []
+            for _wid, _wrec in _wh_records.items():
+                _wh_rows.append({
+                    "ID": _wid[:8] + "…",
+                    "Full ID": _wid,
+                    "Event": _wrec.get("event", "—"),
+                    "URL": _wrec.get("url", "—"),
+                    "Active": (
+                        "Yes"
+                        if _wrec.get("active", True)
+                        else "No"
+                    ),
+                    "Registered": str(
+                        _wrec.get("created_at", "")
+                    )[:10],
+                })
+            _wh_df = pd.DataFrame(_wh_rows)
+            st.dataframe(
+                _wh_df.drop(columns=["Full ID"]),
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            st.markdown("**Deregister a Hook**")
+            _wh_del_id = st.selectbox(
+                "Select hook to remove",
+                options=(
+                    ["— select —"]
+                    + [r["Full ID"] for r in _wh_rows]
+                ),
+                format_func=lambda x: (
+                    x if x == "— select —"
+                    else (
+                        x[:8] + "… ("
+                        + _wh_records.get(x, {}).get(
+                            "event", "?"
+                        ) + ")"
+                    )
+                ),
+                key="dc_wh_del_select",
+            )
+            if st.button(
+                "Deregister",
+                key="dc_wh_deregister_btn",
+                disabled=_wh_del_id == "— select —",
+            ):
+                try:
+                    from API.webhook_registry import (
+                        WebhookRegistry,
+                    )
+                    WebhookRegistry.get_instance().deregister(
+                        _wh_del_id
+                    )
+                    st.success("Webhook deregistered.")
+                    st.rerun()
+                except Exception as _wh_de:
+                    st.error(str(_wh_de))
+
+        st.markdown("---")
+
+        # ── register new hook ──
+        st.markdown("#### Register New Hook")
+        _wh_reg_col1, _wh_reg_col2 = st.columns(2)
+        with _wh_reg_col1:
+            _wh_event = st.selectbox(
+                "Event",
+                [
+                    "SENTINEL_SCAN_COMPLETED",
+                    "BULK_VALIDATE_COMPLETE",
+                    "CHANGE_REQUEST_ASSESSED",
+                    "URS_GENERATED",
+                    "RISK_ASSESSMENT_COMPLETED",
+                    "COMPLIANCE_EXCEPTION",
+                    "DOCUMENT_SIGN_OFF",
+                ],
+                key="dc_wh_event",
+            )
+            _wh_url = st.text_input(
+                "Endpoint URL (HTTPS required)",
+                key="dc_wh_url",
+                placeholder="https://your-system.com/evolv-hook",
+            )
+        with _wh_reg_col2:
+            _wh_secret = st.text_input(
+                "Signing Secret",
+                key="dc_wh_secret",
+                type="password",
+                placeholder="Min 16 characters",
+                help=(
+                    "Used to sign every payload with "
+                    "HMAC-SHA256. Your receiver should "
+                    "verify the X-EVOLV-Signature header."
+                ),
+            )
+            _wh_desc = st.text_input(
+                "Description (optional)",
+                key="dc_wh_desc",
+                placeholder="e.g. LIMS sentinel alert",
+            )
+
+        if st.button(
+            "Register Webhook",
+            key="dc_wh_register_btn",
+            type="primary",
+        ):
+            if not _wh_url.startswith("https://"):
+                st.error(
+                    "URL must start with https://"
+                )
+            elif len(_wh_secret) < 16:
+                st.error(
+                    "Signing secret must be at least "
+                    "16 characters."
+                )
+            else:
+                try:
+                    from API.webhook_registry import (
+                        WebhookRegistry,
+                    )
+                    _wh_new = (
+                        WebhookRegistry.get_instance()
+                        .register(
+                            url=_wh_url,
+                            event=_wh_event,
+                            secret=_wh_secret,
+                            description=_wh_desc,
+                        )
+                    )
+                    st.success(
+                        f"Webhook registered. "
+                        f"ID: `{_wh_new.webhook_id}`"
+                    )
+                    st.rerun()
+                except Exception as _wh_re:
+                    st.error(str(_wh_re))
+
+        st.markdown("---")
+
+        # ── test-fire panel ──
+        st.markdown("#### Test Fire")
+        st.caption(
+            "Send a sample signed payload to a registered "
+            "hook — useful for verifying your receiver's "
+            "signature validation logic."
+        )
+        _wh_test_ids = [
+            r["Full ID"] for r in _wh_rows
+        ] if _wh_records else []
+        if not _wh_test_ids:
+            st.info(
+                "Register at least one webhook first."
+            )
+        else:
+            _wh_test_sel = st.selectbox(
+                "Hook to test",
+                options=_wh_test_ids,
+                format_func=lambda x: (
+                    x[:8] + "… ("
+                    + _wh_records.get(x, {}).get(
+                        "event", "?"
+                    ) + ")"
+                ),
+                key="dc_wh_test_sel",
+            )
+            _wh_test_payload = st.text_area(
+                "Sample payload (JSON)",
+                value=(
+                    '{\n  "event": "TEST_FIRE",\n'
+                    '  "source": "EVOLV Developer Console",\n'
+                    '  "timestamp": "2026-01-01T00:00:00Z"\n}'
+                ),
+                height=120,
+                key="dc_wh_test_payload",
+            )
+            if st.button(
+                "Send Test Payload",
+                key="dc_wh_fire_btn",
+            ):
+                try:
+                    import json as _tf_json
+                    import hmac
+                    import hashlib
+                    _tf_rec = _wh_records.get(
+                        _wh_test_sel, {}
+                    )
+                    _tf_secret = _tf_rec.get(
+                        "secret", ""
+                    )
+                    _tf_body = _wh_test_payload.encode(
+                        "utf-8"
+                    )
+                    _tf_sig = (
+                        "sha256="
+                        + hmac.new(
+                            _tf_secret.encode("utf-8"),
+                            _tf_body,
+                            hashlib.sha256,
+                        ).hexdigest()
+                    )
+                    st.code(
+                        f"X-EVOLV-Signature: {_tf_sig}",
+                        language="text",
+                    )
+                    st.info(
+                        "Signature computed. In production, "
+                        "EVOLV would POST this payload with "
+                        "that header to your endpoint."
+                    )
+                except Exception as _tf_e:
+                    st.error(str(_tf_e))
+
+    # ── Tab 3: API Key Manager ─────────────────────────────────
+    with _dc_tab_keys:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.85rem;'
+            'margin-bottom:1rem;">'
+            "Generate identity-aware scoped API keys. "
+            "Raw keys are shown once and never stored — "
+            "copy it immediately after creation."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+        # Load active keys
+        _km_store_path = (
+            PROJECT_ROOT / "output" / "api_keys.json"
+        )
+        _km_records: dict = {}
+        if _km_store_path.exists():
+            try:
+                import json as _km_json
+                _km_records = _km_json.loads(
+                    _km_store_path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+            except Exception:
+                _km_records = {}
+
+        # ── active keys table ──
+        st.markdown("#### Active API Keys")
+        _km_active = {
+            k: v for k, v in _km_records.items()
+            if v.get("active", True)
+        }
+        if not _km_active:
+            st.info(
+                "No API keys yet. Create one below."
+            )
+        else:
+            _km_rows = [
+                {
+                    "Key ID": v.get("key_id", k)[:12] + "…",
+                    "Full ID": v.get("key_id", k),
+                    "Tenant": v.get("tenant_id", "—"),
+                    "Scopes": ", ".join(
+                        v.get("scopes", [])
+                    ),
+                    "Created": str(
+                        v.get("created_at", "")
+                    )[:10],
+                    "Active": v.get("active", True),
+                }
+                for k, v in _km_active.items()
+            ]
+            _km_df = pd.DataFrame(_km_rows)
+            st.dataframe(
+                _km_df.drop(columns=["Full ID", "Active"]),
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            st.markdown("**Revoke a Key**")
+            _km_rev_id = st.selectbox(
+                "Select key to revoke",
+                options=(
+                    ["— select —"]
+                    + [r["Full ID"] for r in _km_rows]
+                ),
+                format_func=lambda x: (
+                    x if x == "— select —"
+                    else (
+                        x[:12] + "… ("
+                        + next(
+                            (
+                                v.get("tenant_id", "?")
+                                for k, v in _km_records.items()
+                                if v.get("key_id") == x
+                            ),
+                            "?",
+                        ) + ")"
+                    )
+                ),
+                key="dc_km_rev_select",
+            )
+            if st.button(
+                "Revoke Key",
+                key="dc_km_revoke_btn",
+                disabled=_km_rev_id == "— select —",
+            ):
+                try:
+                    import json as _rv_json
+                    for _rv_k, _rv_v in _km_records.items():
+                        if _rv_v.get("key_id") == _km_rev_id:
+                            _rv_v["active"] = False
+                    _km_store_path.write_text(
+                        _rv_json.dumps(
+                            _km_records, indent=2
+                        ),
+                        encoding="utf-8",
+                    )
+                    st.success(
+                        f"Key `{_km_rev_id[:12]}…` revoked."
+                    )
+                    st.rerun()
+                except Exception as _rv_e:
+                    st.error(str(_rv_e))
+
+        st.markdown("---")
+
+        # ── create new key ──
+        st.markdown("#### Create New API Key")
+        _km_c1, _km_c2 = st.columns(2)
+        with _km_c1:
+            _km_new_tenant = st.text_input(
+                "Tenant ID",
+                key="dc_km_tenant",
+                placeholder="e.g. pharma-corp-001",
+            )
+            _km_new_scopes = st.multiselect(
+                "Scopes",
+                options=[
+                    "audit_only",
+                    "sentinel",
+                    "bulk_validate",
+                    "webhooks",
+                    "admin",
+                ],
+                default=["audit_only"],
+                key="dc_km_scopes",
+                help=(
+                    "audit_only: read-only access. "
+                    "admin: full access."
+                ),
+            )
+        with _km_c2:
+            _km_dac = st.text_area(
+                "DAC Policy (JSON, optional)",
+                height=100,
+                key="dc_km_dac",
+                placeholder=(
+                    '{\n  "allowed_sites": ["US-NJ"],\n'
+                    '  "max_bulk_size": 100\n}'
+                ),
+            )
+
+        if "dc_new_key_result" in st.session_state:
+            _nkr = st.session_state["dc_new_key_result"]
+            st.markdown(
+                '<div style="background:#0a2a0a;border:1px '
+                'solid #22c55e;border-radius:8px;padding:'
+                '1rem;margin:0.5rem 0;">'
+                '<p style="color:#22c55e;font-weight:700;'
+                'margin:0 0 0.5rem 0;">Key Created — '
+                'Copy Now (shown once only)</p>'
+                f'<code style="color:#86efac;font-size:'
+                f'0.9rem;">{_nkr}</code></div>',
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "Clear",
+                key="dc_km_clear_key_btn",
+            ):
+                st.session_state.pop(
+                    "dc_new_key_result", None
+                )
+                st.rerun()
+
+        if st.button(
+            "Generate Key",
+            key="dc_km_gen_btn",
+            type="primary",
+        ):
+            if not _km_new_tenant.strip():
+                st.error("Tenant ID is required.")
+            elif not _km_new_scopes:
+                st.error(
+                    "Select at least one scope."
+                )
+            else:
+                try:
+                    from API.key_store import KeyStore
+                    _km_dac_parsed = None
+                    if _km_dac.strip():
+                        import json as _dac_j
+                        _km_dac_parsed = (
+                            _dac_j.loads(_km_dac)
+                        )
+                    _, _raw = (
+                        KeyStore.get_instance().create_key(
+                            tenant_id=(
+                                _km_new_tenant.strip()
+                            ),
+                            scopes=_km_new_scopes,
+                            dac_policy=_km_dac_parsed,
+                        )
+                    )
+                    st.session_state[
+                        "dc_new_key_result"
+                    ] = _raw
+                    st.rerun()
+                except Exception as _km_ge:
+                    st.error(str(_km_ge))
+
+    # ── Tab 4: Sandbox Tester ──────────────────────────────────
+    with _dc_tab_sandbox:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.85rem;'
+            'margin-bottom:1rem;">'
+            "Fire any EVOLV API endpoint in Sandbox mode. "
+            "The full validation stack runs — but nothing "
+            "writes to the audit trail. Safe for integration "
+            "development and client demos."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            '<div style="background:#0d1b2a;border:1px solid'
+            ' #1e3a5f;border-radius:8px;padding:0.7rem 1rem;'
+            'margin-bottom:1rem;font-size:0.82rem;'
+            'color:#94a3b8;">'
+            "<strong>How it works:</strong> Every request is "
+            "sent with <code>X-EVOLV-MODE: Sandbox</code>. "
+            "The platform processes normally but "
+            "<code>log_audit_event()</code> is suppressed. "
+            "All responses include "
+            "<code>\"sandbox\": true</code>."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        _sb_endpoints = {
+            "POST /webhook/sn-change": {
+                "method": "POST",
+                "path": "/webhook/sn-change",
+                "sample": (
+                    '{\n  "cr_id": "CHG0012345",\n'
+                    '  "description": "Upgrade LIMS to v5",\n'
+                    '  "system_criticality": "high",\n'
+                    '  "change_type": "normal"\n}'
+                ),
+            },
+            "POST /bulk/validate": {
+                "method": "POST",
+                "path": "/bulk/validate",
+                "sample": (
+                    '{\n  "requirements": [\n'
+                    '    "The system shall track temperature",\n'
+                    '    "The system shall log user access"\n'
+                    "  ]\n}"
+                ),
+            },
+            "POST /webhooks/register": {
+                "method": "POST",
+                "path": "/webhooks/register",
+                "sample": (
+                    '{\n  "url": "https://example.com/hook",\n'
+                    '  "event": "SENTINEL_SCAN_COMPLETED",\n'
+                    '  "secret": "my-signing-secret-16c"\n}'
+                ),
+            },
+            "POST /admin/api-keys": {
+                "method": "POST",
+                "path": "/admin/api-keys",
+                "sample": (
+                    '{\n  "tenant_id": "demo-tenant",\n'
+                    '  "scopes": ["audit_only"]\n}'
+                ),
+            },
+            "POST /sentinel/scan": {
+                "method": "POST",
+                "path": "/sentinel/scan",
+                "sample": (
+                    '{\n  "requirement_id": "URS-7.1",\n'
+                    '  "old_text": "System shall log records",\n'
+                    '  "new_text": "System shall log and '
+                    'encrypt records per 21 CFR Part 211",\n'
+                    '  "source_system": "manual"\n}'
+                ),
+            },
+        }
+
+        _sb_ep_sel = st.selectbox(
+            "Endpoint",
+            list(_sb_endpoints.keys()),
+            key="dc_sb_endpoint",
+        )
+        _sb_ep_data = _sb_endpoints[_sb_ep_sel]
+
+        _sb_col1, _sb_col2 = st.columns([3, 2])
+        with _sb_col1:
+            _sb_base_url = st.text_input(
+                "API Base URL",
+                value="http://localhost:8000",
+                key="dc_sb_base_url",
+            )
+            _sb_api_key = st.text_input(
+                "X-API-Key (optional)",
+                key="dc_sb_api_key",
+                type="password",
+                placeholder=(
+                    "Leave blank if no key required"
+                ),
+            )
+            _sb_payload = st.text_area(
+                "Request Body (JSON)",
+                value=_sb_ep_data["sample"],
+                height=180,
+                key="dc_sb_payload",
+            )
+
+        with _sb_col2:
+            st.markdown("**Request Preview**")
+            _sb_full_url = (
+                _sb_base_url.rstrip("/")
+                + _sb_ep_data["path"]
+            )
+            _sb_headers_preview = (
+                "POST " + _sb_full_url + " HTTP/1.1\n"
+                "Content-Type: application/json\n"
+                "X-EVOLV-MODE: Sandbox\n"
+                + (
+                    f"X-API-Key: {_sb_api_key[:8]}…\n"
+                    if _sb_api_key else ""
+                )
+            )
+            st.code(
+                _sb_headers_preview, language="text"
+            )
+
+        if st.button(
+            "Fire Request",
+            key="dc_sb_fire_btn",
+            type="primary",
+        ):
+            try:
+                import json as _sb_json
+                import urllib.request as _sb_req
+                import urllib.error as _sb_err
+
+                _sb_body = _sb_json.loads(
+                    _sb_payload
+                )
+                _sb_body_bytes = _sb_json.dumps(
+                    _sb_body
+                ).encode("utf-8")
+                _sb_req_obj = _sb_req.Request(
+                    _sb_full_url,
+                    data=_sb_body_bytes,
+                    method=_sb_ep_data["method"],
+                )
+                _sb_req_obj.add_header(
+                    "Content-Type", "application/json"
+                )
+                _sb_req_obj.add_header(
+                    "X-EVOLV-MODE", "Sandbox"
+                )
+                if _sb_api_key:
+                    _sb_req_obj.add_header(
+                        "X-API-Key", _sb_api_key
+                    )
+
+                try:
+                    with _sb_req.urlopen(
+                        _sb_req_obj, timeout=10
+                    ) as _sb_resp:
+                        _sb_resp_body = (
+                            _sb_resp.read().decode("utf-8")
+                        )
+                        _sb_status = _sb_resp.status
+                except _sb_err.HTTPError as _sb_http:
+                    _sb_resp_body = (
+                        _sb_http.read().decode("utf-8")
+                    )
+                    _sb_status = _sb_http.code
+
+                st.markdown("**Response**")
+                _sb_color = (
+                    "#22c55e"
+                    if str(_sb_status).startswith("2")
+                    else "#f87171"
+                )
+                st.markdown(
+                    f'<span style="color:{_sb_color};'
+                    f'font-weight:700;">HTTP {_sb_status}'
+                    f"</span>",
+                    unsafe_allow_html=True,
+                )
+                try:
+                    st.json(
+                        _sb_json.loads(_sb_resp_body)
+                    )
+                except Exception:
+                    st.code(
+                        _sb_resp_body, language="text"
+                    )
+
+            except _sb_err.URLError as _sb_conn:
+                st.error(
+                    f"Connection failed: {_sb_conn.reason}. "
+                    "Is the EVOLV API running at "
+                    f"{_sb_base_url}?"
+                )
+            except Exception as _sb_ex:
+                st.error(str(_sb_ex))
+
+        st.markdown("---")
+        st.caption(
+            "Tip: start the API with "
+            "`uvicorn API.main:app --reload` "
+            "then fire requests here."
+        )

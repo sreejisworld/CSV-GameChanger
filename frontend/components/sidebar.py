@@ -35,6 +35,7 @@ NAV_GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
     ("ENTERPRISE", [
         ("13", "fa-sliders",        "Enterprise Config"),
         ("14", "fa-circle-nodes",   "Blast Radius"),
+        ("15", "fa-code",           "Developer Console"),
     ]),
 ]
 
