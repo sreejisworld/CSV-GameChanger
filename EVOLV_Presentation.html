@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EVOLV — The Compliance Nervous System for Life Sciences</title>
+<style>
+  :root {
+    --navy: #050d1f;
+    --navy2: #0a1628;
+    --navy3: #0f2040;
+    --blue: #1e6bff;
+    --blue2: #3d8aff;
+    --cyan: #00d4ff;
+    --green: #00e5a0;
+    --amber: #ffb700;
+    --red: #ff4d6d;
+    --white: #f0f4ff;
+    --gray: #8899bb;
+    --card: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ── NAV BAR ── */
+  #navbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem; height: 52px;
+    background: rgba(5,13,31,0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+  #navbar .brand {
+    font-size: 1rem; font-weight: 700; letter-spacing: 0.12em;
+    color: var(--cyan); text-transform: uppercase;
+  }
+  #navbar .brand span { color: var(--gray); font-weight: 400; font-size: 0.75rem; margin-left: 8px; letter-spacing: 0; text-transform: none; }
+  #nav-controls { display: flex; align-items: center; gap: 1rem; }
+  #slide-counter { font-size: 0.8rem; color: var(--gray); min-width: 80px; text-align: center; }
+  .nav-btn {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--white); padding: 6px 18px; border-radius: 6px;
+    cursor: pointer; font-size: 0.82rem; transition: all 0.2s;
+  }
+  .nav-btn:hover { background: var(--blue); border-color: var(--blue); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  #mode-toggle {
+    background: none; border: 1px solid var(--border);
+    color: var(--cyan); padding: 5px 14px; border-radius: 6px;
+    cursor: pointer; font-size: 0.75rem; letter-spacing: 0.05em;
+  }
+  #mode-toggle:hover { background: rgba(0,212,255,0.1); }
+
+  /* ── SLIDE CONTAINER ── */
+  #deck {
+    position: fixed; top: 52px; bottom: 40px; left: 0; right: 0;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    padding: 3rem 5rem;
+    overflow-y: auto;
+    animation: fadeIn 0.35s ease;
+  }
+  .slide.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── PROGRESS BAR ── */
+  #progress-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 40px;
+    background: rgba(5,13,31,0.95);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 2rem; gap: 6px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); cursor: pointer; transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .dot.active { background: var(--cyan); transform: scale(1.3); }
+  .dot.visited { background: var(--blue2); }
+  #progress-label { margin-left: auto; font-size: 0.72rem; color: var(--gray); }
+
+  /* ── TYPOGRAPHY ── */
+  .slide-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--cyan); margin-bottom: 0.5rem;
+  }
+  h1 { font-size: 3rem; font-weight: 800; line-height: 1.1; margin-bottom: 1rem; }
+  h1 em { color: var(--cyan); font-style: normal; }
+  h2 { font-size: 1.9rem; font-weight: 700; margin-bottom: 1rem; }
+  h2 em { color: var(--cyan); font-style: normal; }
+  h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.6rem; color: var(--blue2); }
+  p { line-height: 1.7; color: rgba(240,244,255,0.85); margin-bottom: 0.8rem; }
+  .lead { font-size: 1.2rem; color: rgba(240,244,255,0.9); line-height: 1.7; }
+  .sub { color: var(--gray); font-size: 0.85rem; }
+  .big-quote {
+    font-size: 1.4rem; font-style: italic; color: var(--white);
+    border-left: 4px solid var(--cyan); padding-left: 1.5rem;
+    line-height: 1.6; margin: 1.5rem 0;
+  }
+  strong { color: var(--white); }
+  .highlight { color: var(--cyan); font-weight: 700; }
+  .amber { color: var(--amber); font-weight: 700; }
+  .green { color: var(--green); font-weight: 700; }
+  .red-text { color: var(--red); font-weight: 700; }
+
+  /* ── CARDS & GRIDS ── */
+  .card-grid {
+    display: grid; gap: 1rem;
+    margin: 1rem 0;
+  }
+  .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.2rem 1.4rem;
+  }
+  .card.glow { border-color: rgba(0,212,255,0.25); box-shadow: 0 0 20px rgba(0,212,255,0.08); }
+  .card.amber-glow { border-color: rgba(255,183,0,0.3); }
+  .card.green-glow { border-color: rgba(0,229,160,0.3); }
+  .card h3 { margin-bottom: 0.4rem; }
+  .card-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
+
+  /* ── TABLES ── */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th {
+    background: rgba(30,107,255,0.15); color: var(--blue2);
+    text-align: left; padding: 0.7rem 1rem; font-size: 0.8rem;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    border-bottom: 2px solid rgba(30,107,255,0.3);
+  }
+  td {
+    padding: 0.65rem 1rem; border-bottom: 1px solid var(--border);
+    font-size: 0.88rem; color: rgba(240,244,255,0.85);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  td strong { color: var(--white); }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+  }
+  .tag.green { background: rgba(0,229,160,0.15); color: var(--green); }
+  .tag.red { background: rgba(255,77,109,0.15); color: var(--red); }
+  .tag.amber { background: rgba(255,183,0,0.15); color: var(--amber); }
+  .tag.blue { background: rgba(30,107,255,0.15); color: var(--blue2); }
+  .tag.gray { background: rgba(136,153,187,0.15); color: var(--gray); }
+
+  /* ── TIMELINE / FLOW ── */
+  .flow {
+    display: flex; align-items: flex-start; gap: 0;
+    margin: 1.2rem 0; flex-wrap: wrap;
+  }
+  .flow-step {
+    flex: 1; min-width: 130px; position: relative;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem; text-align: center;
+    margin: 4px;
+  }
+  .flow-step .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--blue); color: white;
+    font-size: 0.75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 0.5rem;
+  }
+  .flow-step h4 { font-size: 0.82rem; margin-bottom: 0.3rem; }
+  .flow-step p { font-size: 0.75rem; color: var(--gray); margin: 0; }
+  .flow-arrow {
+    display: flex; align-items: center; padding: 0 4px;
+    color: var(--cyan); font-size: 1.2rem; margin-top: 35px;
+  }
+
+  /* ── STAT BOXES ── */
+  .stat-row {
+    display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0;
+  }
+  .stat-box {
+    flex: 1; min-width: 140px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 2rem; font-weight: 800; color: var(--cyan);
+    line-height: 1;
+  }
+  .stat-label { font-size: 0.75rem; color: var(--gray); margin-top: 0.3rem; }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem 1.2rem;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.78rem; line-height: 1.6;
+    color: #a8d8ff; overflow-x: auto; margin: 0.8rem 0;
+  }
+  .code-block .kw { color: var(--cyan); }
+  .code-block .str { color: var(--green); }
+  .code-block .comment { color: var(--gray); }
+  .code-block .num { color: var(--amber); }
+
+  /* ── AGENT LIST ── */
+  .agent-item {
+    display: flex; gap: 1rem; padding: 0.8rem;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .agent-num {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(30,107,255,0.2); border: 1px solid rgba(30,107,255,0.4);
+    color: var(--blue2); font-weight: 700; font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .agent-content h4 { font-size: 0.9rem; margin-bottom: 0.2rem; }
+  .agent-content p { font-size: 0.78rem; color: var(--gray); margin: 0; }
+  .agent-content .diff { font-size: 0.76rem; color: var(--cyan); margin-top: 0.2rem; }
+
+  /* ── PILL BADGES ── */
+  .pill {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 600; margin: 2px;
+  }
+  .pill.blue { background: rgba(30,107,255,0.2); color: var(--blue2); border: 1px solid rgba(30,107,255,0.3); }
+  .pill.cyan { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.25); }
+  .pill.green { background: rgba(0,229,160,0.1); color: var(--green); border: 1px solid rgba(0,229,160,0.25); }
+  .pill.amber { background: rgba(255,183,0,0.1); color: var(--amber); border: 1px solid rgba(255,183,0,0.25); }
+
+  /* ── RULE CHAIN ── */
+  .rule-item {
+    display: flex; gap: 1rem; padding: 0.7rem 1rem;
+    border-left: 3px solid var(--blue);
+    background: var(--card); border-radius: 0 8px 8px 0;
+    margin: 4px 0;
+  }
+  .rule-item.wow { border-left-color: var(--red); }
+  .rule-num { color: var(--gray); font-size: 0.75rem; min-width: 50px; }
+  .rule-text { font-size: 0.85rem; }
+  .rule-text strong { color: var(--red); }
+
+  /* ── COMPARISON TABLE ── */
+  .comp-yes { color: var(--green); font-weight: 700; }
+  .comp-no { color: rgba(136,153,187,0.5); }
+  .comp-partial { color: var(--amber); }
+
+  /* ── COVER SLIDE ── */
+  #slide-cover {
+    justify-content: center;
+    background: radial-gradient(ellipse at 30% 50%, rgba(30,107,255,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 20%, rgba(0,212,255,0.08) 0%, transparent 50%);
+  }
+  .cover-eyebrow {
+    font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--cyan); margin-bottom: 1.2rem;
+  }
+  .cover-title {
+    font-size: 3.8rem; font-weight: 900; line-height: 1.05;
+    margin-bottom: 1rem;
+  }
+  .cover-title .accent { color: var(--cyan); }
+  .cover-sub {
+    font-size: 1.25rem; color: rgba(240,244,255,0.7);
+    margin-bottom: 2rem; max-width: 700px;
+  }
+  .cover-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2rem; }
+  .cover-footer {
+    margin-top: auto; font-size: 0.75rem; color: var(--gray);
+    border-top: 1px solid var(--border); padding-top: 1rem;
+  }
+
+  /* ── DEMO SLIDE ── */
+  .act-header {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem;
+  }
+  .act-badge {
+    background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.3);
+    color: var(--cyan); padding: 4px 12px; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+  }
+  .say-box {
+    background: rgba(30,107,255,0.08); border: 1px solid rgba(30,107,255,0.2);
+    border-radius: 10px; padding: 1rem 1.2rem; margin: 0.8rem 0;
+  }
+  .say-box .say-label {
+    font-size: 0.68rem; font-weight: 700; color: var(--blue2);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem;
+  }
+  .say-box p { font-size: 0.88rem; margin: 0; color: rgba(240,244,255,0.9); }
+  .qa-item { margin: 1rem 0; }
+  .qa-item .q {
+    font-weight: 700; color: var(--amber); font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+  }
+  .qa-item .a { font-size: 0.85rem; color: rgba(240,244,255,0.8); padding-left: 1rem; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── ROADMAP ── */
+  .roadmap-row {
+    display: flex; gap: 1rem; margin-bottom: 0.8rem;
+  }
+  .roadmap-q {
+    width: 70px; flex-shrink: 0;
+    background: rgba(30,107,255,0.15); border: 1px solid rgba(30,107,255,0.25);
+    border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; font-size: 0.75rem; font-weight: 700;
+    color: var(--blue2);
+  }
+  .roadmap-item {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.6rem 1rem;
+  }
+  .roadmap-item h4 { font-size: 0.85rem; margin-bottom: 0.2rem; }
+  .roadmap-item p { font-size: 0.75rem; color: var(--gray); margin: 0; }
+
+  /* ── DEPLOYMENT ── */
+  .deploy-col {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.2rem;
+  }
+  .deploy-col h3 { font-size: 0.95rem; }
+  .deploy-col ul { padding-left: 1.2rem; }
+  .deploy-col ul li { font-size: 0.82rem; color: var(--gray); margin: 4px 0; }
+
+  /* ── CTA SLIDE ── */
+  #slide-cta {
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 50%, rgba(0,212,255,0.07) 0%, transparent 70%);
+  }
+
+  /* ── KEYBOARD HINT ── */
+  #key-hint {
+    position: fixed; bottom: 48px; right: 16px;
+    font-size: 0.65rem; color: rgba(136,153,187,0.4);
+  }
+
+  /* Demo mode */
+  body.demo-mode #deck .slide:not(#slide-demo) { display: none !important; }
+  body.demo-mode #deck #slide-demo { display: flex !important; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="brand">EVOLV<span>| The Validation Factory &nbsp;·&nbsp; Confidential</span></div>
+  <div id="nav-controls">
+    <button class="nav-btn" id="btn-prev" onclick="navigate(-1)">← Prev</button>
+    <span id="slide-counter">1 / 17</span>
+    <button class="nav-btn" id="btn-next" onclick="navigate(1)">Next →</button>
+    <button id="mode-toggle" onclick="toggleDemo()">📋 Demo Script</button>
+  </div>
+</nav>
+
+<!-- SLIDES -->
+<div id="deck">
+
+<!-- ═══════════════════════════════ SLIDE 0 — COVER ═══════════════════════════════ -->
+<div class="slide active" id="slide-cover">
+  <div class="cover-eyebrow">WingstarTech Inc. &nbsp;·&nbsp; Enterprise Platform</div>
+  <div class="cover-title">
+    EVOLV<br/>
+    <span class="accent">The Compliance Nervous System</span><br/>
+    for Life Sciences
+  </div>
+  <div class="cover-sub">
+    The first AI-native enterprise platform for Computer System Validation —<br/>
+    built the way SAP built ERP and Salesforce built CRM.
+  </div>
+  <div class="cover-pills">
+    <span class="pill cyan">GAMP 5 Native</span>
+    <span class="pill blue">21 CFR Part 11</span>
+    <span class="pill green">FDA/EMA 2026 AI Guidance</span>
+    <span class="pill amber">11 AI Agents</span>
+    <span class="pill blue">OpenAPI 3.0</span>
+    <span class="pill cyan">16 Regulatory Frameworks</span>
+  </div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num">12s</div><div class="stat-label">Requirement generation</div></div>
+    <div class="stat-box"><div class="stat-num">2m</div><div class="stat-label">Full test script</div></div>
+    <div class="stat-box"><div class="stat-num">2s</div><div class="stat-label">Change impact analysis</div></div>
+    <div class="stat-box"><div class="stat-num">95%</div><div class="stat-label">Cost reduction</div></div>
+    <div class="stat-box"><div class="stat-num">500</div><div class="stat-label">Batch reqs per call</div></div>
+  </div>
+  <div class="cover-footer">
+    Powered by EVOLV &nbsp;|&nbsp; A WingstarTech Inc. Product &nbsp;|&nbsp; Confidential — For Discussion Purposes Only
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 1 — PROBLEM ═══════════════════════════════ -->
+<div class="slide" id="slide-problem">
+  <div class="slide-label">Slide 1 — The Problem</div>
+  <h2>The Industry is Stuck in <em>1995</em></h2>
+  <p class="lead">Every drug that reaches a patient passes through a validated computer system. Validating those systems is still done with Word, Excel, and expensive consultants.</p>
+
+  <table>
+    <tr><th>Step</th><th>Current Reality</th><th>Time Cost</th><th>Risk</th></tr>
+    <tr><td><strong>Write requirements</strong></td><td>Word documents, manually</td><td>4–8 weeks</td><td><span class="tag red">HIGH</span></td></tr>
+    <tr><td><strong>Risk assessment</strong></td><td>Excel spreadsheets, subjective</td><td>2–3 weeks</td><td><span class="tag red">HIGH</span></td></tr>
+    <tr><td><strong>Generate test scripts</strong></td><td>Copy-paste from templates</td><td>3–6 weeks</td><td><span class="tag amber">MED</span></td></tr>
+    <tr><td><strong>Verify compliance</strong></td><td>Manual review against GAMP 5 PDFs</td><td>$300/hr consultants</td><td><span class="tag red">HIGH</span></td></tr>
+    <tr><td><strong>Track change impact</strong></td><td>Email chains, meetings</td><td>2–4 weeks per change</td><td><span class="tag red">HIGH</span></td></tr>
+    <tr><td><strong>Audit trail</strong></td><td>Siloed logs, no integrity proof</td><td>3–6 months per audit</td><td><span class="tag red">HIGH</span></td></tr>
+  </table>
+
+  <div class="card-grid cols-3" style="margin-top:1rem">
+    <div class="card amber-glow">
+      <div class="card-icon">💊</div>
+      <h3>Mid-size Pharma</h3>
+      <p style="font-size:0.82rem">50–200 validated systems. Each costs <strong>$150K–$500K</strong> and takes <strong>6–18 months</strong>.</p>
+    </div>
+    <div class="card amber-glow">
+      <div class="card-icon">⚠️</div>
+      <h3>The Market Today</h3>
+      <p style="font-size:0.82rem">Kneat, Veeva, ValGenesis are <strong>document managers</strong> with a validation wrapper. They do not solve the intelligence problem.</p>
+    </div>
+    <div class="card amber-glow">
+      <div class="card-icon">📋</div>
+      <h3>21 CFR Part 11</h3>
+      <p style="font-size:0.82rem"><strong>#1 cause of FDA warning letters.</strong> Audit trail gaps cost companies $12M+ in remediation per incident.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 2 — WHAT IS EVOLV ═══════════════════════════════ -->
+<div class="slide" id="slide-what">
+  <div class="slide-label">Slide 2 — What EVOLV Is</div>
+  <h2>Platform, Not a <em>Tool</em></h2>
+  <p class="lead"><strong>EVOLV is to CSV what Salesforce is to CRM.</strong> An intelligent, extensible platform — not a form filler.</p>
+
+  <div class="card-grid cols-3">
+    <div class="card glow">
+      <div class="card-icon">🏭</div>
+      <h3>Validation Factory</h3>
+      <p style="font-size:0.82rem">AI Engine that generates URS, UR/FR, test scripts, and validation reports from plain English in minutes.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🧠</div>
+      <h3>Compliance Nervous System</h3>
+      <p style="font-size:0.82rem">Every system in your stack sends signals to EVOLV. EVOLV responds with compliance intelligence in real time.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🔌</div>
+      <h3>Enterprise API Platform</h3>
+      <p style="font-size:0.82rem">OpenAPI 3.0, 12 endpoints, webhooks, scoped keys, bulk processing. Connects to ServiceNow, SAP, Jira, LIMS.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🛡️</div>
+      <h3>ABAC Policy Engine</h3>
+      <p style="font-size:0.82rem">5-rule attribute-based access control. Training status gate. GxP lifecycle enforcement. Every decision audit-logged.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🏢</div>
+      <h3>Multi-Tenant Architecture</h3>
+      <p style="font-size:0.82rem">Every client gets their own terminology, SOP guidelines, and compliance mode. Zero code changes per tenant.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">📡</div>
+      <h3>GAMP 5 Knowledge Base</h3>
+      <p style="font-size:0.82rem">Pinecone vector database + OpenAI embeddings. Every requirement grounded in a specific page of actual regulation.</p>
+    </div>
+  </div>
+
+  <div class="big-quote">
+    "EVOLV is what happens when you build a compliance platform with the same engineering discipline you'd apply to SAP or Salesforce — but for the most regulated industry in the world."
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 3 — AGENTS ═══════════════════════════════ -->
+<div class="slide" id="slide-agents">
+  <div class="slide-label">Slide 3 — The 11 AI Agents</div>
+  <h2>Every Agent is <em>Audit-Logged, GAMP 5-Aligned</em>, Deterministic-First</h2>
+
+  <div class="card-grid cols-2">
+    <div>
+      <div class="agent-item">
+        <div class="agent-num">01</div>
+        <div class="agent-content">
+          <h4>Risk Strategist</h4>
+          <p>GAMP 5 RPN calculation (1–27). Severity × Occurrence × Detectability. Patient Safety Override built-in.</p>
+          <div class="diff">→ ServiceNow CR → risk assessment in &lt;1s</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">02</div>
+        <div class="agent-content">
+          <h4>Requirement Architect</h4>
+          <p>Plain English → GAMP 5-grounded URS with page-level regulatory rationale from Pinecone knowledge base.</p>
+          <div class="diff">→ 12 seconds vs. 4 hours manual</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">03</div>
+        <div class="agent-content">
+          <h4>Verification Agent</h4>
+          <p>Triple-check: Criticality Alignment · Rationale Relevance (0.45 threshold) · Contradiction Scan. Rejects — doesn't just flag.</p>
+          <div class="diff">→ Compliance Exception logged on rejection</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">04</div>
+        <div class="agent-content">
+          <h4>Delta Agent (CSA Test Factory)</h4>
+          <p>Deterministic test script generation. Informal / OQ / UAT. Setup + Positive + Negative + Edge Case steps. No LLM needed.</p>
+          <div class="diff">→ 2 minutes vs. 3 weeks manual</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">05</div>
+        <div class="agent-content">
+          <h4>Sentinel Impact Agent</h4>
+          <p>Blast-radius analysis. Semantic delta (Structural/Behavioural/Clarification/Regulatory). Red/Yellow/Green impact scoring.</p>
+          <div class="diff">→ 2 seconds vs. 2 weeks manual</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">06</div>
+        <div class="agent-content">
+          <h4>SMART Requirements Engine</h4>
+          <p>Rewrites vague requirements. FDA/EMA 2026 AI Guidance embedded. Negative Test Scenarios auto-generated.</p>
+          <div class="diff">→ "should be fast" → measurable acceptance criteria</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="agent-item">
+        <div class="agent-num">07</div>
+        <div class="agent-content">
+          <h4>Ingestor Agent</h4>
+          <p>Parses vendor PDFs/DOCX. Extracts structured sections. GAMP 5 gap analysis before procurement.</p>
+          <div class="diff">→ Identifies compliance gaps before you sign the contract</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">08</div>
+        <div class="agent-content">
+          <h4>Intelligence Engine</h4>
+          <p>Mermaid.js workflow diagrams. Security gap identification. D3.js network graph of requirement relationships.</p>
+          <div class="diff">→ Visual compliance intelligence for stakeholders</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">09</div>
+        <div class="agent-content">
+          <h4>Policy Engine (ABAC)</h4>
+          <p>5-rule DAC chain. Training status gate, role check, lifecycle gate, cross-site restriction, GxP criticality gate.</p>
+          <div class="diff">→ Expired training = zero access to Approve. No exceptions.</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">10</div>
+        <div class="agent-content">
+          <h4>Integrity Manager</h4>
+          <p>21 CFR Part 11 audit trail. SHA-256 reasoning hashes. Optional JSON logic archives with tamper-evident hashing.</p>
+          <div class="diff">→ Inspectors see WHY, not just WHAT</div>
+        </div>
+      </div>
+      <div class="agent-item">
+        <div class="agent-num">11</div>
+        <div class="agent-content">
+          <h4>Auditor Agent</h4>
+          <p>Generates Validation Traceability Matrix (VTM) and Validation Summary Report (VSR). Inspection-ready.</p>
+          <div class="diff">→ FDA submission package, auto-generated</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 4 — WORKFLOW ═══════════════════════════════ -->
+<div class="slide" id="slide-workflow">
+  <div class="slide-label">Slide 4 — The Validation Factory</div>
+  <h2>Natural Language → <em>Inspection-Ready Package</em> in Minutes</h2>
+
+  <div class="flow" style="margin-top:1.5rem">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <h4>Plain English Input</h4>
+      <p>"Track warehouse temperature"</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <h4>Requirement Architect</h4>
+      <p>GAMP 5 RAG query → URS-7.1 with regulatory rationale</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <h4>Verification Agent</h4>
+      <p>Triple-check → APPROVED or Compliance Exception</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <h4>UR/FR Transform</h4>
+      <p>UR-1 + FR-1, FR-2, FR-3 · Risk: High · Strategy: OQ/UAT</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">5</div>
+      <h4>Delta Agent</h4>
+      <p>CSA test script: Setup + Positive + Negative + Edge Case</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">6</div>
+      <h4>PDF Generator</h4>
+      <p>Validation Report: Cover + UR/FR + Test Script + Sig Page</p>
+    </div>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-top:1.5rem">
+    <div class="card green-glow">
+      <h3>Documents Auto-Generated</h3>
+      <div style="margin-top:0.6rem">
+        <span class="pill green">URS</span>
+        <span class="pill green">UR/FR</span>
+        <span class="pill green">CSA Test Script</span>
+        <span class="pill green">Validation Report PDF</span>
+        <span class="pill green">VTM</span>
+        <span class="pill green">VSR</span>
+        <span class="pill green">SMART Requirements</span>
+        <span class="pill green">Manifestation of Signature</span>
+      </div>
+    </div>
+    <div class="card glow">
+      <h3>Time Comparison</h3>
+      <table style="margin:0.5rem 0">
+        <tr><th>Activity</th><th>Before</th><th style="color:var(--green)">EVOLV</th></tr>
+        <tr><td>URS generation</td><td>4–8 weeks</td><td style="color:var(--green)"><strong>30 min</strong></td></tr>
+        <tr><td>Test scripts</td><td>3–6 weeks</td><td style="color:var(--green)"><strong>2 min</strong></td></tr>
+        <tr><td>Change impact</td><td>2–4 weeks</td><td style="color:var(--green)"><strong>2 sec</strong></td></tr>
+        <tr><td>Compliance check</td><td>Manual review</td><td style="color:var(--green)"><strong>Automated</strong></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 5 — SENTINEL ═══════════════════════════════ -->
+<div class="slide" id="slide-sentinel">
+  <div class="slide-label">Slide 5 — EVOLV Sentinel</div>
+  <h2>Blast Radius Analysis — <em>"What breaks when I change this?"</em></h2>
+  <p class="lead">No other platform in the market answers this question in 2 seconds.</p>
+
+  <div class="card-grid cols-2">
+    <div>
+      <h3 style="margin-bottom:0.8rem">How Sentinel Works</h3>
+      <div class="flow-step" style="text-align:left;padding:0.8rem;margin:4px 0">
+        <strong style="color:var(--cyan)">Step 1 — Semantic Delta Detection</strong>
+        <p style="font-size:0.8rem;margin-top:0.3rem">LLM classifies change: <span class="tag red">Structural</span> <span class="tag amber">Behavioural</span> <span class="tag green">Clarification</span> <span class="tag blue">Regulatory</span></p>
+      </div>
+      <div class="flow-step" style="text-align:left;padding:0.8rem;margin:4px 0">
+        <strong style="color:var(--cyan)">Step 2 — Traceability Matrix Crawl</strong>
+        <p style="font-size:0.8rem;margin-top:0.3rem">Tier 1: Test Cases · Tier 2: Risks + Trace Matrix · Tier 3: Regulatory Clauses</p>
+      </div>
+      <div class="flow-step" style="text-align:left;padding:0.8rem;margin:4px 0">
+        <strong style="color:var(--cyan)">Step 3 — Impact Scoring</strong>
+        <p style="font-size:0.8rem;margin-top:0.3rem"><span class="tag red">RED</span> Rerun required &nbsp; <span class="tag amber">YELLOW</span> Review advised &nbsp; <span class="tag green">GREEN</span> Healthy</p>
+      </div>
+      <div class="flow-step" style="text-align:left;padding:0.8rem;margin:4px 0">
+        <strong style="color:var(--cyan)">Step 4 — Webhook Fired</strong>
+        <p style="font-size:0.8rem;margin-top:0.3rem">HMAC-SHA256 signed alert → Your LIMS / ServiceNow / Slack. Tiered retry: 1m → 5m → 15m.</p>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:0.8rem">Real Example Output</h3>
+      <div class="code-block">
+<span class="comment">// Old requirement</span>
+"The system shall log batch records."
+
+<span class="comment">// New requirement</span>
+"The system shall log and encrypt batch records
+ per <span class="kw">21 CFR Part 211</span>."
+
+<span class="comment">// Sentinel Output</span>
+{
+  <span class="str">change_category</span>: <span class="kw">"REGULATORY"</span>,
+  <span class="str">impact_score</span>:    <span class="num">73</span>/100,
+  <span class="str">confidence</span>:      <span class="kw">"HIGH"</span>,
+  <span class="str">time_saved</span>:      <span class="num">2.5</span>h,
+
+  TC-05  → <span class="num">RED</span>    — full re-run required
+  TC-06  → <span class="num">YELLOW</span> — review before run
+  RISK-02 → <span class="num">RED</span>   — re-assess risk
+  21CFR-211 → <span class="num">RED</span> — clause affected
+}
+      </div>
+      <div class="card" style="margin-top:0.8rem;background:rgba(0,229,160,0.06);border-color:rgba(0,229,160,0.2)">
+        <p style="font-size:0.82rem;color:var(--green);margin:0"><strong>Rationalization Log</strong> — natural language justification of every decision, with regulatory basis cited. FDA-defensible. Tamper-evident.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 6 — ENTERPRISE ARCH ═══════════════════════════════ -->
+<div class="slide" id="slide-enterprise">
+  <div class="slide-label">Slide 6 — Enterprise Architecture</div>
+  <h2>Clean Core. <em>Infinitely Extensible.</em></h2>
+
+  <div class="card-grid cols-2">
+    <div class="card glow">
+      <h3>Multi-Tenancy — Process Mimicry</h3>
+      <p style="font-size:0.82rem">Client A: "User Need" &nbsp;·&nbsp; Client B: "System Requirement" &nbsp;·&nbsp; Client C: "Validation Specification"<br/>
+      <strong>EVOLV uses whatever the client uses.</strong> One JSON config file per tenant. Zero code changes.</p>
+      <div class="code-block" style="margin-top:0.6rem;font-size:0.72rem">
+{ <span class="str">"tenant_id"</span>: <span class="kw">"pharma-001"</span>,
+  <span class="str">"labels"</span>: {
+    <span class="str">"urs"</span>: <span class="kw">"System Requirement"</span>,
+    <span class="str">"test_case"</span>: <span class="kw">"Verification Protocol"</span>
+  }
+}
+      </div>
+    </div>
+    <div class="card glow">
+      <h3>Site-Specific Compliance Modes</h3>
+      <table style="margin:0.5rem 0">
+        <tr><th>Mode</th><th>Primary Reg</th><th>AI Focus</th></tr>
+        <tr><td><span class="pill blue">GMP</span></td><td>21 CFR Part 211</td><td>Batch integrity, calibration</td></tr>
+        <tr><td><span class="pill cyan">GCP</span></td><td>ICH E6 (R2)</td><td>Patient privacy, consent</td></tr>
+        <tr><td><span class="pill green">GLP</span></td><td>21 CFR Part 58</td><td>Raw data, ALCOA+</td></tr>
+        <tr><td><span class="pill amber">ISO 13485</span></td><td>ISO 13485:2016</td><td>Design controls, risk</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <h3>The "Wow" Rule — ABAC Policy Engine</h3>
+    <div style="margin-top:0.8rem">
+      <div class="rule-item wow">
+        <div class="rule-num">Rule 1</div>
+        <div class="rule-text"><strong>Training Status Gate</strong> — If training_status = FALSE → Approve action DENIED. Always. No exceptions. Not a config. It's architecture.</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">Rule 2</div>
+        <div class="rule-text">Role Capability Check — Action must exist in role's permitted set (Admin / QA / Author / Reviewer / Viewer)</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">Rule 3</div>
+        <div class="rule-text">Lifecycle State Gate — LOCKED documents cannot be edited (21 CFR Part 11 §11.10(e))</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">Rule 4</div>
+        <div class="rule-text">Cross-Site Restriction — Author cannot modify another site's GxP resources without QA role</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">Rule 5</div>
+        <div class="rule-text">GxP Criticality Gate — Viewer role blocked from all write actions on GxP Direct resources</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 7 — API ═══════════════════════════════ -->
+<div class="slide" id="slide-api">
+  <div class="slide-label">Slide 7 — The API Platform</div>
+  <h2>OpenAPI 3.0 — The <em>Integration Backbone</em></h2>
+  <p class="lead">Every system in your stack can connect to EVOLV. Think of it as the nervous system — it receives signals and returns compliance intelligence.</p>
+
+  <div class="card-grid cols-2">
+    <div>
+      <h3 style="margin-bottom:0.8rem">12 Production Endpoints</h3>
+      <table>
+        <tr><th>Endpoint</th><th>Purpose</th></tr>
+        <tr><td><span class="pill blue">POST</span> /webhook/sn-change</td><td>ServiceNow CR → Risk Assessment</td></tr>
+        <tr><td><span class="pill blue">POST</span> /webhook/sentinel-scan</td><td>Blast-radius analysis</td></tr>
+        <tr><td><span class="pill blue">POST</span> /bulk/validate</td><td>500 reqs → 202 Accepted</td></tr>
+        <tr><td><span class="pill green">GET</span> &nbsp;/bulk/status/{id}</td><td>Real-time job progress</td></tr>
+        <tr><td><span class="pill blue">POST</span> /webhooks/register</td><td>Register extension hook</td></tr>
+        <tr><td><span class="pill red">DEL</span> &nbsp;/webhooks/{id}</td><td>Deregister hook</td></tr>
+        <tr><td><span class="pill blue">POST</span> /admin/api-keys</td><td>Create scoped API key</td></tr>
+        <tr><td><span class="pill green">GET</span> &nbsp;/admin/api-keys/{id}</td><td>Key metadata</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="margin-bottom:0.8rem">Enterprise Features</h3>
+      <div class="card" style="margin-bottom:0.6rem">
+        <strong>Scoped API Keys</strong>
+        <div class="code-block" style="font-size:0.72rem;margin-top:0.5rem">
+scope: <span class="kw">audit_only</span>  → GET only, POST blocked (403)
+scope: <span class="kw">sentinel</span>    → Blast radius only
+scope: <span class="kw">admin</span>       → Full platform access
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:0.6rem">
+        <strong>Sandbox Mode</strong>
+        <div class="code-block" style="font-size:0.72rem;margin-top:0.5rem">
+Header: <span class="kw">X-EVOLV-MODE: Sandbox</span>
+→ AI generates full output
+→ Audit trail writes suppressed
+→ Response: <span class="str">"sandbox": true</span>
+        </div>
+      </div>
+      <div class="card">
+        <strong>Webhook Extension Hooks</strong>
+        <p style="font-size:0.78rem;margin-top:0.4rem">HMAC-SHA256 signed · Retry: 1m → 5m → 15m · Events: SENTINEL_SCAN_COMPLETED, BULK_VALIDATE_COMPLETE, CHANGE_REQUEST_ASSESSED</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 8 — COMPLIANCE ═══════════════════════════════ -->
+<div class="slide" id="slide-compliance">
+  <div class="slide-label">Slide 8 — The Regulatory Moat</div>
+  <h2><em>16 Regulatory Frameworks.</em> One Platform.</h2>
+
+  <div class="card-grid cols-2">
+    <table>
+      <tr><th>Standard</th><th>Coverage</th></tr>
+      <tr><td><strong>21 CFR Part 11</strong></td><td>E-records, e-signatures, audit trail, access control</td></tr>
+      <tr><td><strong>21 CFR Part 211</strong></td><td>GMP manufacturing, batch records, equipment calibration</td></tr>
+      <tr><td><strong>21 CFR Part 50/58/820</strong></td><td>Clinical, GLP, Medical device QMS</td></tr>
+      <tr><td><strong>GAMP 5</strong></td><td>Risk-based approach, software categories, lifecycle</td></tr>
+      <tr><td><strong>EU GMP Annex 11</strong></td><td>Computerised systems for GMP</td></tr>
+      <tr><td><strong>ICH E6 (R2) / ICH Q9</strong></td><td>GCP, Quality risk management</td></tr>
+      <tr><td><strong>ISO 13485 / ISO 14971</strong></td><td>Medical device QMS + risk management</td></tr>
+      <tr><td><strong>GDPR / HIPAA</strong></td><td>Data privacy for clinical applications</td></tr>
+      <tr><td><strong>FDA CSA</strong></td><td>Computer Software Assurance framework</td></tr>
+      <tr><td><strong>FDA/EMA 2026 AI Guidance</strong></td><td>PCCP, Negative Test Scenarios, AI oversight</td></tr>
+      <tr><td><strong>EU MDR 2017/745</strong></td><td>Medical device regulation, CE marking</td></tr>
+      <tr><td><strong>ALCOA+</strong></td><td>Data integrity (Attributable, Legible, Contemporaneous…)</td></tr>
+    </table>
+    <div>
+      <h3 style="margin-bottom:0.8rem">21 CFR Part 11 Dual-Trail Architecture</h3>
+      <div class="card" style="margin-bottom:0.6rem">
+        <strong style="color:var(--cyan)">CSV Audit Trail</strong> <span class="pill blue">output/audit_trail.csv</span>
+        <p style="font-size:0.78rem;margin-top:0.4rem">Append-only · 7 columns · SHA-256 reasoning hash per row · Compliance impact classification</p>
+      </div>
+      <div class="card">
+        <strong style="color:var(--cyan)">JSON Logic Archives</strong> <span class="pill blue">output/logic_archives/</span>
+        <p style="font-size:0.78rem;margin-top:0.4rem">Inputs · Reasoning steps · Outputs · Tamper-evident integrity hash</p>
+      </div>
+      <div class="big-quote" style="margin-top:1rem;font-size:1rem">
+        "An FDA inspector can read exactly WHY EVOLV classified a requirement as High criticality — not just that it was."
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 9 — COMPETITIVE ═══════════════════════════════ -->
+<div class="slide" id="slide-competitive">
+  <div class="slide-label">Slide 9 — Competitive Landscape</div>
+  <h2>EVOLV vs. <em>The Market</em></h2>
+
+  <table>
+    <tr>
+      <th>Capability</th>
+      <th style="color:var(--cyan)">EVOLV</th>
+      <th>Veeva Vault</th>
+      <th>Kneat</th>
+      <th>ValGenesis</th>
+    </tr>
+    <tr><td><strong>AI Requirement Generation</strong></td><td class="comp-yes">Native + GAMP 5 RAG</td><td class="comp-no">None</td><td class="comp-no">None</td><td class="comp-partial">Template only</td></tr>
+    <tr><td><strong>Semantic Blast Radius</strong></td><td class="comp-yes">Full Red/Yellow/Green</td><td class="comp-no">Manual</td><td class="comp-no">Manual</td><td class="comp-partial">Offline</td></tr>
+    <tr><td><strong>ABAC + Training Gate</strong></td><td class="comp-yes">5-rule engine, hardcoded</td><td class="comp-partial">Role-based only</td><td class="comp-partial">Role-based only</td><td class="comp-partial">Role-based only</td></tr>
+    <tr><td><strong>Multi-Tenant Nomenclature</strong></td><td class="comp-yes">Dynamic, zero code change</td><td class="comp-no">Hardcoded</td><td class="comp-no">Hardcoded</td><td class="comp-no">Hardcoded</td></tr>
+    <tr><td><strong>Site-Specific AI Modes</strong></td><td class="comp-yes">GMP/GCP/GLP/ISO per site</td><td class="comp-no">None</td><td class="comp-no">None</td><td class="comp-no">None</td></tr>
+    <tr><td><strong>FDA/EMA 2026 AI Guidance</strong></td><td class="comp-yes">Embedded (PCCP, Neg Tests)</td><td class="comp-no">Not addressed</td><td class="comp-no">Not addressed</td><td class="comp-no">Not addressed</td></tr>
+    <tr><td><strong>Bulk Batch Processing</strong></td><td class="comp-yes">500 reqs, 202 Accepted</td><td class="comp-no">None</td><td class="comp-no">None</td><td class="comp-no">None</td></tr>
+    <tr><td><strong>Sandbox Mode</strong></td><td class="comp-yes">Built-in, header-driven</td><td class="comp-no">None</td><td class="comp-no">None</td><td class="comp-no">None</td></tr>
+    <tr><td><strong>Logic Archive Transparency</strong></td><td class="comp-yes">AI reasoning + tamper-proof</td><td class="comp-no">None</td><td class="comp-no">None</td><td class="comp-no">None</td></tr>
+    <tr><td><strong>Time-Saved Calculation</strong></td><td class="comp-yes">Automatic, per change</td><td class="comp-no">None</td><td class="comp-no">None</td><td class="comp-no">None</td></tr>
+    <tr><td><strong>Deployment</strong></td><td class="comp-yes">Cloud / On-prem / Hybrid</td><td class="comp-partial">Cloud only</td><td class="comp-partial">Cloud only</td><td class="comp-partial">Cloud only</td></tr>
+    <tr><td><strong>Business Model</strong></td><td class="comp-yes">Platform (SAP / Salesforce)</td><td class="comp-partial">SaaS tool</td><td class="comp-partial">SaaS tool</td><td class="comp-partial">SaaS tool</td></tr>
+  </table>
+
+  <div class="big-quote" style="margin-top:1rem">
+    "Veeva, Kneat, and ValGenesis are document managers with a validation-shaped interface. EVOLV generates, verifies, scores, and monitors compliance — autonomously."
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 10 — ROI ═══════════════════════════════ -->
+<div class="slide" id="slide-roi">
+  <div class="slide-label">Slide 10 — Business Case</div>
+  <h2>The ROI is <em>Undeniable</em></h2>
+
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num">95%</div><div class="stat-label">Reduction in URS generation time</div></div>
+    <div class="stat-box"><div class="stat-num">98%</div><div class="stat-label">Reduction in test script time</div></div>
+    <div class="stat-box"><div class="stat-num">99.9%</div><div class="stat-label">Reduction in change impact time</div></div>
+    <div class="stat-box"><div class="stat-num">$4M</div><div class="stat-label">Annual savings (mid-size pharma)</div></div>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-top:0.5rem">
+    <div class="card">
+      <h3>Current State — Typical Mid-Size Pharma</h3>
+      <table>
+        <tr><td>Validated systems in scope</td><td><strong>80</strong></td></tr>
+        <tr><td>Average validation cost</td><td><strong>$200,000</strong></td></tr>
+        <tr><td>Average validation time</td><td><strong>9 months</strong></td></tr>
+        <tr><td>Annual re-validation spend</td><td><strong>$4–6M</strong></td></tr>
+        <tr><td>Change impact assessment</td><td><strong>2–4 weeks</strong></td></tr>
+      </table>
+    </div>
+    <div class="card green-glow">
+      <h3>With EVOLV</h3>
+      <table>
+        <tr><th>Activity</th><th>Before</th><th style="color:var(--green)">After</th></tr>
+        <tr><td>URS generation</td><td>4–8 weeks</td><td style="color:var(--green)"><strong>30 min</strong></td></tr>
+        <tr><td>Test scripts</td><td>3–6 weeks</td><td style="color:var(--green)"><strong>2 min</strong></td></tr>
+        <tr><td>Change impact</td><td>2–4 weeks</td><td style="color:var(--green)"><strong>2 sec</strong></td></tr>
+        <tr><td>Compliance review</td><td>Manual</td><td style="color:var(--green)"><strong>Automated</strong></td></tr>
+        <tr><td>Audit preparation</td><td>3–6 months</td><td style="color:var(--green)"><strong>Continuous</strong></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0.8rem;border-color:rgba(0,229,160,0.3);text-align:center;padding:1.2rem">
+    <div style="font-size:1.5rem;font-weight:800;color:var(--green)">EVOLV reduces validation lifecycle costs by 60–80%</div>
+    <div style="color:var(--gray);margin-top:0.4rem">For a company spending $5M/year on CSV → ROI: $3M–$4M per year</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 11 — TECH DIFF ═══════════════════════════════ -->
+<div class="slide" id="slide-tech">
+  <div class="slide-label">Slide 11 — For the CTO</div>
+  <h2>Why This Cannot Be <em>Replicated Quickly</em></h2>
+
+  <div class="card-grid cols-2">
+    <div class="card glow">
+      <div class="card-icon">📚</div>
+      <h3>1. GAMP 5 Knowledge Base</h3>
+      <p style="font-size:0.82rem">Pinecone vector database populated with GAMP 5, ICH, FDA CSA. Every requirement grounded in a specific regulatory page. Not a chatbot. A compliance-grounded reasoning engine.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">⚙️</div>
+      <h3>2. Deterministic + LLM Hybrid</h3>
+      <p style="font-size:0.82rem">EVOLV never fails because an API is unavailable. Every agent has a deterministic fallback. LLM enhances — it does not gate. Always produces output.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🔐</div>
+      <h3>3. Tamper-Evident Logic Archives</h3>
+      <p style="font-size:0.82rem">SHA-256 hash chain connecting every AI decision to its reasoning. FDA inspectors cannot reject output as "unexplainable AI." No other platform has this.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🏛️</div>
+      <h3>4. Architectural Training Gate</h3>
+      <p style="font-size:0.82rem">Rule 1 of the Policy Engine cannot be bypassed by any other rule. This is not a configuration. It eliminates an entire category of FDA 483 observations.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🎯</div>
+      <h3>5. Clean Core Design</h3>
+      <p style="font-size:0.82rem">Zero hardcoded client terminology in the backend. Any label is tenant-configurable. Add a new client: add a JSON file. Deploy in hours, not months.</p>
+    </div>
+    <div class="card glow">
+      <div class="card-icon">🚀</div>
+      <h3>6. FDA/EMA 2026 AI Ready</h3>
+      <p style="font-size:0.82rem">Negative Test Scenarios auto-generated. PCCP triggers detected. EVOLV is designed for the regulatory future — not just today's requirements.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 12 — DEPLOYMENT ═══════════════════════════════ -->
+<div class="slide" id="slide-deployment">
+  <div class="slide-label">Slide 12 — Deployment</div>
+  <h2>Fits Into <em>Your Stack</em> — Not the Other Way Around</h2>
+
+  <div style="display:flex;gap:1rem;margin:1rem 0">
+    <div class="deploy-col">
+      <h3>☁️ SaaS</h3>
+      <ul>
+        <li>Hosted on AWS / Azure / GCP</li>
+        <li>Customer brings API keys</li>
+        <li>Multi-tenant, per-site mode</li>
+        <li>Start in 1 day</li>
+      </ul>
+    </div>
+    <div class="deploy-col">
+      <h3>🏢 On-Premises</h3>
+      <ul>
+        <li>Inside customer's network</li>
+        <li>No data leaves the firewall</li>
+        <li>Private LLM compatible</li>
+        <li>FDA data residency compliant</li>
+      </ul>
+    </div>
+    <div class="deploy-col">
+      <h3>🔀 Hybrid (Most Common)</h3>
+      <ul>
+        <li>Platform: cloud</li>
+        <li>Customer data: on-prem</li>
+        <li>Keys: customer-controlled</li>
+        <li>Audit trail: your datacenter</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin:1rem 0 0.5rem">Integration Connectors</h3>
+  <div class="card-grid cols-4">
+    <div class="card" style="text-align:center">
+      <div style="font-size:1.4rem">🔧</div>
+      <div style="font-size:0.8rem;margin-top:0.3rem"><strong>ServiceNow</strong></div>
+      <div style="font-size:0.72rem;color:var(--gray)">POST /webhook/sn-change</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:1.4rem">💼</div>
+      <div style="font-size:0.8rem;margin-top:0.3rem"><strong>SAP</strong></div>
+      <div style="font-size:0.72rem;color:var(--gray)">Sentinel scan webhook</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:1.4rem">🎯</div>
+      <div style="font-size:0.8rem;margin-top:0.3rem"><strong>Jira</strong></div>
+      <div style="font-size:0.72rem;color:var(--gray)">Bulk validate endpoint</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:1.4rem">🏦</div>
+      <div style="font-size:0.8rem;margin-top:0.3rem"><strong>LIMS / Veeva / MasterControl</strong></div>
+      <div style="font-size:0.72rem;color:var(--gray)">Outbound webhook hooks</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 13 — ROADMAP ═══════════════════════════════ -->
+<div class="slide" id="slide-roadmap">
+  <div class="slide-label">Slide 13 — Roadmap</div>
+  <h2>Built for Today. <em>Designed for 2026.</em></h2>
+
+  <div style="margin-top:1rem">
+    <div class="roadmap-row">
+      <div class="roadmap-q">Q1 2026</div>
+      <div class="roadmap-item"><h4>ServiceNow Native App Packaging</h4><p>Zero-integration deployment from the ServiceNow store</p></div>
+      <div class="roadmap-item"><h4>Veeva Vault Connector</h4><p>Inbound URS sync — replace Vault's requirement module entirely</p></div>
+    </div>
+    <div class="roadmap-row">
+      <div class="roadmap-q">Q2 2026</div>
+      <div class="roadmap-item"><h4>Live Regulatory Intelligence Feed</h4><p>FDA/EMA feed — knowledge base updates automatically</p></div>
+      <div class="roadmap-item"><h4>Interactive Traceability Matrix</h4><p>D3.js live network graph — inspection-ready dashboard</p></div>
+    </div>
+    <div class="roadmap-row">
+      <div class="roadmap-q">Q3 2026</div>
+      <div class="roadmap-item"><h4>Periodic Review Automation</h4><p>Annual system review generated in minutes, not months</p></div>
+      <div class="roadmap-item"><h4>E-Signature Workflow</h4><p>Full 21 CFR Part 11 electronic signature lifecycle</p></div>
+    </div>
+    <div class="roadmap-row">
+      <div class="roadmap-q">Q4 2026</div>
+      <div class="roadmap-item"><h4>ISO 27001 Certification</h4><p>Enterprise security tier — required for pharma procurement</p></div>
+      <div class="roadmap-item"><h4>Multi-LLM Support</h4><p>Azure OpenAI, private models — full air-gapped AI capability</p></div>
+    </div>
+  </div>
+
+  <div class="stat-row" style="margin-top:1.5rem">
+    <div class="stat-box"><div class="stat-num">11</div><div class="stat-label">AI Agents Today</div></div>
+    <div class="stat-box"><div class="stat-num">16</div><div class="stat-label">Regulatory Frameworks</div></div>
+    <div class="stat-box"><div class="stat-num">12</div><div class="stat-label">API Endpoints</div></div>
+    <div class="stat-box"><div class="stat-num">500</div><div class="stat-label">Batch Capacity</div></div>
+    <div class="stat-box"><div class="stat-num">6</div><div class="stat-label">Document Types</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 14 — CTA ═══════════════════════════════ -->
+<div class="slide" id="slide-cta">
+  <div class="slide-label">Slide 14 — Call to Action</div>
+  <h2>90-Day Pilot. <em>Zero Risk.</em></h2>
+
+  <div class="card-grid cols-2">
+    <div class="card green-glow">
+      <h3>What You Get</h3>
+      <ul style="padding-left:1.2rem;margin-top:0.6rem">
+        <li style="margin:6px 0;font-size:0.88rem">Full platform access — all 11 agents</li>
+        <li style="margin:6px 0;font-size:0.88rem">Custom tenant nomenclature configuration</li>
+        <li style="margin:6px 0;font-size:0.88rem">Dedicated technical onboarding</li>
+        <li style="margin:6px 0;font-size:0.88rem">Side-by-side comparison with your current tools</li>
+        <li style="margin:6px 0;font-size:0.88rem">GAMP 5 knowledge base pre-populated</li>
+      </ul>
+    </div>
+    <div class="card glow">
+      <h3>What We Need</h3>
+      <ul style="padding-left:1.2rem;margin-top:0.6rem">
+        <li style="margin:6px 0;font-size:0.88rem">2–3 validated systems currently in scope</li>
+        <li style="margin:6px 0;font-size:0.88rem">1 QA lead + 1 CSV consultant as contacts</li>
+        <li style="margin:6px 0;font-size:0.88rem">90 days commitment</li>
+        <li style="margin:6px 0;font-size:0.88rem">That's it.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="big-quote" style="margin-top:1.5rem;font-size:1.3rem">
+    "If EVOLV doesn't reduce your validation cycle by at least 50%, we walk away. No invoice."
+  </div>
+
+  <div class="card" style="margin-top:1rem;text-align:center;padding:1.5rem;border-color:rgba(0,212,255,0.25)">
+    <div style="font-size:1rem;color:var(--gray);margin-bottom:0.5rem">Ready to see it live in your environment?</div>
+    <div style="font-size:1.4rem;font-weight:700;color:var(--cyan)">Powered by EVOLV | A WingstarTech Inc. Product</div>
+    <div style="font-size:0.8rem;color:var(--gray);margin-top:0.4rem">Platform · Not a tool · The Compliance Nervous System for Life Sciences</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 15 — DEMO SCRIPT ═══════════════════════════════ -->
+<div class="slide" id="slide-demo">
+  <div class="slide-label">Demo Script — CTO / CSV Head Audience</div>
+  <h2>20-Minute <em>Demo Playbook</em></h2>
+
+  <div class="card" style="margin-bottom:1rem;border-color:rgba(255,183,0,0.3)">
+    <strong style="color:var(--amber)">Setup Before the Meeting</strong>
+    <div class="code-block" style="margin-top:0.5rem;font-size:0.76rem">
+Terminal 1: <span class="kw">uvicorn API.main:app --reload --host 0.0.0.0 --port 8000</span>
+Terminal 2: <span class="kw">streamlit run frontend/app.py</span>
+Browser 1:  <span class="str">http://localhost:8501</span>  ← Streamlit UI (full screen)
+Browser 2:  <span class="str">http://localhost:8000/docs</span> ← Swagger (minimised)
+Props:      Blank Word doc + printed FDA warning letter
+    </div>
+  </div>
+
+  <div class="card-grid cols-2">
+    <div>
+      <div class="act-header">
+        <span class="act-badge">ACT 1 — 3 MIN</span>
+        <h3>The Problem</h3>
+      </div>
+      <div class="say-box">
+        <div class="say-label">Say</div>
+        <p>"Before I show you EVOLV, let me show you what your team is doing right now." <em>[Show blank Word doc]</em> "3 days writing requirements. 2 weeks test scripts. Then the system changes — and they do it all again." <em>[Show FDA warning letter]</em> "This company paid $12 million in remediation. EVOLV exists so this never happens to you."</p>
+      </div>
+
+      <div class="act-header" style="margin-top:1rem">
+        <span class="act-badge">ACT 2 — 5 MIN</span>
+        <h3>Intelligence Engine</h3>
+      </div>
+      <div class="say-box">
+        <div class="say-label">Type this into Page 2</div>
+        <p style="font-family:monospace;font-size:0.8rem">"I need a system to manage laboratory samples — track chain of custody, record temperature at every transfer, log who handled each sample and when, and alert if temperature exceeds 2–8°C."</p>
+      </div>
+      <div class="say-box" style="margin-top:0.5rem">
+        <div class="say-label">While generating, say</div>
+        <p>"EVOLV is querying its GAMP 5 knowledge base — not making things up. Every requirement is grounded in actual regulation." <em>[Point to URS ID, Criticality, Regulatory Rationale]</em> "A consultant takes 4 hours. EVOLV: 12 seconds."</p>
+      </div>
+    </div>
+    <div>
+      <div class="act-header">
+        <span class="act-badge">ACT 3 — 5 MIN</span>
+        <h3>Sentinel Blast Radius</h3>
+      </div>
+      <div class="say-box">
+        <div class="say-label">Enter in Sentinel page</div>
+        <p style="font-family:monospace;font-size:0.78rem">Old: "The system shall log sample transfers."<br/>New: "The system shall log and encrypt all sample transfers using AES-256 per 21 CFR Part 11."</p>
+      </div>
+      <div class="say-box" style="margin-top:0.5rem">
+        <div class="say-label">Say after results appear</div>
+        <p>"TC-05 is RED — must re-run. TC-06 YELLOW — review first. RISK-02 RED — re-assess. Instead of 6 test cases at 30 min each — 3 hours — we only re-run 2. We save 1 hour, every time." <em>[Point to Rationalization Log]</em> "This is what makes EVOLV defensible. FDA auditor asks why. You show them this. Case closed."</p>
+      </div>
+
+      <div class="act-header" style="margin-top:1rem">
+        <span class="act-badge">ACT 4 — 3 MIN</span>
+        <h3>Enterprise API</h3>
+      </div>
+      <div class="say-box">
+        <div class="say-label">At http://localhost:8000/docs</div>
+        <p>POST /bulk/validate · Add header <strong>X-EVOLV-MODE: Sandbox</strong> · Submit 3 requirements · Get job_id back in milliseconds · Poll GET /bulk/status/{id} · Point to "sandbox": true</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="act-header" style="margin-top:1rem">
+    <span class="act-badge">ACT 5 — 2 MIN</span>
+    <h3>The Wow Rule — The Close</h3>
+  </div>
+  <div class="say-box">
+    <div class="say-label">Say — slowly, let it land</div>
+    <p>"If your training record is expired, the platform will not let you approve a GxP document. Not 'it will warn you.' Not 'it will ask for a reason.' It will <strong>deny the action</strong>. Full stop. VP of Quality. System owner. Doesn't matter. This eliminates an entire category of FDA 483 observations. We hardcoded it so no one can turn it off. <em>That's EVOLV. Not a validation tool. A compliance platform with opinions.</em>"</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SLIDE 16 — Q&A ═══════════════════════════════ -->
+<div class="slide" id="slide-qa">
+  <div class="slide-label">Slide 15 — Tough Questions Answered</div>
+  <h2>Anticipated <em>Objections</em> — Pre-Answered</h2>
+
+  <div class="card-grid cols-2">
+    <div>
+      <div class="qa-item">
+        <div class="q">Q: "How do we know the AI output is accurate?"</div>
+        <div class="a">Every output is grounded in a specific page of GAMP 5. The Verification Agent triple-checks every requirement. The Logic Archive shows exactly why — SHA-256 signed. If we can't audit the reasoning, we don't ship the output.</div>
+      </div>
+      <div class="qa-item">
+        <div class="q">Q: "What if the AI hallucinates a regulatory citation?"</div>
+        <div class="a">The Verification Agent runs a Rationale Relevance check. If the best GAMP 5 match score is below 0.45, the requirement is <strong>rejected</strong> — not delivered. EVOLV fails loudly, not silently.</div>
+      </div>
+      <div class="qa-item">
+        <div class="q">Q: "Can we deploy on-premises?"</div>
+        <div class="a">Yes. Full on-premises deployment. Your OpenAI calls stay inside your Azure subscription. Your Pinecone stays in your private cloud. Audit data stays in your datacentre. We deploy the platform. Your data stays yours.</div>
+      </div>
+    </div>
+    <div>
+      <div class="qa-item">
+        <div class="q">Q: "How is this different from ChatGPT with a prompt?"</div>
+        <div class="a">ChatGPT doesn't know what GAMP 5 says. Doesn't reject outputs that contradict regulation. Doesn't produce SHA-256 signed audit trails. Doesn't enforce training records. ChatGPT is a language model. EVOLV is a compliance platform. One you can use in an FDA inspection. One you cannot.</div>
+      </div>
+      <div class="qa-item">
+        <div class="q">Q: "What's the validation status of EVOLV itself?"</div>
+        <div class="a">EVOLV is built on the same framework it validates. Every EVOLV function has a URS requirement, a verification check, and a test script. We eat our own cooking. Our own validation package is generated by EVOLV.</div>
+      </div>
+      <div class="qa-item">
+        <div class="q">Q: "How long does implementation take?"</div>
+        <div class="a">Tenant configuration: 1 day. Knowledge base with your SOPs: 3–5 days. First validated system through EVOLV: 2 weeks. Full deployment: 60–90 days.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem;text-align:center;background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.2)">
+    <div style="font-size:1.1rem;font-weight:700;color:var(--cyan);margin-bottom:0.4rem">Key Numbers to Drop in the Room</div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:0.5rem;font-size:0.8rem;color:rgba(240,244,255,0.8)">
+      <span class="pill cyan">12s requirement generation</span>
+      <span class="pill cyan">2m test script</span>
+      <span class="pill cyan">2s change impact</span>
+      <span class="pill blue">16 regulatory frameworks</span>
+      <span class="pill blue">11 AI agents</span>
+      <span class="pill blue">500 batch capacity</span>
+      <span class="pill green">3 checks per requirement</span>
+      <span class="pill green">SHA-256 audit hash chain</span>
+      <span class="pill amber">$3M–$4M annual ROI</span>
+      <span class="pill amber">5-rule ABAC chain</span>
+      <span class="pill amber">6 document types</span>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- PROGRESS BAR -->
+<div id="progress-bar">
+  <div id="dots"></div>
+  <span id="progress-label"></span>
+</div>
+
+<div id="key-hint">← → arrow keys to navigate</div>
+
+<script>
+const slideIds = [
+  'slide-cover','slide-problem','slide-what','slide-agents',
+  'slide-workflow','slide-sentinel','slide-enterprise','slide-api',
+  'slide-compliance','slide-competitive','slide-roi','slide-tech',
+  'slide-deployment','slide-roadmap','slide-cta','slide-demo','slide-qa'
+];
+const slideNames = [
+  'Cover','Problem','What is EVOLV','11 AI Agents',
+  'Workflow','Sentinel','Enterprise','API Layer',
+  'Compliance','Competitive','ROI','Tech Differentiators',
+  'Deployment','Roadmap','Call to Action','Demo Script','Q&A'
+];
+
+let current = 0;
+const total = slideIds.length;
+
+function buildDots() {
+  const container = document.getElementById('dots');
+  container.innerHTML = '';
+  slideIds.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.title = slideNames[i];
+    d.onclick = () => goTo(i);
+    container.appendChild(d);
+  });
+}
+
+function updateDots() {
+  const dots = document.querySelectorAll('.dot');
+  dots.forEach((d, i) => {
+    d.className = 'dot' + (i === current ? ' active' : (i < current ? ' visited' : ''));
+  });
+}
+
+function goTo(n) {
+  if (n < 0 || n >= total) return;
+  document.getElementById(slideIds[current]).classList.remove('active');
+  current = n;
+  document.getElementById(slideIds[current]).classList.add('active');
+  document.getElementById('slide-counter').textContent = (current + 1) + ' / ' + total;
+  document.getElementById('progress-label').textContent = slideNames[current];
+  document.getElementById('btn-prev').disabled = current === 0;
+  document.getElementById('btn-next').disabled = current === total - 1;
+  updateDots();
+}
+
+function navigate(dir) { goTo(current + dir); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
+  if (e.key === 'Home') goTo(0);
+  if (e.key === 'End')  goTo(total - 1);
+});
+
+let demoMode = false;
+function toggleDemo() {
+  demoMode = !demoMode;
+  const btn = document.getElementById('mode-toggle');
+  if (demoMode) {
+    btn.textContent = '← Back to Deck';
+    btn.style.color = 'var(--amber)';
+    goTo(slideIds.indexOf('slide-demo'));
+  } else {
+    btn.textContent = '📋 Demo Script';
+    btn.style.color = '';
+    goTo(0);
+  }
+}
+
+buildDots();
+goTo(0);
+</script>
+
+</body>
+</html>
