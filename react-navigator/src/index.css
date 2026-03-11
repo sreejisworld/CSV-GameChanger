@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #050d1f;
+  color: #e2e8f0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2d5080; }
+
+/* Glow effects */
+.glow-red  { box-shadow: 0 0 8px rgba(248,113,113,0.5); animation: glowRed 2s ease-in-out infinite; }
+.glow-green{ box-shadow: 0 0 6px rgba(34,197,94,0.4); }
+
+@keyframes glowRed {
+  0%,100% { box-shadow: 0 0 4px rgba(248,113,113,0.4); }
+  50%      { box-shadow: 0 0 14px rgba(248,113,113,0.7); }
+}
+
+/* Heatmap transitions */
+.heat-node { transition: background-color 0.4s ease; }
+
+/* Search overlay */
+.search-overlay {
+  backdrop-filter: blur(4px);
+  background: rgba(5,13,31,0.8);
+}
+
+/* Popover arrow */
+.popover-arrow::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-right-color: #0f2137;
+}
+
+/* Tree connector lines */
+.tree-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #1e3a5f;
+}
+
+/* Mono font for IDs */
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* HITL badge pulse */
+@keyframes hitlePulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+.hitl-pulse { animation: hitlePulse 2.5s ease-in-out infinite; }
