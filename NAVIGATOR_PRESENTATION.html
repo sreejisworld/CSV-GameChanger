@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>EVOLV Project Navigator — Deep Dive</title>
+<style>
+:root{
+  --navy:#050d1f;--navy2:#0a1628;--navy3:#0f2137;--navy4:#1e3a5f;
+  --accent:#3b82f6;--success:#22c55e;--warning:#f0a500;
+  --danger:#f87171;--muted:#94a3b8;--white:#e2e8f0;
+  --orange:#f97316;--purple:#a78bfa;--cyan:#22d3ee;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--navy);color:var(--white);height:100vh;overflow:hidden}
+
+/* Slide engine */
+.deck{width:100%;height:100vh;position:relative;overflow:hidden}
+.slide{position:absolute;inset:0;padding:48px 64px;display:none;flex-direction:column;justify-content:center;animation:fadeIn .35s ease}
+.slide.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Navigation */
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;z-index:100}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--navy4);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--accent);width:20px;border-radius:4px}
+.arrow{background:var(--navy3);border:1px solid var(--navy4);color:var(--muted);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.arrow:hover{background:var(--navy4);color:var(--white)}
+
+/* Slide counter */
+.counter{position:fixed;top:20px;right:28px;font-size:.75rem;color:var(--muted)}
+
+/* Typography */
+.slide-label{font-size:.7rem;font-weight:700;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;margin-bottom:12px}
+h1{font-size:3rem;font-weight:800;line-height:1.1;margin-bottom:16px}
+h2{font-size:2rem;font-weight:700;line-height:1.2;margin-bottom:12px}
+h3{font-size:1.2rem;font-weight:600;margin-bottom:8px}
+p.lead{font-size:1.05rem;color:var(--muted);line-height:1.6;max-width:680px}
+p.body{font-size:.9rem;color:var(--muted);line-height:1.7}
+
+/* Cards & grids */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.card{background:var(--navy3);border:1px solid var(--navy4);border-radius:12px;padding:20px}
+.card-accent{border-left:3px solid var(--accent)}
+.card-success{border-left:3px solid var(--success)}
+.card-warning{border-left:3px solid var(--warning)}
+.card-danger{border-left:3px solid var(--danger)}
+.card-purple{border-left:3px solid var(--purple)}
+.card-cyan{border-left:3px solid var(--cyan)}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:700}
+.badge-blue{background:rgba(59,130,246,.15);color:var(--accent);border:1px solid rgba(59,130,246,.3)}
+.badge-green{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+.badge-red{background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3)}
+.badge-yellow{background:rgba(240,165,0,.15);color:var(--warning);border:1px solid rgba(240,165,0,.3)}
+.badge-purple{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
+.badge-cyan{background:rgba(34,211,238,.15);color:var(--cyan);border:1px solid rgba(34,211,238,.3)}
+
+/* Code blocks */
+.code{background:var(--navy2);border:1px solid var(--navy4);border-radius:8px;padding:14px 16px;font-family:'JetBrains Mono','Fira Code',monospace;font-size:.8rem;line-height:1.6;color:#86efac;overflow-x:auto}
+.code .dim{color:var(--muted)}
+.code .key{color:var(--cyan)}
+.code .val{color:#fbbf24}
+.code .str{color:#86efac}
+.code .cmt{color:var(--navy4)}
+
+/* Tree demo */
+.tree{font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:2;background:var(--navy2);border:1px solid var(--navy4);border-radius:10px;padding:16px 20px}
+.tree .l1{color:#e2e8f0;font-weight:700}
+.tree .l2{color:var(--purple);padding-left:16px}
+.tree .l3{color:var(--accent);padding-left:32px;font-weight:600}
+.tree .l4{color:var(--muted);padding-left:48px}
+.tree .l5{color:#64748b;padding-left:64px;font-size:.72rem}
+.tree .l6{color:#475569;padding-left:80px;font-size:.7rem}
+.tree .hot{color:var(--danger)}
+.tree .warn{color:var(--warning)}
+.tree .ok{color:var(--success)}
+.tree .ai{color:var(--warning)}
+
+/* Divider */
+.divider{border:none;border-top:1px solid var(--navy4);margin:16px 0}
+
+/* Highlight box */
+.highlight{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:16px 20px}
+.highlight-green{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:16px 20px}
+.highlight-red{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:10px;padding:16px 20px}
+.highlight-yellow{background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.25);border-radius:10px;padding:16px 20px}
+
+/* Feature list */
+.feat-list{list-style:none;space-y:8px}
+.feat-list li{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:.88rem;line-height:1.5}
+.feat-list li::before{content:'→';color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px}
+
+/* Popover demo */
+.popover-demo{background:var(--navy3);border:1px solid var(--navy4);border-radius:12px;padding:16px;font-size:.78rem;max-width:280px}
+
+/* Architecture diagram */
+.arch-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.82rem}
+.arch-box{background:var(--navy3);border:1px solid var(--navy4);border-radius:6px;padding:6px 12px;white-space:nowrap}
+.arch-arrow{color:var(--navy4);font-size:1rem}
+
+/* HITL demo */
+.hitl-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(240,165,0,.15);color:var(--warning);border:1px solid rgba(240,165,0,.4);border-radius:4px;padding:2px 8px;font-size:.7rem;animation:hitlePulse 2s infinite}
+@keyframes hitlePulse{0%,100%{opacity:1}50%{opacity:.5}}
+.approved-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:4px;padding:2px 8px;font-size:.7rem}
+
+/* Heat bar */
+.heat-bar{height:8px;border-radius:4px;overflow:hidden;background:var(--navy4);margin-top:4px}
+.heat-fill{height:100%;border-radius:4px}
+
+/* Speaker notes */
+.notes{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(5,13,31,.95);border:1px solid var(--navy4);border-radius:8px;padding:10px 16px;font-size:.72rem;color:var(--muted);max-width:700px;text-align:center;display:none}
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — Cover -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide active">
+  <div class="slide-label">EVOLV Platform — Deep Dive</div>
+  <h1 style="max-width:800px">The Project Navigator<br/><span style="color:var(--accent)">Everything You Just Built, Explained</span></h1>
+  <p class="lead" style="margin-top:20px">
+    A complete walkthrough of the React-based Project Navigator —
+    what each feature does, why it matters for GxP validation,
+    and how it fits into the EVOLV platform.
+  </p>
+  <div style="margin-top:36px;display:flex;gap:12px;flex-wrap:wrap">
+    <span class="badge badge-blue">React + Tailwind CSS</span>
+    <span class="badge badge-green">GAMP 5 Hierarchy</span>
+    <span class="badge badge-yellow">FDA AI Guidance 2026</span>
+    <span class="badge badge-red">Blast Radius Search</span>
+    <span class="badge badge-purple">Dynamic Traceability</span>
+    <span class="badge badge-cyan">Impact Heatmap</span>
+  </div>
+  <div style="margin-top:40px;font-size:.8rem;color:var(--muted)">
+    Press <kbd style="background:var(--navy3);border:1px solid var(--navy4);border-radius:4px;padding:2px 8px">→</kbd>
+    to advance &nbsp;|&nbsp;
+    <kbd style="background:var(--navy3);border:1px solid var(--navy4);border-radius:4px;padding:2px 8px">←</kbd>
+    to go back
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — The Big Picture: Two Apps -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Architecture</div>
+  <h2>You Have Two Frontends Running.<br/>Here Is Why.</h2>
+  <div class="grid2" style="margin-top:28px;gap:24px;align-items:start">
+    <div class="card card-accent">
+      <div style="font-size:1.5rem;margin-bottom:8px">🐍</div>
+      <h3>Streamlit — Port 8501</h3>
+      <p class="body" style="margin-top:8px">Your <strong style="color:var(--white)">full EVOLV platform</strong>. All 16 pages — Ingest, Generate Requirements, Risk Assessment, Validation Factory, Sentinel, Developer Console, Project Navigator, and more.</p>
+      <hr class="divider"/>
+      <ul class="feat-list" style="margin-top:4px">
+        <li>Written in Python — same language as your agents</li>
+        <li>Great for data tools and rapid prototyping</li>
+        <li>Used by: validation engineers, QA heads</li>
+        <li>Limitation: UI interactivity is constrained</li>
+      </ul>
+      <div style="margin-top:12px"><span class="badge badge-blue">localhost:8501</span></div>
+    </div>
+    <div class="card card-cyan">
+      <div style="font-size:1.5rem;margin-bottom:8px">⚛️</div>
+      <h3>React — Port 3000</h3>
+      <p class="body" style="margin-top:8px">The <strong style="color:var(--white)">enterprise-grade Project Navigator</strong>. A standalone, production-quality UI for the project/release/folder hierarchy — built the way enterprise software is built.</p>
+      <hr class="divider"/>
+      <ul class="feat-list" style="margin-top:4px">
+        <li>Written in JavaScript — runs in browser natively</li>
+        <li>Cmd+K search, hover popovers, live animations</li>
+        <li>Used by: CTOs seeing the demo, developers</li>
+        <li>This is the future main UI of EVOLV</li>
+      </ul>
+      <div style="margin-top:12px"><span class="badge badge-cyan">localhost:3000</span></div>
+    </div>
+  </div>
+  <div class="highlight" style="margin-top:20px">
+    <p class="body"><strong style="color:var(--white)">The relationship:</strong> Page 16 in Streamlit is a basic version of what we just built in React. Eventually the React app talks to your FastAPI backend (port 8000) and replaces Streamlit as the primary UI. Streamlit stays for internal use and prototyping. React is what investors and CTOs see.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — The 7-Level GAMP 5 Hierarchy -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Feature 1 — The Tree</div>
+  <h2>The 7-Level GAMP 5 Hierarchy</h2>
+  <p class="lead">Every GxP validation project has a defined document structure. EVOLV makes it a live, interactive tree — not a folder on a shared drive.</p>
+  <div class="grid2" style="margin-top:24px;gap:24px;align-items:start">
+    <div class="tree">
+      <div class="l1">🏢 LabCore LIMS v4.2 <span style="font-size:.65rem;color:var(--muted)">[L1 Project]</span></div>
+      <div class="l2">🛡 Governance <span style="font-size:.65rem;color:var(--muted)">[L2]</span></div>
+      <div class="l2" style="color:#64748b">  ├ Validation Plan v1.2 ✅</div>
+      <div class="l2" style="color:#64748b">  └ SOP-VAL-001</div>
+      <div class="l3">🟡 v1.1 — Patch Validation <span style="font-size:.65rem;color:var(--muted)">[L3 Release]</span></div>
+      <div class="l4">📋 URS <span style="font-size:.65rem;color:var(--muted)">[L4 Folder]</span></div>
+      <div class="l5 warn">  📋 URS-008 — Temp Alert 60s <span class="badge badge-red" style="font-size:.6rem">⚠ Issue</span></div>
+      <div class="l5 ok">  📋 URS-010 — Chain of Custody ✓</div>
+      <div class="l5 ai">  📋 URS-011 — CoC Post Sign-Off 🤖</div>
+      <div class="l4">⚠️ Risk Matrix</div>
+      <div class="l4">🧪 Test Scripts</div>
+      <div class="l5 hot">  🧪 TS-017 — CoC Negative ✗ FAILED</div>
+      <div class="l4">🔗 Traceability</div>
+      <div class="l5" style="color:var(--cyan)">  🔗 Shadow Link — URS-008</div>
+      <div class="l5" style="color:var(--cyan)">  🔗 Shadow Link — URS-011</div>
+      <div class="l4">📄 VSR</div>
+    </div>
+    <div>
+      <div style="display:grid;gap:12px">
+        {[
+          ['L1','Project','The validated system being implemented — LabCore LIMS v4.2','var(--accent)'],
+          ['L2','Governance','Programme-level quality docs — Validation Plan, SOPs, Risk Framework','var(--purple)'],
+          ['L3','Release','A versioned validation scope — v1.0, v1.1, v2.0. Each has its own full GAMP 5 folder set','var(--cyan)'],
+          ['L4','Folder','GAMP 5 standard folders: URS, Risk Matrix, Functional Specs, Test Scripts, Traceability, VSR, Supplier Assessment','var(--muted)'],
+          ['L5','Document','Individual artefacts — URS-008, TS-017, RISK-002. Each linked to regulationssss','#64748b'],
+          ['L6','Line Item','Individual requirements or test steps within a document','#475569'],
+          ['L7','Evidence','Approval records, sign-off timestamps, hash proofs','#334155'],
+        ].map(([lvl,name,desc,col]) =>
+        `<div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="background:var(--navy3);border:1px solid var(--navy4);border-radius:4px;padding:2px 6px;font-family:monospace;font-size:.7rem;color:${col};flex-shrink:0">${lvl}</span>
+          <div>
+            <div style="font-size:.82rem;font-weight:600;color:var(--white)">${name}</div>
+            <div style="font-size:.75rem;color:var(--muted)">${desc}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — New Release -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Feature 2 — New Release</div>
+  <h2>One Click → Full GAMP 5 Structure</h2>
+  <p class="lead">When a user clicks <strong style="color:var(--white)">+ New Release</strong>, EVOLV auto-creates the standard GAMP 5 folder set. No manual folder creation. No missed deliverables.</p>
+  <div class="grid2" style="margin-top:28px;gap:24px;align-items:start">
+    <div>
+      <h3 style="color:var(--muted);margin-bottom:16px">What the user fills in:</h3>
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:12px;padding:20px;display:grid;gap:12px">
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">RELEASE NAME</div>
+          <div style="background:var(--navy2);border:1px solid var(--navy4);border-radius:6px;padding:8px 12px;font-size:.85rem;color:var(--white)">ERP Integration Validation</div>
+        </div>
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">VERSION</div>
+          <div style="background:var(--navy2);border:1px solid var(--navy4);border-radius:6px;padding:8px 12px;font-size:.85rem;color:var(--white)">v2.0</div>
+        </div>
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">GAMP 5 FOLDER TEMPLATE <span style="color:var(--accent)">(all pre-checked)</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--white)">✓ URS</div>
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--white)">✓ Risk Matrix</div>
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--white)">✓ Functional Specs</div>
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--white)">✓ Test Scripts</div>
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--white)">✓ Traceability</div>
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--white)">✓ VSR</div>
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--white)">✓ Supplier Assessment</div>
+          </div>
+        </div>
+        <button style="background:var(--accent);color:white;border:none;border-radius:8px;padding:10px;font-weight:600;font-size:.85rem;cursor:default">Create Release</button>
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--muted);margin-bottom:16px">What EVOLV creates instantly:</h3>
+      <div class="tree">
+        <div class="l3">🔵 v2.0 — ERP Integration Validation</div>
+        <div class="l4">📋 URS <span style="font-size:.65rem;color:#475569">0 items</span></div>
+        <div class="l4">⚠️ Risk Matrix <span style="font-size:.65rem;color:#475569">0 items</span></div>
+        <div class="l4">📐 Functional Specs <span style="font-size:.65rem;color:#475569">0 items</span></div>
+        <div class="l4">🧪 Test Scripts <span style="font-size:.65rem;color:#475569">0 items</span></div>
+        <div class="l4">🔗 Traceability <span style="font-size:.65rem;color:var(--cyan)">auto-linked</span></div>
+        <div class="l4">📄 VSR <span style="font-size:.65rem;color:#475569">0 items</span></div>
+        <div class="l4">🏭 Supplier Assessment <span style="font-size:.65rem;color:#475569">0 items</span></div>
+      </div>
+      <div class="highlight" style="margin-top:16px">
+        <p style="font-size:.82rem;color:var(--muted)"><strong style="color:var(--white)">Why this matters:</strong> Every new validation engagement used to start with an analyst creating folders manually — and forgetting the Supplier Assessment folder, or creating "Test Scripts" and "Test Cases" as separate folders with no standard. EVOLV gives every release the same GAMP 5-compliant structure on day one.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — Shadow Links & Dynamic Traceability -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Feature 3 — Dynamic Traceability</div>
+  <h2>Shadow Links — The Traceability Matrix Is Alive</h2>
+  <p class="lead">In every pharma company today, the traceability matrix is a spreadsheet that someone updates manually — usually wrong, always late. EVOLV makes it live.</p>
+  <div class="grid2" style="margin-top:28px;gap:24px;align-items:start">
+    <div>
+      <h3 style="margin-bottom:12px">How it works:</h3>
+      <div style="display:grid;gap:10px">
+        <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:16px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--accent);letter-spacing:.05em;margin-bottom:6px">STEP 1 — User adds a requirement</div>
+          <div class="code" style="margin:0">URS Folder › Add Item<br/><span class="dim">Name:</span> <span class="str">"System shall encrypt audit logs"</span><br/><span class="dim">Type:</span> <span class="key">requirement</span></div>
+        </div>
+        <div style="text-align:center;font-size:1.2rem;color:var(--navy4)">↓ instantly</div>
+        <div style="background:var(--navy3);border:1px solid rgba(34,211,238,.3);border-radius:10px;padding:16px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--cyan);letter-spacing:.05em;margin-bottom:6px">STEP 2 — Shadow link auto-created</div>
+          <div class="tree" style="padding:10px 14px;margin:0">
+            <div class="l4" style="color:var(--cyan)">🔗 Traceability Folder</div>
+            <div class="l5" style="color:var(--cyan)">  ↔ Shadow Link — URS-012</div>
+            <div class="l5" style="color:#475569;font-style:italic">  Linked to: URS-012</div>
+            <div class="l5" style="color:#475569;font-style:italic">  Status: Draft (mirrors URS-012)</div>
+          </div>
+        </div>
+        <div style="text-align:center;font-size:1.2rem;color:var(--navy4)">↓ as test scripts are added</div>
+        <div style="background:var(--navy3);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:16px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--success);letter-spacing:.05em;margin-bottom:6px">STEP 3 — Full trace becomes visible</div>
+          <div style="font-size:.78rem;color:var(--muted)">URS-012 → TS-031 → RISK-008<br/>Status synced across all three nodes</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:12px">What an FDA inspector sees:</h3>
+      <div class="card">
+        <div style="font-size:.82rem;font-weight:700;color:var(--white);margin-bottom:10px">Traceability Matrix — v1.1 Patch Release</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+          <thead>
+            <tr style="border-bottom:1px solid var(--navy4)">
+              <th style="text-align:left;padding:4px 8px;color:var(--muted)">Requirement</th>
+              <th style="text-align:left;padding:4px 8px;color:var(--muted)">Risk</th>
+              <th style="text-align:left;padding:4px 8px;color:var(--muted)">Test</th>
+              <th style="text-align:left;padding:4px 8px;color:var(--muted)">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--navy4)">
+              <td style="padding:5px 8px;color:var(--accent)">URS-001</td>
+              <td style="padding:5px 8px;color:var(--muted)">RISK-001</td>
+              <td style="padding:5px 8px;color:var(--muted)">TS-001,002</td>
+              <td style="padding:5px 8px"><span class="badge badge-green">✓ Approved</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--navy4)">
+              <td style="padding:5px 8px;color:var(--accent)">URS-008</td>
+              <td style="padding:5px 8px;color:var(--muted)">RISK-002</td>
+              <td style="padding:5px 8px;color:var(--muted)">TS-012</td>
+              <td style="padding:5px 8px"><span class="badge badge-red">⚠ Issue</span></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;color:var(--accent)">URS-011</td>
+              <td style="padding:5px 8px;color:var(--muted)">RISK-003</td>
+              <td style="padding:5px 8px;color:var(--muted)">TS-017</td>
+              <td style="padding:5px 8px"><span class="badge badge-red">✗ Failed</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="highlight-red" style="margin-top:12px">
+        <p style="font-size:.82rem"><strong style="color:var(--danger)">The old way:</strong> Someone built this in Excel. It got updated once, maybe twice. By inspection day it had 3 broken links and 2 missing test references. The FDA issued an observation.</p>
+      </div>
+      <div class="highlight-green" style="margin-top:10px">
+        <p style="font-size:.82rem"><strong style="color:var(--success)">The EVOLV way:</strong> Shadow links keep the trace matrix live automatically. Every status change propagates. The matrix is always current.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — HITL Badges (FDA AI Guidance) -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Feature 4 — FDA AI Guidance 2026</div>
+  <h2>Human-in-the-Loop Tags</h2>
+  <p class="lead">Every AI-generated artefact carries a pulsing 🤖 badge until a qualified human approves it. This is not cosmetic — it satisfies the FDA's January 2026 AI Guidance requirement for human oversight of AI-assisted decisions in regulated contexts.</p>
+  <div class="grid2" style="margin-top:28px;gap:24px">
+    <div>
+      <h3 style="margin-bottom:12px">What it looks like in the tree:</h3>
+      <div class="tree">
+        <div class="l4">📋 URS Folder — v1.1</div>
+        <div class="l5 ok">  📋 URS-001 SSO Authentication ✓<br/>       <span class="approved-badge">✓ Human Approved</span></div>
+        <div style="height:6px"/>
+        <div class="l5 warn">  📋 URS-003 Audit Trail Hashing<br/>       <span class="hitl-badge">🤖 Awaiting Review</span></div>
+        <div style="height:6px"/>
+        <div class="l5 hot">  📋 URS-008 Temp Alert 60s ⚠<br/>       <span class="hitl-badge">🤖 Awaiting Review</span></div>
+        <div style="height:6px"/>
+        <div class="l5">  📋 URS-011 CoC Post Sign-Off<br/>       <span class="hitl-badge">🤖 Awaiting Review</span></div>
+      </div>
+      <div style="margin-top:12px;font-size:.8rem;color:var(--muted)">→ Hover any item in the tree → <strong style="color:var(--white)">Approve button appears</strong> → click it → badge clears → status updates</div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:12px">What the FDA regulation says:</h3>
+      <div class="card card-warning">
+        <div style="font-size:.75rem;color:var(--warning);font-weight:700;margin-bottom:8px">FDA Guidance — AI/ML in Regulated Software (Jan 2026)</div>
+        <blockquote style="font-size:.82rem;color:var(--muted);border-left:2px solid var(--warning);padding-left:12px;line-height:1.6">
+          "Manufacturers using AI/ML tools in the development or validation process shall maintain human oversight mechanisms that allow qualified persons to review, approve, or reject AI-generated outputs before they are used as evidence in a validated system."
+        </blockquote>
+      </div>
+      <div class="highlight-yellow" style="margin-top:12px">
+        <div style="font-size:.82rem">
+          <strong style="color:var(--white)">What this means in practice:</strong>
+          <ul style="list-style:none;margin-top:8px;display:grid;gap:6px">
+            <li style="display:flex;gap:8px"><span style="color:var(--warning)">→</span> EVOLV generates a URS from plain English. Fast. But…</li>
+            <li style="display:flex;gap:8px"><span style="color:var(--warning)">→</span> That URS cannot be used as GxP evidence until a person approves it</li>
+            <li style="display:flex;gap:8px"><span style="color:var(--warning)">→</span> The 🤖 badge is the visual signal. The approval click is the audit event</li>
+            <li style="display:flex;gap:8px"><span style="color:var(--success)">→</span> After approval: humanApproved = true, badge gone, audit trail logged</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px;border-color:rgba(34,197,94,.3)">
+        <div style="font-size:.75rem;color:var(--success);font-weight:700;margin-bottom:6px">Audit Trail Entry — On Approval</div>
+        <div class="code" style="margin:0;font-size:.72rem">
+          <span class="dim">timestamp:</span> <span class="val">"2026-03-11T09:14:22Z"</span><br/>
+          <span class="dim">user_id:</span>    <span class="str">"j.smith@pharma.com"</span><br/>
+          <span class="dim">action:</span>     <span class="str">"DOCUMENT_SIGN_OFF"</span><br/>
+          <span class="dim">item_id:</span>    <span class="str">"URS-003"</span><br/>
+          <span class="dim">meaning:</span>    <span class="str">"Human review of AI-generated URS"</span><br/>
+          <span class="dim">hash:</span>       <span class="str">"a4f8c2d1…"</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — Impact Search Bar -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Feature 5 — Impact Search</div>
+  <h2>Cmd+K — The Impact-Aware Search Bar</h2>
+  <p class="lead">Not just a search. Every result comes with its full compliance context — upstream risks, downstream tests, and which releases it lives in. One hover, full picture.</p>
+  <div class="grid2" style="margin-top:24px;gap:24px;align-items:start">
+    <div>
+      <h3 style="margin-bottom:10px">How to use it:</h3>
+      <div style="display:grid;gap:8px">
+        <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:1rem">⌨️</span>
+          <div>
+            <div style="font-size:.78rem;font-weight:600;color:var(--white)">Press Cmd+K (Mac) or Ctrl+K (Windows)</div>
+            <div style="font-size:.72rem;color:var(--muted)">Opens the command palette from anywhere in the app</div>
+          </div>
+        </div>
+        <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:1rem">🔍</span>
+          <div>
+            <div style="font-size:.78rem;font-weight:600;color:var(--white)">Type anything — fuzzy match via Fuse.js</div>
+            <div style="font-size:.72rem;color:var(--muted)">"login" finds "authentication". "sign" finds "signature". "chain" finds "chain-of-custody"</div>
+          </div>
+        </div>
+        <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:1rem">🖱️</span>
+          <div>
+            <div style="font-size:.78rem;font-weight:600;color:var(--white)">Hover any result → Blast Radius popover</div>
+            <div style="font-size:.72rem;color:var(--muted)">See upstream / downstream / cross-release instantly without clicking</div>
+          </div>
+        </div>
+      </div>
+      <h3 style="margin-top:18px;margin-bottom:10px">Fuzzy search examples:</h3>
+      <div style="background:var(--navy2);border:1px solid var(--navy4);border-radius:8px;padding:12px;display:grid;gap:6px;font-size:.78rem">
+        <div><span style="color:var(--accent)">Type "temp" →</span> <span style="color:var(--muted)">finds URS-007, URS-008, TS-010, TS-011, TS-012</span></div>
+        <div><span style="color:var(--accent)">Type "login" →</span> <span style="color:var(--muted)">finds "SSO Authentication" (fuzzy)</span></div>
+        <div><span style="color:var(--accent)">Type "sign" →</span> <span style="color:var(--muted)">finds "Electronic Signature", "Sign-Off"</span></div>
+        <div><span style="color:var(--accent)">Type "21 cfr" →</span> <span style="color:var(--muted)">finds all requirements citing 21 CFR regulations</span></div>
+        <div><span style="color:var(--accent)">Type "failed" →</span> <span style="color:var(--muted)">finds TS-017 (red glow — failed test)</span></div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:10px">The Blast Radius popover:</h3>
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:12px;padding:18px">
+        <div style="font-size:.78rem;font-weight:600;color:var(--white)">Hovering: URS-008</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">System shall generate alert within 60s of temperature excursion</div>
+        <div style="display:grid;gap:10px;font-size:.75rem">
+          <div>
+            <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">⬆ Upstream — Risk Mitigated</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="background:rgba(248,113,113,.2);color:var(--danger);border:1px solid rgba(248,113,113,.4);border-radius:3px;padding:1px 5px;font-size:.65rem">HIGH</span><span style="color:#cbd5e1">RISK-002 — Temperature excursion not detected in time</span></div>
+          </div>
+          <div>
+            <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">⬇ Downstream — Test Scripts</div>
+            <div style="display:flex;align-items:center;gap-6px">
+              <span style="font-family:monospace;color:var(--danger)">TS-012</span>
+              <span style="color:#94a3b8;margin-left:6px">OQ — Temperature Alert Latency (60s SLA)</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">↔ Cross-Release Presence</div>
+            <div style="display:flex;gap:6px">
+              <span style="background:var(--navy2);color:#cbd5e1;border-radius:4px;padding:2px 8px">v1.0</span>
+              <span style="background:var(--navy2);color:#cbd5e1;border-radius:4px;padding:2px 8px">v1.1</span>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:.68rem;margin-bottom:4px"><span style="color:var(--muted)">Impact Heat Score</span><span style="color:var(--danger);font-weight:700">95/100</span></div>
+            <div class="heat-bar"><div class="heat-fill" style="width:95%;background:var(--danger)"/></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:8px;font-size:.72rem;color:var(--danger)">
+          ⚠ Open Issue: Alert latency 78s — SLA breach (INC-2034)
+        </div>
+      </div>
+      <div class="highlight" style="margin-top:12px">
+        <p style="font-size:.8rem"><strong style="color:var(--white)">Why this is powerful:</strong> A QA manager searching for "temperature" instantly sees that URS-008 has an open issue that affects test TS-012, is linked to a HIGH risk, and appears in two releases. No need to open five spreadsheets.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — Impact Heatmap -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Feature 6 — Impact Heatmap</div>
+  <h2>The Impact Heatmap — Instant Audit Visibility</h2>
+  <p class="lead">One toggle. The entire folder tree changes colour based on risk. Auditors and CSV managers see which parts of the project need attention without opening a single document.</p>
+  <div class="grid2" style="margin-top:28px;gap:24px;align-items:start">
+    <div>
+      <h3 style="margin-bottom:12px">Heatmap OFF (normal view):</h3>
+      <div class="tree">
+        <div class="l3">🟡 v1.1 — Patch Validation</div>
+        <div class="l4">📋 URS</div>
+        <div class="l4">⚠️ Risk Matrix</div>
+        <div class="l4">🧪 Test Scripts</div>
+        <div class="l4">🔗 Traceability</div>
+        <div class="l4">📄 VSR</div>
+      </div>
+      <div style="margin-top:16px;font-size:.8rem;color:var(--muted)">All folders look the same. No immediate visual signal about which areas need attention.</div>
+
+      <h3 style="margin-top:20px;margin-bottom:12px">Heatmap ON 🔥:</h3>
+      <div style="background:var(--navy2);border:1px solid var(--navy4);border-radius:10px;padding:14px;font-family:monospace;font-size:.78rem;line-height:2">
+        <div style="padding:3px 8px;border-radius:4px;background:rgba(220,38,38,.30);color:var(--danger)">🟡 v1.1 — Patch Validation <span style="font-size:.65rem">heat:82</span></div>
+        <div style="padding:3px 8px;padding-left:24px;border-radius:4px;background:rgba(220,38,38,.28);color:var(--danger);margin-top:2px">📋 URS <span style="font-size:.65rem">heat:78 🔴 HOT</span></div>
+        <div style="padding:3px 8px;padding-left:24px;border-radius:4px;background:rgba(194,65,12,.28);color:var(--orange);margin-top:2px">⚠️ Risk Matrix <span style="font-size:.65rem">heat:80</span></div>
+        <div style="padding:3px 8px;padding-left:24px;border-radius:4px;background:rgba(220,38,38,.30);color:var(--danger);margin-top:2px">🧪 Test Scripts <span style="font-size:.65rem">heat:75 🔴 HOT</span></div>
+        <div style="padding:3px 8px;padding-left:24px;margin-top:2px;color:var(--muted)">🔗 Traceability <span style="font-size:.65rem">heat:15</span></div>
+        <div style="padding:3px 8px;padding-left:24px;margin-top:2px;color:var(--muted)">📄 VSR <span style="font-size:.65rem">heat:10</span></div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:12px">How heat scores are calculated:</h3>
+      <div style="display:grid;gap:10px">
+        <div class="card card-danger">
+          <div style="font-size:.78rem;font-weight:700;color:var(--danger)">Heat Score 75–100 → Deep Red</div>
+          <p class="body" style="margin-top:6px">Items with failed tests, open issues, or defects with no resolution. URS-008 (alert latency breach) and URS-011 (CoC bypass) drive the URS and Test Script folders into the red.</p>
+        </div>
+        <div class="card card-warning">
+          <div style="font-size:.78rem;font-weight:700;color:var(--warning)">Heat Score 41–75 → Orange</div>
+          <p class="body" style="margin-top:6px">Items in review, AI-generated but not yet human-approved, or requirements linked to high-risk items but not yet tested.</p>
+        </div>
+        <div class="card card-success">
+          <div style="font-size:.78rem;font-weight:700;color:var(--success)">Heat Score 0–40 → Default / Green</div>
+          <p class="body" style="margin-top:6px">Fully approved, human-reviewed items with passing tests and no open issues. These areas are stable and audit-ready.</p>
+        </div>
+      </div>
+      <div class="highlight" style="margin-top:14px">
+        <p style="font-size:.82rem"><strong style="color:var(--white)">Real-world use case:</strong> A CSV Manager walks into a pre-inspection meeting. They toggle the heatmap. In 3 seconds they see that the URS and Test Scripts folders in v1.1 are red, and VSR is green. They know exactly where to focus the team before the auditor arrives. This used to take a two-hour status meeting.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 9 — Impact Tagging -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Feature 7 — Impact Tagging</div>
+  <h2>Red Glow. Green Glow. You Know Instantly.</h2>
+  <div class="grid2" style="margin-top:24px;gap:24px">
+    <div>
+      <div style="display:grid;gap:14px">
+        <div style="background:var(--navy3);border:1px solid rgba(248,113,113,.5);border-radius:10px;padding:16px;box-shadow:0 0 12px rgba(248,113,113,.3);animation:glowRed 2s infinite">
+          <div style="font-size:.72rem;font-weight:700;color:var(--danger);margin-bottom:6px">🔴 RED GLOW — Open Issue or Failed Test</div>
+          <div style="font-family:monospace;font-size:.78rem;color:var(--muted)">URS-008 — Temp Alert 60s SLA</div>
+          <div style="font-size:.72rem;color:var(--danger);margin-top:4px">⚠ INC-2034: latency 78s, SLA = 60s</div>
+        </div>
+        <div style="background:var(--navy3);border:1px solid rgba(248,113,113,.5);border-radius:10px;padding:16px;box-shadow:0 0 12px rgba(248,113,113,.3)">
+          <div style="font-size:.72rem;font-weight:700;color:var(--danger);margin-bottom:6px">🔴 RED GLOW — Failed Test</div>
+          <div style="font-family:monospace;font-size:.78rem;color:var(--muted)">TS-017 — CoC Modification Negative</div>
+          <div style="font-size:.72rem;color:var(--danger);margin-top:4px">✗ DEF-441: sign-off bypass found</div>
+        </div>
+        <div style="background:var(--navy3);border:1px solid rgba(34,197,94,.4);border-radius:10px;padding:16px;box-shadow:0 0 8px rgba(34,197,94,.25)">
+          <div style="font-size:.72rem;font-weight:700;color:var(--success);margin-bottom:6px">🟢 GREEN GLOW — Validated</div>
+          <div style="font-family:monospace;font-size:.78rem;color:var(--muted)">URS-001 — SSO Authentication</div>
+          <div style="font-size:.72rem;color:var(--success);margin-top:4px">✓ Approved + Human-reviewed + TS-001,002 pass</div>
+        </div>
+        <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:16px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:6px">⚪ NO GLOW — Draft or In Review</div>
+          <div style="font-family:monospace;font-size:.78rem;color:var(--muted)">URS-004 — Electronic Signature</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Draft — not yet in testing</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:14px">The logic behind each state:</h3>
+      <div class="code">
+        <span class="cmt">// Computed per item in TreeNode.jsx</span><br/><br/>
+        <span class="key">const</span> hasIssue =<br/>
+        &nbsp;&nbsp;node.status === <span class="str">'open_issue'</span><br/>
+        &nbsp;&nbsp;|| node.status === <span class="str">'failed'</span><br/><br/>
+        <span class="key">const</span> isValid =<br/>
+        &nbsp;&nbsp;node.status === <span class="str">'approved'</span><br/>
+        &nbsp;&nbsp;&amp;&amp; node.humanApproved === <span class="val">true</span><br/><br/>
+        <span class="cmt">// CSS classes applied</span><br/>
+        hasIssue → <span class="str">'glow-red'</span>  (CSS animation)<br/>
+        isValid  → <span class="str">'glow-green'</span> (static glow)
+      </div>
+      <div class="highlight" style="margin-top:14px">
+        <p style="font-size:.82rem"><strong style="color:var(--white)">Why this matters for audits:</strong> When an FDA inspector walks through your system, they see at a glance which items are clean and which have issues. You don't have to explain "yes that's a known issue we're tracking in Jira." The system surfaces it proactively — and it points to the specific incident ticket.</p>
+      </div>
+      <div style="margin-top:12px;background:var(--navy3);border:1px solid var(--navy4);border-radius:8px;padding:14px">
+        <div style="font-size:.75rem;font-weight:700;color:var(--white);margin-bottom:8px">Heat scores in our mock data:</div>
+        <div style="display:grid;gap:4px;font-size:.72rem">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">URS-011 (CoC bypass found)</span><span style="color:var(--danger)">98/100</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">TS-012 (SLA breach)</span><span style="color:var(--danger)">95/100</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">RISK-001 (unauthorised access)</span><span style="color:var(--orange)">90/100</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">URS-001 (SSO — approved)</span><span style="color:var(--success)">20/100</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 10 — Architecture: How It All Connects -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Architecture</div>
+  <h2>How All Three Apps Connect</h2>
+  <p class="lead">You have three servers running. Here is what each one does, and how they will eventually become one.</p>
+  <div class="grid3" style="margin-top:28px;gap:16px">
+    <div class="card card-accent">
+      <div style="font-size:1.3rem;margin-bottom:8px">⚛️</div>
+      <h3>React App</h3>
+      <div style="font-family:monospace;font-size:.72rem;color:var(--accent);margin:6px 0">localhost:3000</div>
+      <p class="body" style="margin-top:8px">The enterprise-grade Project Navigator UI. Today it has mock data built in. Tomorrow it calls the FastAPI backend to get real projects, requirements, and test scripts.</p>
+      <hr class="divider"/>
+      <div style="font-size:.75rem;color:var(--muted)">Start: <code style="color:var(--white);background:var(--navy2);padding:2px 6px;border-radius:3px">npm run dev</code><br/>inside <code style="color:var(--white)">react-navigator/</code></div>
+    </div>
+    <div class="card card-purple">
+      <div style="font-size:1.3rem;margin-bottom:8px">⚡</div>
+      <h3>FastAPI Backend</h3>
+      <div style="font-family:monospace;font-size:.72rem;color:var(--purple);margin:6px 0">localhost:8000</div>
+      <p class="body" style="margin-top:8px">The compliance nervous system. All 11 AI agents, audit trail, GAMP 5 knowledge base, Sentinel, bulk validation, webhook registry, API key management.</p>
+      <hr class="divider"/>
+      <div style="font-size:.75rem;color:var(--muted)">Start: <code style="color:var(--white);background:var(--navy2);padding:2px 6px;border-radius:3px">uvicorn API.main:app --reload</code></div>
+    </div>
+    <div class="card card-cyan">
+      <div style="font-size:1.3rem;margin-bottom:8px">🐍</div>
+      <h3>Streamlit UI</h3>
+      <div style="font-family:monospace;font-size:.72rem;color:var(--cyan);margin:6px 0">localhost:8501</div>
+      <p class="body" style="margin-top:8px">The full EVOLV platform — all 16 pages. Validation Factory, SMART Requirements, Blast Radius, Developer Console, and every other feature. Calls FastAPI internally.</p>
+      <hr class="divider"/>
+      <div style="font-size:.75rem;color:var(--muted)">Start: <code style="color:var(--white);background:var(--navy2);padding:2px 6px;border-radius:3px">streamlit run frontend/app.py</code></div>
+    </div>
+  </div>
+  <div style="margin-top:20px;background:var(--navy3);border:1px solid var(--navy4);border-radius:12px;padding:18px">
+    <div style="font-size:.8rem;font-weight:700;color:var(--white);margin-bottom:12px">The future architecture (6 months):</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.78rem">
+      <div style="background:var(--navy2);border:1px solid rgba(59,130,246,.4);border-radius:6px;padding:6px 12px;color:var(--accent)">React App (3000)<br/><span style="color:var(--muted);font-size:.68rem">Main UI for customers</span></div>
+      <span style="color:var(--navy4)">→ API calls →</span>
+      <div style="background:var(--navy2);border:1px solid rgba(167,139,250,.4);border-radius:6px;padding:6px 12px;color:var(--purple)">FastAPI (8000)<br/><span style="color:var(--muted);font-size:.68rem">All 11 agents + audit trail</span></div>
+      <span style="color:var(--navy4)">→ serves →</span>
+      <div style="background:var(--navy2);border:1px solid rgba(34,197,94,.4);border-radius:6px;padding:6px 12px;color:var(--success)">Pinecone + OpenAI<br/><span style="color:var(--muted);font-size:.68rem">GAMP 5 knowledge base</span></div>
+    </div>
+    <div style="margin-top:10px;font-size:.75rem;color:var(--muted)">Streamlit stays as the internal developer tool and rapid-prototyping layer — not customer-facing. React becomes the product.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 11 — Demo Script -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Demo Script — 8 Minutes</div>
+  <h2>How to Demo the Navigator to a CTO</h2>
+  <div class="grid2" style="margin-top:20px;gap:20px;align-items:start">
+    <div style="display:grid;gap:10px">
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;color:var(--accent);font-weight:700;letter-spacing:.08em;margin-bottom:6px">ACT 1 — "This Is The Project" (1 min)</div>
+        <p style="font-size:.8rem;color:var(--muted);line-height:1.5">"We're validating LabCore LIMS v4.2 — a GMP manufacturing system. You can see the full project here: Governance documents, three releases, and each release has the standard GAMP 5 folder structure — auto-created when the release was defined."</p>
+        <p style="font-size:.75rem;color:var(--white);margin-top:8px">→ <em>Click through Project → Governance → v1.0 → URS folder</em></p>
+      </div>
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;color:var(--warning);font-weight:700;letter-spacing:.08em;margin-bottom:6px">ACT 2 — "Find the Problem" (1.5 min)</div>
+        <p style="font-size:.8rem;color:var(--muted);line-height:1.5">"I'm going to press Cmd+K and type 'temperature' — watch what happens." [Search opens] "See these results? URS-008 has a red glow. That means there's an open issue. Hover over it."</p>
+        <p style="font-size:.75rem;color:var(--white);margin-top:8px">→ <em>Cmd+K → type "temp" → hover URS-008 → show popover</em></p>
+        <p style="font-size:.75rem;color:var(--warning);margin-top:4px">"The alert is taking 78 seconds. Our SLA says 60. That's a compliance gap — and EVOLV found it in 10 seconds."</p>
+      </div>
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;color:var(--orange);font-weight:700;letter-spacing:.08em;margin-bottom:6px">ACT 3 — "The Heatmap" (1 min)</div>
+        <p style="font-size:.8rem;color:var(--muted);line-height:1.5">"Now — if I was a CSV manager going into an audit next week, I'd toggle this." [Click heatmap] "Look at v1.1. The URS and Test Scripts folders are red. VSR is clean. I know exactly where to focus my team — before the auditor sees anything."</p>
+        <p style="font-size:.75rem;color:var(--white);margin-top:8px">→ <em>Click Heatmap toggle. Pause. Let it land.</em></p>
+      </div>
+    </div>
+    <div style="display:grid;gap:10px">
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;color:var(--purple);font-weight:700;letter-spacing:.08em;margin-bottom:6px">ACT 4 — "The FDA AI Moment" (2 min)</div>
+        <p style="font-size:.8rem;color:var(--muted);line-height:1.5">"See this pulsing yellow icon? That's our Human-in-the-Loop badge. EVOLV generated this requirement using AI. It's a draft. But in GxP — an AI-generated document cannot be used as evidence until a qualified human has reviewed it. FDA said so in January 2026."</p>
+        <p style="font-size:.75rem;color:var(--white);margin-top:8px">→ <em>Hover URS-003 → show Approve button → click it → badge clears</em></p>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:4px">"That click just logged an event to our audit trail — with a timestamp, user ID, SHA-256 hash. The AI didn't approve it. The human did. And we have the proof."</p>
+      </div>
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;color:var(--cyan);font-weight:700;letter-spacing:.08em;margin-bottom:6px">ACT 5 — "New Release in 15 Seconds" (1 min)</div>
+        <p style="font-size:.8rem;color:var(--muted);line-height:1.5">"We just got a new project — validating the ERP integration for v2.1. In the old world, a consultant would spend two hours creating folders in SharePoint. Here — click New Release."</p>
+        <p style="font-size:.75rem;color:var(--white);margin-top:8px">→ <em>Click + New Release → type "ERP v2.1" → click Create → show tree</em></p>
+        <p style="font-size:.75rem;color:var(--success);margin-top:4px">"Seven GAMP 5 folders. Correct structure. Ready for the team to start adding requirements."</p>
+      </div>
+      <div style="background:var(--navy3);border:1px solid var(--navy4);border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;color:var(--success);font-weight:700;letter-spacing:.08em;margin-bottom:6px">ACT 6 — "The Close" (1.5 min)</div>
+        <p style="font-size:.8rem;color:var(--muted);line-height:1.5">"What you just saw is one UI — but it's backed by eleven AI agents, a GAMP 5 knowledge base, and a 21 CFR Part 11 audit trail. The React app talks to our FastAPI platform. Every action — approved, moved, created — is hashed and logged."</p>
+        <p style="font-size:.75rem;color:var(--white);margin-top:8px">"This is not a form filler. This is the operating system for Computer System Validation."</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 12 — What's Real vs What's Mock -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="slide-label">Honest Assessment</div>
+  <h2>What's Real. What's Mock. What's Next.</h2>
+  <p class="lead">A clear map of what is production-ready, what is demonstrable, and what needs backend wiring.</p>
+  <div class="grid3" style="margin-top:28px;gap:16px">
+    <div class="card card-success">
+      <div style="font-size:1.1rem;margin-bottom:8px">✅</div>
+      <h3 style="color:var(--success)">Fully Built</h3>
+      <ul style="list-style:none;margin-top:10px;display:grid;gap:7px;font-size:.78rem;color:var(--muted)">
+        <li>✓ 7-level GAMP tree renders correctly</li>
+        <li>✓ Cmd+K search with Fuse.js fuzzy matching</li>
+        <li>✓ Blast Radius popover on hover</li>
+        <li>✓ HITL badges (pulsing animation)</li>
+        <li>✓ Approve button clears HITL in real-time</li>
+        <li>✓ Shadow links auto-created on new req</li>
+        <li>✓ Heatmap toggle with color transitions</li>
+        <li>✓ New Release modal with GAMP 5 template</li>
+        <li>✓ Breadcrumbs update on selection</li>
+        <li>✓ Red/green glow on issue/validated items</li>
+        <li>✓ Status dots per item</li>
+        <li>✓ Release status icons + colors</li>
+      </ul>
+    </div>
+    <div class="card card-warning">
+      <div style="font-size:1.1rem;margin-bottom:8px">🔶</div>
+      <h3 style="color:var(--warning)">Mock Data</h3>
+      <ul style="list-style:none;margin-top:10px;display:grid;gap:7px;font-size:.78rem;color:var(--muted)">
+        <li>⚠ Requirements come from traceabilityMap.js</li>
+        <li>⚠ Test scripts are static mock data</li>
+        <li>⚠ Heat scores are hardcoded per item</li>
+        <li>⚠ Approval does not call FastAPI yet</li>
+        <li>⚠ New release not saved to backend</li>
+        <li>⚠ Project tree resets on page refresh</li>
+        <li>⚠ Search index is local, not live</li>
+      </ul>
+      <p style="font-size:.75rem;color:var(--warning);margin-top:12px">All mock data is realistic — modelled on a real LIMS validation project. It demos perfectly.</p>
+    </div>
+    <div class="card card-cyan">
+      <div style="font-size:1.1rem;margin-bottom:8px">🔷</div>
+      <h3 style="color:var(--cyan)">Next Steps</h3>
+      <ul style="list-style:none;margin-top:10px;display:grid;gap:7px;font-size:.78rem;color:var(--muted)">
+        <li>→ Connect React to FastAPI /projects API</li>
+        <li>→ Replace mock data with ProjectStore (Python)</li>
+        <li>→ Wire HITL approve → POST /sign-off endpoint</li>
+        <li>→ Real-time heat score from audit trail data</li>
+        <li>→ Persist new releases to JSON store</li>
+        <li>→ Add drag-and-drop item moving</li>
+        <li>→ Export traceability matrix as PDF/Excel</li>
+        <li>→ Connect search to live EVOLV artefacts</li>
+      </ul>
+      <p style="font-size:.75rem;color:var(--cyan);margin-top:12px">These are all straightforward API integrations — the hard UI work is done.</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- end deck -->
+
+<!-- Navigation -->
+<div class="nav" id="nav"></div>
+<div class="counter" id="counter"></div>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')]
+let cur = 0
+
+function goTo(n){
+  slides[cur].classList.remove('active')
+  cur = Math.max(0, Math.min(slides.length-1, n))
+  slides[cur].classList.add('active')
+  buildNav()
+}
+
+function buildNav(){
+  const nav = document.getElementById('nav')
+  const counter = document.getElementById('counter')
+  nav.innerHTML = `<button class="arrow" onclick="goTo(${cur-1})">←</button>`
+  slides.forEach((_,i)=>{
+    nav.innerHTML += `<div class="dot${i===cur?' active':''}" onclick="goTo(${i})"></div>`
+  })
+  nav.innerHTML += `<button class="arrow" onclick="goTo(${cur+1})">→</button>`
+  counter.textContent = `${cur+1} / ${slides.length}`
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'||e.key===' ') goTo(cur+1)
+  if(e.key==='ArrowLeft') goTo(cur-1)
+})
+
+buildNav()
+</script>
+</body>
+</html>
