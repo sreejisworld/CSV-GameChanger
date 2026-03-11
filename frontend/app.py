@@ -8886,3 +8886,983 @@ elif page.startswith("15"):
             "`uvicorn API.main:app --reload` "
             "then fire requests here."
         )
+
+# ===================================================================
+# Page 16 — Project Navigator
+#   • Hierarchical Tree View  (project → release → folder → item)
+#   • New Project / New Release (GAMP 5 folder template)
+#   • Item Management (add, edit status, delete)
+#   • Move Item between releases (Drag-and-Drop equivalent)
+#   • Global Library (System Descriptions + Risk Matrices)
+# ===================================================================
+elif page.startswith("16"):
+    from frontend.components.project_navigator import (
+        render_navigator,
+        get_selection,
+        _status_badge,
+        _STATUS_COLORS,
+    )
+    from API.project_store import (
+        ProjectStore,
+        GAMP5_FOLDERS,
+        ITEM_STATUSES,
+        RELEASE_STATUSES,
+        ITEM_TYPES,
+        FolderItem,
+        Release,
+    )
+
+    _pn_store = ProjectStore.get_instance()
+
+    page_header(
+        "Project Navigator",
+        "Organise validation artefacts across projects, "
+        "releases and GAMP 5 folders. "
+        "Move items between releases with one click.",
+    )
+
+    # ── layout: tree (left) | content panel (right) ───────────
+    _pn_tree_col, _pn_content_col = st.columns(
+        [1, 3], gap="medium"
+    )
+
+    # ══════════════════════════════════════════════════════════
+    # LEFT — Tree + action buttons
+    # ══════════════════════════════════════════════════════════
+    with _pn_tree_col:
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:0.75rem;'
+            'font-weight:600;letter-spacing:0.05em;'
+            'margin-bottom:0.4rem;">PROJECTS</p>',
+            unsafe_allow_html=True,
+        )
+
+        # ── New Project dialog (inline) ──
+        if st.button(
+            "+ New Project",
+            key="pn_new_proj_btn",
+            use_container_width=True,
+            type="primary",
+        ):
+            st.session_state["pn_show_new_proj"] = True
+
+        if st.session_state.get("pn_show_new_proj"):
+            with st.form("pn_new_proj_form"):
+                st.markdown("**New Project**")
+                _np_name = st.text_input(
+                    "Project Name",
+                    placeholder="e.g. LabCore LIMS v4.2",
+                    key="pn_np_name",
+                )
+                _np_sys = st.text_input(
+                    "System Name",
+                    placeholder="e.g. LabCore LIMS",
+                    key="pn_np_sys",
+                )
+                _np_cm = st.selectbox(
+                    "Compliance Mode",
+                    ["GMP", "GCP", "GLP", "ISO13485"],
+                    key="pn_np_cm",
+                )
+                _np_desc = st.text_area(
+                    "Description (optional)",
+                    height=60,
+                    key="pn_np_desc",
+                )
+                _np_sub, _np_cancel = st.columns(2)
+                with _np_sub:
+                    _np_submitted = st.form_submit_button(
+                        "Create",
+                        use_container_width=True,
+                        type="primary",
+                    )
+                with _np_cancel:
+                    _np_cancelled = (
+                        st.form_submit_button(
+                            "Cancel",
+                            use_container_width=True,
+                        )
+                    )
+                if _np_submitted:
+                    if not _np_name.strip():
+                        st.error("Name is required.")
+                    else:
+                        _pn_store.create_project(
+                            name=_np_name.strip(),
+                            system_name=(
+                                _np_sys.strip()
+                            ),
+                            compliance_mode=_np_cm,
+                            description=(
+                                _np_desc.strip()
+                            ),
+                        )
+                        st.session_state.pop(
+                            "pn_show_new_proj", None
+                        )
+                        st.rerun()
+                if _np_cancelled:
+                    st.session_state.pop(
+                        "pn_show_new_proj", None
+                    )
+                    st.rerun()
+
+        st.markdown("---")
+        render_navigator(_pn_store)
+
+    # ══════════════════════════════════════════════════════════
+    # RIGHT — Context panel based on selection
+    # ══════════════════════════════════════════════════════════
+    with _pn_content_col:
+        _pn_sel = get_selection()
+        _pn_sel_type = _pn_sel.get("type")
+
+        # ── Move-item clipboard banner ─────────────────────
+        _pn_move = st.session_state.get("pn_move_item")
+        if _pn_move:
+            st.markdown(
+                '<div style="background:#0a2a0a;border:'
+                '1px solid #22c55e;border-radius:8px;'
+                'padding:0.7rem 1rem;margin-bottom:1rem;'
+                'display:flex;align-items:center;'
+                'gap:1rem;">'
+                '<span style="color:#22c55e;'
+                'font-weight:700;">✂ Moving:</span> '
+                f'<span style="color:#e2e8f0;">'
+                f'{_pn_move["item_name"]}</span>'
+                f'<span style="color:#64748b;'
+                f'font-size:0.8rem;"> from '
+                f'{_pn_move["src_folder"]} / '
+                f'{_pn_move["src_release_name"]}'
+                f'</span></div>',
+                unsafe_allow_html=True,
+            )
+            _mv_proj = _pn_store.get_project(
+                _pn_move["project_id"]
+            )
+            if _mv_proj:
+                _mv_rel_opts = {
+                    rid: Release.from_dict(rd).name
+                    for rid, rd in (
+                        _mv_proj.releases.items()
+                    )
+                }
+                _mv_dst_rel_id = st.selectbox(
+                    "Move to Release",
+                    options=list(_mv_rel_opts.keys()),
+                    format_func=lambda x: (
+                        _mv_rel_opts.get(x, x)
+                    ),
+                    key="pn_mv_dst_rel",
+                )
+                _mv_dst_rel = Release.from_dict(
+                    _mv_proj.releases[_mv_dst_rel_id]
+                )
+                _mv_dst_folder = st.selectbox(
+                    "Move to Folder",
+                    options=list(
+                        _mv_dst_rel.folders.keys()
+                    ),
+                    key="pn_mv_dst_folder",
+                )
+                _mv_c1, _mv_c2 = st.columns(2)
+                with _mv_c1:
+                    if st.button(
+                        "Move Here",
+                        key="pn_mv_confirm",
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        try:
+                            _pn_store.move_item(
+                                project_id=(
+                                    _pn_move[
+                                        "project_id"
+                                    ]
+                                ),
+                                src_release_id=(
+                                    _pn_move[
+                                        "src_release_id"
+                                    ]
+                                ),
+                                src_folder=(
+                                    _pn_move[
+                                        "src_folder"
+                                    ]
+                                ),
+                                item_id=(
+                                    _pn_move["item_id"]
+                                ),
+                                dst_release_id=(
+                                    _mv_dst_rel_id
+                                ),
+                                dst_folder=(
+                                    _mv_dst_folder
+                                ),
+                            )
+                            st.session_state.pop(
+                                "pn_move_item", None
+                            )
+                            st.success("Item moved.")
+                            st.rerun()
+                        except Exception as _mve:
+                            st.error(str(_mve))
+                with _mv_c2:
+                    if st.button(
+                        "Cancel",
+                        key="pn_mv_cancel",
+                        use_container_width=True,
+                    ):
+                        st.session_state.pop(
+                            "pn_move_item", None
+                        )
+                        st.rerun()
+
+        # ── No selection ───────────────────────────────────
+        if _pn_sel_type is None:
+            st.markdown(
+                '<div style="text-align:center;'
+                'color:#475569;padding:3rem 1rem;">'
+                '<div style="font-size:2.5rem;'
+                'margin-bottom:0.5rem;">📁</div>'
+                '<p style="font-size:0.9rem;">'
+                "Select a project, release, folder, "
+                "or item in the tree to get started."
+                "</p></div>",
+                unsafe_allow_html=True,
+            )
+
+        # ── Project selected ───────────────────────────────
+        elif _pn_sel_type == "project":
+            _pn_proj = _pn_store.get_project(
+                _pn_sel["project_id"]
+            )
+            if _pn_proj is None:
+                st.warning("Project not found.")
+            else:
+                st.markdown(
+                    f"## 📁 {_pn_proj.name}"
+                )
+                _pp_c1, _pp_c2, _pp_c3 = st.columns(3)
+                _pp_c1.metric(
+                    "System", _pn_proj.system_name
+                )
+                _pp_c2.metric(
+                    "Compliance",
+                    _pn_proj.compliance_mode,
+                )
+                _pp_c3.metric(
+                    "Releases",
+                    len(_pn_proj.releases),
+                )
+                if _pn_proj.description:
+                    st.markdown(
+                        f"_{_pn_proj.description}_"
+                    )
+                st.markdown("---")
+
+                # ── New Release form ──
+                st.markdown("#### + New Release")
+                with st.form("pn_new_rel_form"):
+                    _nr_c1, _nr_c2 = st.columns(2)
+                    with _nr_c1:
+                        _nr_name = st.text_input(
+                            "Release Name",
+                            placeholder=(
+                                "e.g. v1.0 Initial "
+                                "Validation"
+                            ),
+                            key="pn_nr_name",
+                        )
+                        _nr_ver = st.text_input(
+                            "Version",
+                            placeholder="e.g. 1.0",
+                            key="pn_nr_ver",
+                        )
+                    with _nr_c2:
+                        _nr_status = st.selectbox(
+                            "Status",
+                            RELEASE_STATUSES,
+                            key="pn_nr_status",
+                        )
+                        _nr_tmpl = st.multiselect(
+                            "Folder Template",
+                            GAMP5_FOLDERS,
+                            default=GAMP5_FOLDERS,
+                            key="pn_nr_tmpl",
+                        )
+                    _nr_desc = st.text_area(
+                        "Description (optional)",
+                        height=60,
+                        key="pn_nr_desc",
+                    )
+                    if st.form_submit_button(
+                        "Create Release",
+                        type="primary",
+                    ):
+                        if (
+                            not _nr_name.strip()
+                            or not _nr_ver.strip()
+                        ):
+                            st.error(
+                                "Name and Version "
+                                "are required."
+                            )
+                        else:
+                            _pn_store.create_release(
+                                project_id=(
+                                    _pn_proj.project_id
+                                ),
+                                name=_nr_name.strip(),
+                                version=(
+                                    _nr_ver.strip()
+                                ),
+                                description=(
+                                    _nr_desc.strip()
+                                ),
+                                status=_nr_status,
+                                folder_template=(
+                                    _nr_tmpl
+                                ),
+                            )
+                            st.success(
+                                f"Release "
+                                f"'{_nr_name}' created "
+                                f"with "
+                                f"{len(_nr_tmpl)} "
+                                f"GAMP 5 folders."
+                            )
+                            st.rerun()
+
+                st.markdown("---")
+                # Delete project button
+                if st.button(
+                    "Delete Project",
+                    key="pn_del_proj_btn",
+                    type="secondary",
+                ):
+                    st.session_state[
+                        "pn_confirm_del_proj"
+                    ] = True
+
+                if st.session_state.get(
+                    "pn_confirm_del_proj"
+                ):
+                    st.warning(
+                        "This will delete the project "
+                        "and ALL its releases. "
+                        "Are you sure?"
+                    )
+                    _dc1, _dc2 = st.columns(2)
+                    with _dc1:
+                        if st.button(
+                            "Yes, Delete",
+                            key="pn_del_proj_confirm",
+                            type="primary",
+                        ):
+                            _pn_store.delete_project(
+                                _pn_proj.project_id
+                            )
+                            st.session_state.pop(
+                                "pn_selection", None
+                            )
+                            st.session_state.pop(
+                                "pn_confirm_del_proj",
+                                None,
+                            )
+                            st.rerun()
+                    with _dc2:
+                        if st.button(
+                            "Cancel",
+                            key="pn_del_proj_cancel",
+                        ):
+                            st.session_state.pop(
+                                "pn_confirm_del_proj",
+                                None,
+                            )
+                            st.rerun()
+
+        # ── Release selected ───────────────────────────────
+        elif _pn_sel_type == "release":
+            _pn_proj = _pn_store.get_project(
+                _pn_sel["project_id"]
+            )
+            _pn_rel = (
+                _pn_proj.get_release(
+                    _pn_sel["release_id"]
+                )
+                if _pn_proj else None
+            )
+            if _pn_rel is None:
+                st.warning("Release not found.")
+            else:
+                from frontend.components.project_navigator\
+                    import _RELEASE_STATUS_ICONS
+                _rs_icon = _RELEASE_STATUS_ICONS.get(
+                    _pn_rel.status, "⚪"
+                )
+                st.markdown(
+                    f"## {_rs_icon} {_pn_rel.name}"
+                )
+                _rp_c1, _rp_c2, _rp_c3 = st.columns(3)
+                _rp_c1.metric("Version", _pn_rel.version)
+                _rp_c2.metric(
+                    "Items", _pn_rel.item_count()
+                )
+                _rp_c3.metric(
+                    "Folders",
+                    len(_pn_rel.folders),
+                )
+
+                if _pn_rel.description:
+                    st.markdown(
+                        f"_{_pn_rel.description}_"
+                    )
+
+                # Status update
+                _rs_new = st.selectbox(
+                    "Release Status",
+                    RELEASE_STATUSES,
+                    index=RELEASE_STATUSES.index(
+                        _pn_rel.status
+                    )
+                    if _pn_rel.status
+                    in RELEASE_STATUSES
+                    else 0,
+                    key="pn_rel_status_sel",
+                )
+                if st.button(
+                    "Update Status",
+                    key="pn_rel_update_status",
+                ):
+                    _pn_store.update_release_status(
+                        _pn_proj.project_id,
+                        _pn_rel.release_id,
+                        _rs_new,
+                    )
+                    st.success("Status updated.")
+                    st.rerun()
+
+                st.markdown("---")
+                st.markdown("#### Folder Summary")
+                for _fol, _fitems in (
+                    _pn_rel.folders.items()
+                ):
+                    _ficon = (
+                        "📁"  # default
+                    )
+                    from frontend.components\
+                        .project_navigator import (
+                        _FOLDER_ICONS,
+                    )
+                    _ficon = _FOLDER_ICONS.get(
+                        _fol, "📂"
+                    )
+                    st.markdown(
+                        f"{_ficon} **{_fol}** — "
+                        f"{len(_fitems)} items"
+                        + (
+                            "".join(
+                                [
+                                    " " + _status_badge(
+                                        d.get(
+                                            "status",
+                                            ""
+                                        )
+                                    )
+                                    for d in _fitems
+                                ]
+                            )
+                        ),
+                        unsafe_allow_html=True,
+                    )
+
+        # ── Folder selected ────────────────────────────────
+        elif _pn_sel_type == "folder":
+            _pn_proj = _pn_store.get_project(
+                _pn_sel["project_id"]
+            )
+            _pn_rel = (
+                _pn_proj.get_release(
+                    _pn_sel["release_id"]
+                )
+                if _pn_proj else None
+            )
+            _pn_folder = _pn_sel.get("folder_name")
+
+            if _pn_rel is None or _pn_folder is None:
+                st.warning("Folder not found.")
+            else:
+                from frontend.components.project_navigator\
+                    import _FOLDER_ICONS
+                _fol_icon = _FOLDER_ICONS.get(
+                    _pn_folder, "📂"
+                )
+                st.markdown(
+                    f"## {_fol_icon} {_pn_folder}"
+                )
+                st.caption(
+                    f"{_pn_rel.name} "
+                    f"› {_pn_rel.version}"
+                )
+
+                _fol_items = _pn_rel.get_items(
+                    _pn_folder
+                )
+
+                # ── Add Item form ──
+                with st.expander(
+                    "+ Add Item", expanded=False
+                ):
+                    with st.form(
+                        f"pn_add_item_{_pn_folder}"
+                    ):
+                        _ai_c1, _ai_c2 = st.columns(2)
+                        with _ai_c1:
+                            _ai_name = st.text_input(
+                                "Item Name",
+                                placeholder=(
+                                    "e.g. URS-7.1 "
+                                    "Temp Monitor"
+                                ),
+                                key="pn_ai_name",
+                            )
+                            _ai_type = st.selectbox(
+                                "Type",
+                                ITEM_TYPES,
+                                key="pn_ai_type",
+                            )
+                        with _ai_c2:
+                            _ai_status = st.selectbox(
+                                "Status",
+                                ITEM_STATUSES,
+                                key="pn_ai_status",
+                            )
+                            _ai_artid = st.text_input(
+                                "EVOLV Artefact ID "
+                                "(optional)",
+                                placeholder=(
+                                    "e.g. URS-7.1"
+                                ),
+                                key="pn_ai_artid",
+                            )
+                        _ai_notes = st.text_area(
+                            "Notes",
+                            height=60,
+                            key="pn_ai_notes",
+                        )
+                        if st.form_submit_button(
+                            "Add Item",
+                            type="primary",
+                        ):
+                            if not _ai_name.strip():
+                                st.error(
+                                    "Name is required."
+                                )
+                            else:
+                                _pn_store.add_item(
+                                    project_id=(
+                                        _pn_proj
+                                        .project_id
+                                    ),
+                                    release_id=(
+                                        _pn_rel
+                                        .release_id
+                                    ),
+                                    folder=_pn_folder,
+                                    name=(
+                                        _ai_name.strip()
+                                    ),
+                                    item_type=_ai_type,
+                                    artifact_id=(
+                                        _ai_artid.strip()
+                                    ),
+                                    notes=(
+                                        _ai_notes.strip()
+                                    ),
+                                    status=_ai_status,
+                                )
+                                st.success(
+                                    "Item added."
+                                )
+                                st.rerun()
+
+                st.markdown("---")
+
+                if not _fol_items:
+                    st.info(
+                        "No items in this folder yet. "
+                        "Add one above."
+                    )
+                else:
+                    # Items table with actions
+                    for _it in _fol_items:
+                        _it_color = _STATUS_COLORS.get(
+                            _it.status, "#94a3b8"
+                        )
+                        from frontend.components\
+                            .project_navigator import (
+                            _TYPE_ICONS,
+                        )
+                        _it_icon = _TYPE_ICONS.get(
+                            _it.item_type, "📄"
+                        )
+                        _it_c1, _it_c2, _it_c3 = (
+                            st.columns([4, 2, 1])
+                        )
+                        with _it_c1:
+                            st.markdown(
+                                f"{_it_icon} **"
+                                f"{_it.name}**"
+                                + (
+                                    f"  `{_it.artifact_id}`"
+                                    if _it.artifact_id
+                                    else ""
+                                )
+                            )
+                            if _it.notes:
+                                st.caption(_it.notes)
+                        with _it_c2:
+                            _it_new_st = st.selectbox(
+                                "Status",
+                                ITEM_STATUSES,
+                                index=(
+                                    ITEM_STATUSES.index(
+                                        _it.status
+                                    )
+                                    if _it.status
+                                    in ITEM_STATUSES
+                                    else 0
+                                ),
+                                key=(
+                                    f"pn_it_st_"
+                                    f"{_it.item_id}"
+                                ),
+                                label_visibility=(
+                                    "collapsed"
+                                ),
+                            )
+                            if _it_new_st != _it.status:
+                                _pn_store\
+                                    .update_item_status(
+                                    _pn_proj.project_id,
+                                    _pn_rel.release_id,
+                                    _pn_folder,
+                                    _it.item_id,
+                                    _it_new_st,
+                                )
+                                st.rerun()
+                        with _it_c3:
+                            _it_act = st.selectbox(
+                                "Action",
+                                ["—", "✂ Move", "🗑 Del"],
+                                key=(
+                                    f"pn_it_act_"
+                                    f"{_it.item_id}"
+                                ),
+                                label_visibility=(
+                                    "collapsed"
+                                ),
+                            )
+                            if _it_act == "✂ Move":
+                                st.session_state[
+                                    "pn_move_item"
+                                ] = {
+                                    "item_id": (
+                                        _it.item_id
+                                    ),
+                                    "item_name": (
+                                        _it.name
+                                    ),
+                                    "project_id": (
+                                        _pn_proj
+                                        .project_id
+                                    ),
+                                    "src_release_id": (
+                                        _pn_rel
+                                        .release_id
+                                    ),
+                                    "src_release_name": (
+                                        _pn_rel.name
+                                    ),
+                                    "src_folder": (
+                                        _pn_folder
+                                    ),
+                                }
+                                st.rerun()
+                            if _it_act == "🗑 Del":
+                                _pn_store.delete_item(
+                                    _pn_proj.project_id,
+                                    _pn_rel.release_id,
+                                    _pn_folder,
+                                    _it.item_id,
+                                )
+                                st.rerun()
+
+                        st.markdown(
+                            '<hr style="margin:0.3rem 0;'
+                            'border:none;border-top:'
+                            '1px solid #1e293b;">',
+                            unsafe_allow_html=True,
+                        )
+
+        # ── Item selected ──────────────────────────────────
+        elif _pn_sel_type == "item":
+            _pn_proj = _pn_store.get_project(
+                _pn_sel["project_id"]
+            )
+            _pn_rel = (
+                _pn_proj.get_release(
+                    _pn_sel["release_id"]
+                )
+                if _pn_proj else None
+            )
+            _pn_folder = _pn_sel.get("folder_name")
+            _pn_item_id = _pn_sel.get("item_id")
+
+            _pn_item = None
+            if _pn_rel and _pn_folder and _pn_item_id:
+                for _itd in _pn_rel.folders.get(
+                    _pn_folder, []
+                ):
+                    if _itd.get("item_id") == _pn_item_id:
+                        _pn_item = FolderItem.from_dict(
+                            _itd
+                        )
+                        break
+
+            if _pn_item is None:
+                st.warning("Item not found.")
+            else:
+                from frontend.components.project_navigator\
+                    import _TYPE_ICONS, _FOLDER_ICONS
+                _itv_icon = _TYPE_ICONS.get(
+                    _pn_item.item_type, "📄"
+                )
+                st.markdown(
+                    f"## {_itv_icon} {_pn_item.name}"
+                )
+                st.markdown(
+                    _status_badge(_pn_item.status),
+                    unsafe_allow_html=True,
+                )
+                st.markdown("")
+
+                _iv_c1, _iv_c2 = st.columns(2)
+                _iv_c1.markdown(
+                    f"**Type:** {_pn_item.item_type}"
+                )
+                _iv_c1.markdown(
+                    f"**Folder:** {_pn_folder}"
+                )
+                _iv_c2.markdown(
+                    f"**Release:** {_pn_rel.name if _pn_rel else '—'}"
+                )
+                if _pn_item.artifact_id:
+                    _iv_c2.markdown(
+                        f"**EVOLV ID:** "
+                        f"`{_pn_item.artifact_id}`"
+                    )
+
+                st.markdown(
+                    f"**Created:** "
+                    f"{_pn_item.created_at[:19]}"
+                )
+                if _pn_item.notes:
+                    st.markdown("---")
+                    st.markdown("**Notes**")
+                    st.markdown(_pn_item.notes)
+
+                st.markdown("---")
+                _ia_c1, _ia_c2 = st.columns(2)
+                with _ia_c1:
+                    if st.button(
+                        "✂ Move to Another Release",
+                        key="pn_item_move_btn",
+                        use_container_width=True,
+                        type="primary",
+                    ):
+                        st.session_state[
+                            "pn_move_item"
+                        ] = {
+                            "item_id": _pn_item.item_id,
+                            "item_name": _pn_item.name,
+                            "project_id": (
+                                _pn_proj.project_id
+                            ),
+                            "src_release_id": (
+                                _pn_rel.release_id
+                            ),
+                            "src_release_name": (
+                                _pn_rel.name
+                                if _pn_rel else ""
+                            ),
+                            "src_folder": (
+                                _pn_folder
+                            ),
+                        }
+                        st.rerun()
+                with _ia_c2:
+                    if st.button(
+                        "🗑 Delete Item",
+                        key="pn_item_del_btn",
+                        use_container_width=True,
+                    ):
+                        if (
+                            _pn_proj
+                            and _pn_rel
+                            and _pn_folder
+                        ):
+                            _pn_store.delete_item(
+                                _pn_proj.project_id,
+                                _pn_rel.release_id,
+                                _pn_folder,
+                                _pn_item.item_id,
+                            )
+                            st.session_state.pop(
+                                "pn_selection", None
+                            )
+                            st.rerun()
+
+    # ══════════════════════════════════════════════════════════
+    # GLOBAL LIBRARY (below main split, full width)
+    # ══════════════════════════════════════════════════════════
+    st.markdown("---")
+    st.markdown("### Global Library")
+    st.caption(
+        "Reusable System Descriptions and Risk Matrices "
+        "— available across all projects."
+    )
+
+    _gl_tab_sd, _gl_tab_rm = st.tabs([
+        "System Descriptions",
+        "Risk Matrices",
+    ])
+
+    for _gl_tab, _gl_etype, _gl_label in [
+        (_gl_tab_sd, "system_description",
+         "System Description"),
+        (_gl_tab_rm, "risk_matrix", "Risk Matrix"),
+    ]:
+        with _gl_tab:
+            _gl_entries = _pn_store.list_library(
+                _gl_etype
+            )
+
+            # ── Add entry ──
+            with st.expander(
+                f"+ Add {_gl_label}", expanded=False
+            ):
+                with st.form(
+                    f"gl_add_{_gl_etype}"
+                ):
+                    _gl_name = st.text_input(
+                        "Name",
+                        key=f"gl_name_{_gl_etype}",
+                        placeholder=(
+                            f"e.g. LabCore LIMS v4.2 "
+                            f"{_gl_label}"
+                        ),
+                    )
+                    _gl_tags_raw = st.text_input(
+                        "Tags (comma-separated)",
+                        key=f"gl_tags_{_gl_etype}",
+                        placeholder=(
+                            "e.g. LIMS, GMP, pharma"
+                        ),
+                    )
+                    _gl_content = st.text_area(
+                        "Content",
+                        height=150,
+                        key=f"gl_content_{_gl_etype}",
+                        placeholder=(
+                            "Paste or type the content "
+                            "here..."
+                        ),
+                    )
+                    if st.form_submit_button(
+                        f"Save {_gl_label}",
+                        type="primary",
+                    ):
+                        if not _gl_name.strip():
+                            st.error(
+                                "Name is required."
+                            )
+                        else:
+                            _gl_tags = [
+                                t.strip()
+                                for t in (
+                                    _gl_tags_raw
+                                    .split(",")
+                                )
+                                if t.strip()
+                            ]
+                            _pn_store\
+                                .add_library_entry(
+                                name=_gl_name.strip(),
+                                entry_type=_gl_etype,
+                                content=(
+                                    _gl_content.strip()
+                                ),
+                                tags=_gl_tags,
+                            )
+                            st.success(
+                                f"{_gl_label} saved "
+                                "to Global Library."
+                            )
+                            st.rerun()
+
+            # ── List entries ──
+            if not _gl_entries:
+                st.info(
+                    f"No {_gl_label}s in the library "
+                    "yet."
+                )
+            else:
+                for _gle in _gl_entries:
+                    _gle_c1, _gle_c2 = st.columns(
+                        [5, 1]
+                    )
+                    with _gle_c1:
+                        with st.expander(
+                            _gle.name,
+                            expanded=False,
+                        ):
+                            if _gle.tags:
+                                st.caption(
+                                    "Tags: "
+                                    + ", ".join(
+                                        _gle.tags
+                                    )
+                                )
+                            st.text_area(
+                                "Content",
+                                value=_gle.content,
+                                height=120,
+                                disabled=True,
+                                key=(
+                                    f"gl_view_"
+                                    f"{_gle.entry_id}"
+                                ),
+                                label_visibility=(
+                                    "collapsed"
+                                ),
+                            )
+                            st.caption(
+                                f"Added: "
+                                f"{_gle.created_at[:10]}"
+                            )
+                    with _gle_c2:
+                        if st.button(
+                            "🗑",
+                            key=(
+                                f"gl_del_"
+                                f"{_gle.entry_id}"
+                            ),
+                            help=f"Delete {_gle.name}",
+                        ):
+                            _pn_store\
+                                .delete_library_entry(
+                                _gle.entry_id
+                            )
+                            st.rerun()
