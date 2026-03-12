@@ -21,6 +21,7 @@ from fastapi import (
     HTTPException,
     Request,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 # Ensure project root is importable
@@ -49,6 +50,7 @@ from API.schemas import (
     WebhookRegistrationOut,
 )
 from Agents.sentinel_impact_agent import SentinelImpactAgent
+from API.project_store import ProjectStore, GAMP5_FOLDERS
 
 
 # -----------------------------------------------------------------
@@ -100,12 +102,35 @@ app = FastAPI(
             "name":        "Admin",
             "description": "API key management.",
         },
+        {
+            "name":        "Navigator",
+            "description": (
+                "Project Navigator — GAMP 5 hierarchical "
+                "project / release / folder / item CRUD "
+                "and HITL approval endpoints."
+            ),
+        },
     ],
 )
 
 # TenantDictionaryMiddleware — rewrites JSON response labels
 # to match the active tenant nomenclature map.
 app.add_middleware(TenantDictionaryMiddleware)
+
+# CORSMiddleware — allow React (port 3000) and Streamlit
+# (port 8501) to call this API from the browser.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8501",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8501",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # -----------------------------------------------------------------
@@ -1022,4 +1047,925 @@ async def get_api_key(
         raw_key=None,  # Never exposed after creation
         created_at=record.created_at,
         active=record.active,
+    )
+
+
+# =================================================================
+# Project Navigator — Pydantic models
+# =================================================================
+
+class ProjectIn(BaseModel):
+    """
+    Request body for creating a project.
+
+    :requirement: URS-32.1 - Accept project creation requests.
+    """
+
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=120,
+        description="Human-readable project name.",
+        examples=["LabCore LIMS v4.2 Validation"],
+    )
+    system_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=120,
+        description="Name of the validated system.",
+        examples=["LabCore LIMS"],
+    )
+    compliance_mode: str = Field(
+        default="GMP",
+        description="GMP | GCP | GLP | ISO13485",
+        examples=["GMP"],
+    )
+    description: str = Field(
+        default="",
+        max_length=500,
+        description="Optional project description.",
+    )
+
+
+class ProjectOut(BaseModel):
+    """
+    Project summary returned by Navigator list/create.
+
+    :requirement: URS-32.1
+    """
+
+    project_id: str
+    name: str
+    system_name: str
+    compliance_mode: str
+    description: str
+    created_at: str
+    release_count: int
+
+
+class ReleaseIn(BaseModel):
+    """
+    Request body for creating a release.
+
+    :requirement: URS-32.2 - Accept release creation with
+                  GAMP 5 folder template.
+    """
+
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=120,
+        description="Release name.",
+        examples=["v1.0 Validation"],
+    )
+    version: str = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+        description="Version string.",
+        examples=["1.0"],
+    )
+    description: str = Field(
+        default="",
+        max_length=500,
+    )
+    status: str = Field(
+        default="Planned",
+        description=(
+            "Planned | In Progress | Released | Archived"
+        ),
+    )
+    folder_template: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Custom folder list. Defaults to GAMP 5 "
+            "standard folders when omitted."
+        ),
+    )
+
+
+class ReleaseOut(BaseModel):
+    """
+    Release summary returned by Navigator endpoints.
+
+    :requirement: URS-32.2
+    """
+
+    release_id: str
+    name: str
+    version: str
+    status: str
+    description: str
+    created_at: str
+    folders: Dict[str, List[Dict[str, Any]]]
+    item_count: int
+
+
+class ItemIn(BaseModel):
+    """
+    Request body for adding an item to a release folder.
+
+    :requirement: URS-32.3 - Accept item creation requests.
+    """
+
+    folder: str = Field(
+        ...,
+        description="Target folder name within the release.",
+        examples=["URS"],
+    )
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Display name for the item.",
+        examples=["URS-008 Temperature Alert SLA"],
+    )
+    item_type: str = Field(
+        default="urs",
+        description=(
+            "urs | test_script | risk | traceability | "
+            "report | note | supplier_doc"
+        ),
+    )
+    artifact_id: str = Field(
+        default="",
+        max_length=40,
+        description="Optional EVOLV artefact ID.",
+    )
+    notes: str = Field(
+        default="",
+        max_length=1000,
+    )
+    status: str = Field(
+        default="Draft",
+        description=(
+            "Draft | In Review | Approved | "
+            "Rejected | Retired"
+        ),
+    )
+
+
+class ItemOut(BaseModel):
+    """
+    Item detail returned by Navigator endpoints.
+
+    :requirement: URS-32.3
+    """
+
+    item_id: str
+    name: str
+    item_type: str
+    status: str
+    artifact_id: str
+    notes: str
+    created_at: str
+    updated_at: str
+
+
+class MoveItemIn(BaseModel):
+    """
+    Request body for moving an item between folders/releases.
+
+    :requirement: URS-32.4 - Move items between releases.
+    """
+
+    src_folder: str = Field(
+        ..., description="Source folder name."
+    )
+    dst_release_id: str = Field(
+        ..., description="Destination release UUID."
+    )
+    dst_folder: str = Field(
+        ..., description="Destination folder name."
+    )
+
+
+class LibraryEntryIn(BaseModel):
+    """
+    Request body for adding a Global Library entry.
+
+    :requirement: URS-32.5 - Accept Global Library entries.
+    """
+
+    name: str = Field(
+        ..., min_length=1, max_length=200
+    )
+    entry_type: str = Field(
+        ...,
+        description=(
+            "system_description | risk_matrix"
+        ),
+        examples=["system_description"],
+    )
+    content: str = Field(
+        ..., min_length=1, max_length=10000
+    )
+    tags: Optional[List[str]] = Field(default=None)
+
+
+class LibraryEntryOut(BaseModel):
+    """
+    Global Library entry returned by Navigator endpoints.
+
+    :requirement: URS-32.5
+    """
+
+    entry_id: str
+    name: str
+    entry_type: str
+    content: str
+    tags: List[str]
+    created_at: str
+    updated_at: str
+
+
+# =================================================================
+# Project Navigator — Endpoints
+# =================================================================
+
+# -----------------------------------------------------------------
+# Projects
+# -----------------------------------------------------------------
+
+@app.get(
+    "/api/navigator/projects",
+    response_model=List[ProjectOut],
+    tags=["Navigator"],
+    summary="List all projects",
+)
+async def list_projects() -> List[ProjectOut]:
+    """
+    Return all projects with their release counts.
+
+    Used by the React Project Navigator on initial load to
+    populate the top-level tree.
+
+    :return: List of ProjectOut summaries.
+    :requirement: URS-32.1 - List all projects.
+    """
+    store = ProjectStore.get_instance()
+    return [
+        ProjectOut(
+            project_id=p.project_id,
+            name=p.name,
+            system_name=p.system_name,
+            compliance_mode=p.compliance_mode,
+            description=p.description,
+            created_at=p.created_at,
+            release_count=len(p.releases),
+        )
+        for p in store.list_projects()
+    ]
+
+
+@app.post(
+    "/api/navigator/projects",
+    response_model=ProjectOut,
+    status_code=201,
+    tags=["Navigator"],
+    summary="Create a project",
+)
+async def create_project(
+    payload: ProjectIn,
+    request: Request,
+) -> ProjectOut:
+    """
+    Create a new top-level validation project.
+
+    :param payload: ProjectIn body.
+    :param request: FastAPI request for audit attribution.
+    :return: Created ProjectOut.
+    :requirement: URS-32.1 - Create project.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    store = ProjectStore.get_instance()
+    proj = store.create_project(
+        name=payload.name,
+        system_name=payload.system_name,
+        compliance_mode=payload.compliance_mode,
+        description=payload.description,
+    )
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_PROJECT_CREATED",
+        details={
+            "project_id": proj.project_id,
+            "name": proj.name,
+        },
+    )
+    return ProjectOut(
+        project_id=proj.project_id,
+        name=proj.name,
+        system_name=proj.system_name,
+        compliance_mode=proj.compliance_mode,
+        description=proj.description,
+        created_at=proj.created_at,
+        release_count=0,
+    )
+
+
+@app.get(
+    "/api/navigator/projects/{project_id}",
+    response_model=Dict[str, Any],
+    tags=["Navigator"],
+    summary="Get full project tree",
+)
+async def get_project(
+    project_id: str,
+) -> Dict[str, Any]:
+    """
+    Return a project with all releases and their folder
+    contents — the full tree for the Navigator.
+
+    :param project_id: UUID of the project.
+    :return: Full project dict including releases.
+    :requirement: URS-32.1 - Return full project tree.
+    """
+    store = ProjectStore.get_instance()
+    proj = store.get_project(project_id)
+    if proj is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Project '{project_id}' not found."
+            ),
+        )
+    return proj.to_dict()
+
+
+@app.delete(
+    "/api/navigator/projects/{project_id}",
+    status_code=204,
+    tags=["Navigator"],
+    summary="Delete a project",
+)
+async def delete_project(
+    project_id: str,
+    request: Request,
+) -> None:
+    """
+    Delete a project and all its releases.
+
+    :param project_id: UUID of the project.
+    :requirement: URS-32.1 - Delete project.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    store = ProjectStore.get_instance()
+    deleted = store.delete_project(project_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Project '{project_id}' not found."
+            ),
+        )
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_PROJECT_DELETED",
+        details={"project_id": project_id},
+    )
+
+
+# -----------------------------------------------------------------
+# Releases
+# -----------------------------------------------------------------
+
+@app.post(
+    "/api/navigator/projects/{project_id}/releases",
+    response_model=ReleaseOut,
+    status_code=201,
+    tags=["Navigator"],
+    summary="Create a release with GAMP 5 folders",
+)
+async def create_release(
+    project_id: str,
+    payload: ReleaseIn,
+    request: Request,
+) -> ReleaseOut:
+    """
+    Create a versioned release inside a project.
+
+    Auto-populates GAMP 5 standard folders unless a custom
+    ``folder_template`` list is provided in the request body.
+
+    :param project_id: Parent project UUID.
+    :param payload: ReleaseIn body.
+    :param request: FastAPI request for audit attribution.
+    :return: Created ReleaseOut with empty folders.
+    :requirement: URS-32.2 - Create release with folders.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    store = ProjectStore.get_instance()
+    try:
+        rel = store.create_release(
+            project_id=project_id,
+            name=payload.name,
+            version=payload.version,
+            description=payload.description,
+            status=payload.status,
+            folder_template=payload.folder_template,
+        )
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail=str(exc)
+        ) from exc
+
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_RELEASE_CREATED",
+        details={
+            "project_id": project_id,
+            "release_id": rel.release_id,
+            "version": rel.version,
+        },
+    )
+    return ReleaseOut(
+        release_id=rel.release_id,
+        name=rel.name,
+        version=rel.version,
+        status=rel.status,
+        description=rel.description,
+        created_at=rel.created_at,
+        folders=rel.folders,
+        item_count=0,
+    )
+
+
+@app.patch(
+    "/api/navigator/projects/{project_id}"
+    "/releases/{release_id}/status",
+    status_code=204,
+    tags=["Navigator"],
+    summary="Update release status",
+)
+async def update_release_status(
+    project_id: str,
+    release_id: str,
+    request: Request,
+) -> None:
+    """
+    Update the lifecycle status of a release.
+
+    Send ``{"status": "Released"}`` in the request body.
+
+    :param project_id: Parent project UUID.
+    :param release_id: Target release UUID.
+    :requirement: URS-32.2 - Update release status.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    body = await request.json()
+    status = body.get("status", "")
+    store = ProjectStore.get_instance()
+    try:
+        store.update_release_status(
+            project_id=project_id,
+            release_id=release_id,
+            status=status,
+        )
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail=str(exc)
+        ) from exc
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_RELEASE_STATUS_UPDATED",
+        details={
+            "release_id": release_id,
+            "status": status,
+        },
+    )
+
+
+# -----------------------------------------------------------------
+# Items
+# -----------------------------------------------------------------
+
+@app.post(
+    "/api/navigator/projects/{project_id}"
+    "/releases/{release_id}/items",
+    response_model=ItemOut,
+    status_code=201,
+    tags=["Navigator"],
+    summary="Add an item to a release folder",
+)
+async def add_item(
+    project_id: str,
+    release_id: str,
+    payload: ItemIn,
+    request: Request,
+) -> ItemOut:
+    """
+    Add a validation artefact (requirement, test script,
+    risk, etc.) to a folder within a release.
+
+    :param project_id: Parent project UUID.
+    :param release_id: Target release UUID.
+    :param payload: ItemIn body including folder name.
+    :param request: FastAPI request for audit attribution.
+    :return: Created ItemOut.
+    :requirement: URS-32.3 - Add item to folder.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    store = ProjectStore.get_instance()
+    try:
+        item = store.add_item(
+            project_id=project_id,
+            release_id=release_id,
+            folder=payload.folder,
+            name=payload.name,
+            item_type=payload.item_type,
+            artifact_id=payload.artifact_id,
+            notes=payload.notes,
+            status=payload.status,
+        )
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail=str(exc)
+        ) from exc
+
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_ITEM_ADDED",
+        details={
+            "release_id": release_id,
+            "folder": payload.folder,
+            "item_id": item.item_id,
+            "name": item.name,
+        },
+    )
+    return ItemOut(
+        item_id=item.item_id,
+        name=item.name,
+        item_type=item.item_type,
+        status=item.status,
+        artifact_id=item.artifact_id,
+        notes=item.notes,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+@app.patch(
+    "/api/navigator/projects/{project_id}"
+    "/releases/{release_id}"
+    "/items/{item_id}/approve",
+    response_model=ItemOut,
+    tags=["Navigator"],
+    summary="HITL-approve an item (FDA AI §3.2)",
+)
+async def approve_item(
+    project_id: str,
+    release_id: str,
+    item_id: str,
+    request: Request,
+) -> ItemOut:
+    """
+    Mark an AI-generated artefact as human-approved.
+
+    Clears the HITL (Human-in-the-Loop) badge in the React
+    Navigator and sets item status to ``Approved``.  Logs a
+    ``HITL_APPROVAL`` event to the 21 CFR Part 11 audit trail.
+
+    Send ``{"folder": "<folder_name>"}`` in the request body
+    to identify which folder contains the item.
+
+    :param project_id: Parent project UUID.
+    :param release_id: Parent release UUID.
+    :param item_id: UUID of the item to approve.
+    :param request: FastAPI request for audit attribution.
+    :return: Updated ItemOut with status ``Approved``.
+    :requirement: URS-32.6 - HITL approval with audit log.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    body = await request.json()
+    folder = body.get("folder", "")
+    if not folder:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Request body must include 'folder' key."
+            ),
+        )
+
+    store = ProjectStore.get_instance()
+    try:
+        store.update_item_status(
+            project_id=project_id,
+            release_id=release_id,
+            folder=folder,
+            item_id=item_id,
+            status="Approved",
+        )
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail=str(exc)
+        ) from exc
+
+    # Log HITL approval to 21 CFR Part 11 audit trail
+    _file_log(
+        user_id=user_id,
+        action="HITL_APPROVAL",
+        details={
+            "project_id": project_id,
+            "release_id": release_id,
+            "folder": folder,
+            "item_id": item_id,
+            "compliance": "FDA AI Guidance 2026 §3.2",
+        },
+    )
+
+    # Retrieve updated item to return
+    proj = store.get_project(project_id)
+    if proj is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Project '{project_id}' not found."
+            ),
+        )
+    rel = proj.get_release(release_id)
+    if rel is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Release '{release_id}' not found."
+            ),
+        )
+    for it in rel.get_items(folder):
+        if it.item_id == item_id:
+            return ItemOut(
+                item_id=it.item_id,
+                name=it.name,
+                item_type=it.item_type,
+                status=it.status,
+                artifact_id=it.artifact_id,
+                notes=it.notes,
+                created_at=it.created_at,
+                updated_at=it.updated_at,
+            )
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Item '{item_id}' not found.",
+    )
+
+
+@app.post(
+    "/api/navigator/projects/{project_id}"
+    "/releases/{release_id}"
+    "/items/{item_id}/move",
+    response_model=ItemOut,
+    tags=["Navigator"],
+    summary="Move an item between folders or releases",
+)
+async def move_item(
+    project_id: str,
+    release_id: str,
+    item_id: str,
+    payload: MoveItemIn,
+    request: Request,
+) -> ItemOut:
+    """
+    Move a validation artefact to a different folder or
+    release, atomically under the write lock.
+
+    :param project_id: Parent project UUID.
+    :param release_id: Source release UUID.
+    :param item_id: UUID of the item to move.
+    :param payload: MoveItemIn with src_folder, dst_release_id,
+                    dst_folder.
+    :param request: FastAPI request for audit attribution.
+    :return: Moved ItemOut at its new location.
+    :requirement: URS-32.4 - Move items between releases.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    store = ProjectStore.get_instance()
+    try:
+        item = store.move_item(
+            project_id=project_id,
+            src_release_id=release_id,
+            src_folder=payload.src_folder,
+            item_id=item_id,
+            dst_release_id=payload.dst_release_id,
+            dst_folder=payload.dst_folder,
+        )
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404, detail=str(exc)
+        ) from exc
+
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_ITEM_MOVED",
+        details={
+            "project_id": project_id,
+            "item_id": item_id,
+            "from": (
+                f"{release_id}/{payload.src_folder}"
+            ),
+            "to": (
+                f"{payload.dst_release_id}"
+                f"/{payload.dst_folder}"
+            ),
+        },
+    )
+    return ItemOut(
+        item_id=item.item_id,
+        name=item.name,
+        item_type=item.item_type,
+        status=item.status,
+        artifact_id=item.artifact_id,
+        notes=item.notes,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+@app.delete(
+    "/api/navigator/projects/{project_id}"
+    "/releases/{release_id}"
+    "/items/{item_id}",
+    status_code=204,
+    tags=["Navigator"],
+    summary="Delete an item from a release folder",
+)
+async def delete_item(
+    project_id: str,
+    release_id: str,
+    item_id: str,
+    request: Request,
+) -> None:
+    """
+    Permanently delete an item from a release folder.
+
+    Send ``{"folder": "<folder_name>"}`` in the request body.
+
+    :param project_id: Parent project UUID.
+    :param release_id: Parent release UUID.
+    :param item_id: UUID of the item to delete.
+    :requirement: URS-32.3 - Delete item.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    body = await request.json()
+    folder = body.get("folder", "")
+    store = ProjectStore.get_instance()
+    deleted = store.delete_item(
+        project_id=project_id,
+        release_id=release_id,
+        folder=folder,
+        item_id=item_id,
+    )
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Item '{item_id}' not found.",
+        )
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_ITEM_DELETED",
+        details={
+            "release_id": release_id,
+            "folder": folder,
+            "item_id": item_id,
+        },
+    )
+
+
+# -----------------------------------------------------------------
+# Global Library
+# -----------------------------------------------------------------
+
+@app.get(
+    "/api/navigator/library",
+    response_model=List[LibraryEntryOut],
+    tags=["Navigator"],
+    summary="List Global Library entries",
+)
+async def list_library(
+    entry_type: Optional[str] = None,
+) -> List[LibraryEntryOut]:
+    """
+    Return Global Library entries, optionally filtered by
+    ``entry_type`` query parameter
+    (``system_description`` or ``risk_matrix``).
+
+    :param entry_type: Optional filter by type.
+    :return: List of LibraryEntryOut.
+    :requirement: URS-32.5 - List Global Library.
+    """
+    store = ProjectStore.get_instance()
+    return [
+        LibraryEntryOut(
+            entry_id=e.entry_id,
+            name=e.name,
+            entry_type=e.entry_type,
+            content=e.content,
+            tags=e.tags,
+            created_at=e.created_at,
+            updated_at=e.updated_at,
+        )
+        for e in store.list_library(
+            entry_type=entry_type
+        )
+    ]
+
+
+@app.post(
+    "/api/navigator/library",
+    response_model=LibraryEntryOut,
+    status_code=201,
+    tags=["Navigator"],
+    summary="Add a Global Library entry",
+)
+async def add_library_entry(
+    payload: LibraryEntryIn,
+    request: Request,
+) -> LibraryEntryOut:
+    """
+    Add a reusable System Description or Risk Matrix to the
+    Global Library, shared across all projects.
+
+    :param payload: LibraryEntryIn body.
+    :param request: FastAPI request for audit attribution.
+    :return: Created LibraryEntryOut.
+    :requirement: URS-32.5 - Add Global Library entry.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    store = ProjectStore.get_instance()
+    entry = store.add_library_entry(
+        name=payload.name,
+        entry_type=payload.entry_type,
+        content=payload.content,
+        tags=payload.tags,
+    )
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_LIBRARY_ENTRY_ADDED",
+        details={
+            "entry_id": entry.entry_id,
+            "name": entry.name,
+            "entry_type": entry.entry_type,
+        },
+    )
+    return LibraryEntryOut(
+        entry_id=entry.entry_id,
+        name=entry.name,
+        entry_type=entry.entry_type,
+        content=entry.content,
+        tags=entry.tags,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
+    )
+
+
+@app.delete(
+    "/api/navigator/library/{entry_id}",
+    status_code=204,
+    tags=["Navigator"],
+    summary="Delete a Global Library entry",
+)
+async def delete_library_entry(
+    entry_id: str,
+    request: Request,
+) -> None:
+    """
+    Permanently delete a Global Library entry.
+
+    :param entry_id: UUID of the entry to delete.
+    :requirement: URS-32.5 - Delete Global Library entry.
+    """
+    user_id = request.headers.get(
+        "X-User-ID", "SYSTEM"
+    )
+    store = ProjectStore.get_instance()
+    deleted = store.delete_library_entry(entry_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Library entry '{entry_id}' not found."
+            ),
+        )
+    _file_log(
+        user_id=user_id,
+        action="NAVIGATOR_LIBRARY_ENTRY_DELETED",
+        details={"entry_id": entry_id},
     )
