@@ -1,2 +1,2 @@
 node_modules/
-dist/
+# dist/ is committed — it is served by FastAPI at /navigator
