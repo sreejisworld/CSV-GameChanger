@@ -22,6 +22,8 @@ from fastapi import (
     Request,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 # Ensure project root is importable
@@ -1968,4 +1970,48 @@ async def delete_library_entry(
         user_id=user_id,
         action="NAVIGATOR_LIBRARY_ENTRY_DELETED",
         details={"entry_id": entry_id},
+    )
+
+
+# =================================================================
+# React Project Navigator — Static file serving
+#
+# The production build of react-navigator/ is served at /navigator.
+# FastAPI routes defined above (/api/...) always take precedence
+# over the static mount.
+#
+# To rebuild after UI changes:
+#   cd react-navigator && npm run build
+# =================================================================
+
+_REACT_DIST = (
+    Path(__file__).parent.parent
+    / "react-navigator"
+    / "dist"
+)
+
+
+@app.get(
+    "/navigator",
+    include_in_schema=False,
+    tags=["Navigator"],
+)
+async def navigator_root() -> FileResponse:
+    """
+    Redirect bare /navigator to /navigator/ so relative
+    asset paths resolve correctly.
+
+    :requirement: URS-32.7 - Serve React Navigator from FastAPI.
+    """
+    return FileResponse(_REACT_DIST / "index.html")
+
+
+if _REACT_DIST.exists():
+    # Serve /navigator/assets/* and all other static files.
+    # html=True makes StaticFiles return index.html for any
+    # unmatched path, enabling React client-side navigation.
+    app.mount(
+        "/navigator",
+        StaticFiles(directory=_REACT_DIST, html=True),
+        name="react-navigator",
     )
