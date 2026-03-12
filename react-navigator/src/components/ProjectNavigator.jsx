@@ -32,6 +32,8 @@ function findPath(node, targetId, path = []) {
 export default function ProjectNavigator() {
   const {
     tree,
+    loading,
+    apiMode,
     expanded, toggleExpand, isExpanded,
     activeBreadcrumb, select,
     addRelease,
@@ -69,10 +71,17 @@ export default function ProjectNavigator() {
               The Validation Factory
             </p>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1.5">
             <span className="text-[10px] bg-green-900/50 text-green-400
                              border border-green-700 rounded-full px-2 py-0.5">
               GMP
+            </span>
+            {/* Live / Demo mode indicator */}
+            <span className={`text-[9px] rounded-full px-1.5 py-0.5 border
+              ${apiMode
+                ? 'bg-blue-900/50 text-blue-400 border-blue-700'
+                : 'bg-slate-800 text-slate-500 border-slate-600'}`}>
+              {loading ? '…' : apiMode ? 'Live' : 'Demo'}
             </span>
           </div>
         </div>

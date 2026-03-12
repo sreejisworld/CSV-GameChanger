@@ -69,7 +69,17 @@ export default function TreeNode({
   activePath,
   heatmapOn,
   onApprove,
+  // Threading context for API calls
+  _releaseId   = undefined,
+  _folderName  = undefined,
 }) {
+  // Propagate release / folder context to children
+  const childReleaseId  = node.type === 'release'
+    ? (node._apiReleaseId || node.id)
+    : _releaseId
+  const childFolderName = node.type === 'folder'
+    ? node.name
+    : _folderName
   const isActive  = activePath?.some(p => p.id === node.id)
   const hasKids   = node.children?.length > 0
   const expanded  = isExpanded(node.id)
@@ -166,7 +176,10 @@ export default function TreeNode({
         {/* Approve button (shown on hover for HITL items) */}
         {needsHITL && onApprove && (
           <button
-            onClick={e => { e.stopPropagation(); onApprove(node.id) }}
+            onClick={e => {
+              e.stopPropagation()
+              onApprove(node.id, _releaseId, _folderName)
+            }}
             title="Mark as Human-Approved (FDA AI Guidance §3.2)"
             className="hidden group-hover:flex shrink-0 items-center gap-0.5
                        text-[9px] bg-green-900/60 text-green-400
@@ -204,6 +217,8 @@ export default function TreeNode({
               activePath={activePath}
               heatmapOn={heatmapOn}
               onApprove={onApprove}
+              _releaseId={childReleaseId}
+              _folderName={childFolderName}
             />
           ))}
         </div>
