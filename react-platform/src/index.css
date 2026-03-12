@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global resets ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; padding: 0; }
+body {
+  background: #07070f;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: #0d0d1c; }
+::-webkit-scrollbar-thumb  { background: #28284a; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a5c; }
+
+/* ── Glassmorphism base ────────────────────────────────── */
+.glass {
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.07) 0%,
+    rgba(255,255,255,0.02) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.glass-blue {
+  background: linear-gradient(135deg,
+    rgba(0,127,255,0.1) 0%,
+    rgba(0,127,255,0.03) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0,127,255,0.2);
+}
+
+.glass-lime {
+  background: linear-gradient(135deg,
+    rgba(50,205,50,0.1) 0%,
+    rgba(50,205,50,0.03) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(50,205,50,0.2);
+}
+
+/* ── Bento card 3D hover ───────────────────────────────── */
+.bento-card {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
+              box-shadow 0.3s ease;
+  cursor: pointer;
+}
+.bento-card:hover {
+  transform: translateY(-8px) rotateX(3deg) rotateY(-1deg);
+  box-shadow:
+    0 24px 48px rgba(0,0,0,0.6),
+    0 0 40px rgba(0,127,255,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.bento-card:hover .app-icon-3d {
+  transform: perspective(200px) translateZ(24px) scale(1.1);
+  filter: drop-shadow(0 6px 16px rgba(0,127,255,0.5));
+}
+.bento-card.lime:hover {
+  box-shadow:
+    0 24px 48px rgba(0,0,0,0.6),
+    0 0 40px rgba(50,205,50,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.bento-card.lime:hover .app-icon-3d {
+  filter: drop-shadow(0 6px 16px rgba(50,205,50,0.6));
+}
+
+.app-icon-3d {
+  display: inline-block;
+  transform: perspective(200px) translateZ(12px);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
+              filter 0.3s ease;
+}
+
+/* ── Sidebar collapse transition ──────────────────────── */
+.sidebar-expanded  { width: 240px; }
+.sidebar-collapsed { width: 64px; }
+.sidebar-transition { transition: width 0.25s cubic-bezier(0.4,0,0.2,1); }
+
+/* ── Tab bar ───────────────────────────────────────────── */
+.tab-item {
+  position: relative;
+  transition: background 0.15s;
+}
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: #007FFF;
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── Cyber Lime AI badge ───────────────────────────────── */
+.ai-badge {
+  background: rgba(50,205,50,0.15);
+  border: 1px solid rgba(50,205,50,0.35);
+  color: #32CD32;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+/* ── Electric Blue focus ring ──────────────────────────── */
+.focus-blue:focus-visible {
+  outline: 2px solid #007FFF;
+  outline-offset: 2px;
+}
+
+/* ── Search overlay backdrop ───────────────────────────── */
+.search-backdrop {
+  background: rgba(7,7,15,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── Animated gradient background for hero cards ──────── */
+.bento-hero-bg {
+  background: linear-gradient(135deg,
+    rgba(0,127,255,0.15) 0%,
+    rgba(50,205,50,0.08) 50%,
+    rgba(0,127,255,0.05) 100%);
+}
+
+/* ── Neon line separator ───────────────────────────────── */
+.neon-sep {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0,127,255,0.4),
+    rgba(50,205,50,0.4),
+    transparent);
+}
+
+/* ── API key reveal box ────────────────────────────────── */
+.key-reveal {
+  background: rgba(50,205,50,0.08);
+  border: 1px solid rgba(50,205,50,0.3);
+  border-radius: 8px;
+  animation: pulse-lime 2s ease-in-out 3;
+}
+
+/* ── Iframe full-height ────────────────────────────────── */
+.app-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}

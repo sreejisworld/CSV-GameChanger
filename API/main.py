@@ -1990,6 +1990,12 @@ _REACT_DIST = (
     / "dist"
 )
 
+_PLATFORM_DIST = (
+    Path(__file__).parent.parent
+    / "react-platform"
+    / "dist"
+)
+
 
 @app.get(
     "/navigator",
@@ -2014,4 +2020,32 @@ if _REACT_DIST.exists():
         "/navigator",
         StaticFiles(directory=_REACT_DIST, html=True),
         name="react-navigator",
+    )
+
+
+# =================================================================
+# EVOLV Platform Shell — Static file serving
+#
+# The production build of react-platform/ is served at /platform.
+# This is the unified UI shell wrapping all EVOLV apps.
+#
+# To rebuild after UI changes:
+#   cd react-platform && npm run build
+# =================================================================
+
+@app.get("/platform", include_in_schema=False)
+async def platform_root() -> FileResponse:
+    """
+    Serve the EVOLV Platform Shell index for bare /platform path.
+
+    :requirement: URS-33.1 - Serve Platform Shell from FastAPI.
+    """
+    return FileResponse(_PLATFORM_DIST / "index.html")
+
+
+if _PLATFORM_DIST.exists():
+    app.mount(
+        "/platform",
+        StaticFiles(directory=_PLATFORM_DIST, html=True),
+        name="evolv-platform",
     )
