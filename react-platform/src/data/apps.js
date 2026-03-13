@@ -76,7 +76,19 @@ export const APPS = [
     description: 'GAMP 5 guided walkthroughs, 21 CFR Part 11 training modules, and EVOLV certification paths.',
     closeable:   true,
     category:    'learning',
-    badge:       'Coming Soon',
+    badge:       'Beta',
+  },
+  {
+    id:          'impact-analytics',
+    label:       'Impact Analytics',
+    icon:        '📊',
+    emoji:       '📊',
+    accentColor: '#32CD32',
+    accentClass: 'lime',
+    description: 'Legacy vs. EVOLV comparison reports, ROI metrics, and compliance impact dashboards.',
+    closeable:   true,
+    category:    'analytics',
+    badge:       'New',
   },
 ]
 
@@ -99,5 +111,9 @@ export const NAV_GROUPS = [
   {
     label: 'Learning',
     items: ['academy'],
+  },
+  {
+    label: 'Analytics',
+    items: ['impact-analytics'],
   },
 ]

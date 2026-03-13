@@ -2,13 +2,17 @@
  * Home — LaunchPad with Bento Grid layout.
  *
  * Each card has a 3D glassmorphism icon that floats on hover.
- * Clicking a card opens that app in a new tab.
+ * Clicking a card opens that app in a new tab (or switches to
+ * it if already open).  Cards show an "Active" or "Open" badge
+ * when the app is already mounted in the tab bar.
  *
  * Grid layout (4-column):
  *   [Validation Factory — 2×2] [Dev Portal — 1×1] [Navigator — 1×1]
- *   [Academy — 1×2]            [Config — 1×1]     [Stats — 2×1]
+ *   [Academy — 1×2]            [Config — 1×1]     [Compliance 2×1]
+ *                                                  [AI Engine  2×1]
  */
-import { APPS } from '../data/apps.js'
+import { APPS }         from '../data/apps.js'
+import { useAppStore } from '../store/useAppStore.js'
 
 // Bento grid slot config — [appId, colSpan, rowSpan, extraClass]
 const BENTO = [
@@ -17,16 +21,28 @@ const BENTO = [
   ['navigator',          1, 1, ''],
   ['academy',            1, 2, ''],
   ['config',             1, 1, ''],
+  ['impact-analytics',   1, 1, ''],
 ]
 
 const STATS = [
-  { label: 'AI Requirements Generated', value: '2,847', color: '#32CD32', icon: '📋' },
-  { label: 'Test Scripts Created',       value: '1,203', color: '#007FFF', icon: '🧪' },
+  { label: 'AI Requirements Generated', value: '2,847',  color: '#32CD32', icon: '📋' },
+  { label: 'Test Scripts Created',       value: '1,203',  color: '#007FFF', icon: '🧪' },
   { label: 'Audit Events Logged',        value: '48,921', color: '#a855f7', icon: '📊' },
   { label: 'Active Validation Projects', value: '7',      color: '#f59e0b', icon: '🏭' },
 ]
 
-export default function Home({ openTab }) {
+export default function Home() {
+  const { tabs, activeTabId, openTab, switchTab } = useAppStore()
+  const openTabIds = new Set(tabs.map(t => t.appId))
+
+  const handleCardClick = appId => {
+    if (openTabIds.has(appId)) {
+      switchTab?.(appId)   // switch to already-open tab
+    } else {
+      openTab(appId)        // open new tab
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto bg-bg-base">
       <div className="max-w-6xl mx-auto px-6 py-8">
@@ -74,6 +90,8 @@ export default function Home({ openTab }) {
           {BENTO.map(([appId, colSpan, rowSpan, extra]) => {
             const app = APPS.find(a => a.id === appId)
             if (!app) return null
+            const isOpen   = openTabIds.has(appId)
+            const isActive = activeTabId === appId
             return (
               <BentoCard
                 key={appId}
@@ -81,7 +99,9 @@ export default function Home({ openTab }) {
                 colSpan={colSpan}
                 rowSpan={rowSpan}
                 extra={extra}
-                onClick={() => openTab(appId)}
+                isOpen={isOpen}
+                isActive={isActive}
+                onClick={() => handleCardClick(appId)}
               />
             )
           })}
@@ -159,10 +179,12 @@ export default function Home({ openTab }) {
   )
 }
 
-function BentoCard({ app, colSpan, rowSpan, extra, onClick }) {
+function BentoCard({ app, colSpan, rowSpan, extra, isOpen, isActive, onClick }) {
   return (
     <div
-      className={`glass rounded-2xl p-5 bento-card ${extra} flex flex-col justify-between`}
+      className={`glass rounded-2xl p-5 bento-card ${extra} flex flex-col
+                  justify-between cursor-pointer
+                  ${isActive ? 'ring-1 ring-blue-DEFAULT/60' : ''}`}
       style={{
         gridColumn: `span ${colSpan}`,
         gridRow:    `span ${rowSpan}`,
@@ -177,7 +199,20 @@ function BentoCard({ app, colSpan, rowSpan, extra, onClick }) {
         >
           {app.emoji}
         </span>
-        {app.badge && (
+
+        {/* Status badges — priority: active > open > app.badge */}
+        {isActive ? (
+          <span className="text-[9px] px-1.5 py-0.5 rounded border
+                           bg-blue-dim border-blue-DEFAULT/50 text-blue-DEFAULT
+                           animate-pulse">
+            ● Active
+          </span>
+        ) : isOpen ? (
+          <span className="text-[9px] px-1.5 py-0.5 rounded border
+                           bg-bg-hover border-border-base text-text-secondary">
+            Open ↗
+          </span>
+        ) : app.badge ? (
           <span className={`
             text-[9px] px-1.5 py-0.5 rounded border
             ${app.accentClass === 'lime'
@@ -186,7 +221,7 @@ function BentoCard({ app, colSpan, rowSpan, extra, onClick }) {
           `}>
             {app.badge}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Bottom section */}
@@ -205,7 +240,7 @@ function BentoCard({ app, colSpan, rowSpan, extra, onClick }) {
             className="text-xs font-medium"
             style={{ color: app.accentColor }}
           >
-            Open →
+            {isOpen ? 'Switch →' : 'Open →'}
           </span>
         </div>
       </div>

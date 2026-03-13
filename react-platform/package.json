@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "framer-motion": "^12.36.0",
+    "fuse.js": "^7.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "fuse.js": "^7.0.0"
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

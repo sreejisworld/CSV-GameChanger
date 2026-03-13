@@ -1,13 +1,17 @@
 /**
  * TabBar — browser-style horizontal tab strip.
  *
- * Active tab has an Electric Blue underline.
- * Home tab is pinned (shows 📌 instead of ×).
- * All other tabs show × on hover.
+ * Reads from Zustand useAppStore (no props needed).
+ * Active tab: Electric Blue underline.
+ * Home tab:   pinned (📌, no close button).
+ * Other tabs: × appears on hover.
  */
-import { APP_MAP } from '../data/apps.js'
+import { APP_MAP }     from '../data/apps.js'
+import { useAppStore } from '../store/useAppStore.js'
 
-export default function TabBar({ tabs, activeTabId, switchTab, closeTab }) {
+export default function TabBar() {
+  const { tabs, activeTabId, switchTab, closeTab } = useAppStore()
+
   return (
     <div className="flex items-end h-9 bg-bg-surface border-b border-border-base
                     overflow-x-auto shrink-0 select-none">
@@ -31,15 +35,13 @@ export default function TabBar({ tabs, activeTabId, switchTab, closeTab }) {
             `}
             onClick={() => switchTab(tab.appId)}
           >
-            {/* Icon */}
             <span className="text-sm leading-none shrink-0">{app.emoji}</span>
-
-            {/* Label */}
             <span className="flex-1 truncate font-medium">{app.label}</span>
 
-            {/* Close / Pin button */}
             {pinned ? (
-              <span className="text-[10px] text-text-muted shrink-0 opacity-50">📌</span>
+              <span className="text-[10px] text-text-muted shrink-0 opacity-50">
+                📌
+              </span>
             ) : (
               <button
                 onClick={e => { e.stopPropagation(); closeTab(tab.appId) }}
@@ -55,18 +57,15 @@ export default function TabBar({ tabs, activeTabId, switchTab, closeTab }) {
         )
       })}
 
-      {/* New tab button */}
+      {/* New tab button → opens Spotlight search */}
       <button
         className="h-full px-3 text-text-muted hover:text-text-secondary
                    hover:bg-bg-hover transition-colors text-lg shrink-0
                    focus-blue"
         title="Open app (Cmd+K)"
-        onClick={() => {
-          // Trigger global search — dispatch a synthetic keydown
-          window.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })
-          )
-        }}
+        onClick={() => window.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })
+        )}
       >
         +
       </button>

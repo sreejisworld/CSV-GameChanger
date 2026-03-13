@@ -1,12 +1,15 @@
 /**
  * TopHeader — global top bar.
  *
- * Contains: EVOLV wordmark (when sidebar collapsed), Impact Search,
- * compliance badges, and a user avatar placeholder.
+ * macOS Spotlight-style Cmd+K search:
+ *  - Semi-transparent frosted glass panel centred on screen
+ *  - Arrow keys navigate results; Enter opens; Escape closes
+ *  - Powered by Fuse.js fuzzy search across all APPS
  */
 import { useEffect, useRef, useState } from 'react'
 import Fuse from 'fuse.js'
 import { APPS } from '../data/apps.js'
+import { useAppStore } from '../store/useAppStore.js'
 
 const fuse = new Fuse(APPS, {
   threshold: 0.35,
@@ -16,12 +19,15 @@ const fuse = new Fuse(APPS, {
   ],
 })
 
-export default function TopHeader({ openTab }) {
-  const [open,  setOpen]  = useState(false)
-  const [query, setQuery] = useState('')
-  const inputRef          = useRef(null)
+export default function TopHeader() {
+  const { openTab } = useAppStore()
+  const [open,    setOpen]    = useState(false)
+  const [query,   setQuery]   = useState('')
+  const [cursor,  setCursor]  = useState(0)
+  const inputRef              = useRef(null)
+  const listRef               = useRef(null)
 
-  // Cmd+K / Ctrl+K to open
+  // Cmd+K / Ctrl+K
   useEffect(() => {
     const handler = e => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -37,6 +43,7 @@ export default function TopHeader({ openTab }) {
   useEffect(() => {
     if (open) {
       setQuery('')
+      setCursor(0)
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
@@ -44,6 +51,31 @@ export default function TopHeader({ openTab }) {
   const results = query.trim()
     ? fuse.search(query).map(r => r.item)
     : APPS
+
+  // Keyboard navigation inside the search overlay
+  const handleKeyDown = e => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setCursor(c => Math.min(c + 1, results.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setCursor(c => Math.max(c - 1, 0))
+    } else if (e.key === 'Enter' && results[cursor]) {
+      openTab(results[cursor].id)
+      setOpen(false)
+    }
+  }
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    const el = listRef.current?.children[cursor]
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [cursor])
+
+  // Reset cursor when results change
+  useEffect(() => { setCursor(0) }, [query])
+
+  const pick = appId => { openTab(appId); setOpen(false) }
 
   return (
     <>
@@ -95,71 +127,122 @@ export default function TopHeader({ openTab }) {
         </div>
       </header>
 
-      {/* ── Search overlay ──────────────────────────────── */}
+      {/* ── macOS Spotlight-style search overlay ─────────── */}
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-20
+          className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh]
                      search-backdrop"
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-xl glass rounded-2xl overflow-hidden
-                       shadow-[0_24px_64px_rgba(0,0,0,0.8),0_0_40px_rgba(0,127,255,0.15)]
+            className="w-full max-w-[620px] rounded-2xl overflow-hidden
                        animate-fade-in"
+            style={{
+              background:   'rgba(12, 12, 22, 0.82)',
+              backdropFilter: 'blur(48px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(48px) saturate(180%)',
+              border:       '1px solid rgba(255,255,255,0.08)',
+              boxShadow:    '0 32px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,127,255,0.12), 0 0 60px rgba(0,127,255,0.08)',
+            }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Input */}
-            <div className="flex items-center gap-3 px-4 py-3
-                            border-b border-border-base">
-              <span className="text-blue-DEFAULT text-lg">🔍</span>
+            {/* Input row */}
+            <div className="flex items-center gap-3 px-5 py-4">
+              <svg width="18" height="18" viewBox="0 0 18 18" className="shrink-0 opacity-50">
+                <circle cx="7.5" cy="7.5" r="5.5" stroke="#007FFF" strokeWidth="1.8" fill="none"/>
+                <line x1="12" y1="12" x2="16" y2="16" stroke="#007FFF" strokeWidth="1.8"
+                      strokeLinecap="round"/>
+              </svg>
               <input
                 ref={inputRef}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Open an app or search…"
+                onKeyDown={handleKeyDown}
+                placeholder="Search apps, docs, requirements…"
                 className="flex-1 bg-transparent text-text-primary text-sm
-                           placeholder:text-text-muted outline-none"
+                           placeholder:text-text-muted/60 outline-none"
               />
-              <kbd className="text-[9px] text-text-muted border border-border-base
-                              rounded px-1.5 py-0.5">ESC</kbd>
+              <kbd className="text-[10px] text-text-muted border border-white/10
+                              rounded px-1.5 py-0.5 bg-white/5">
+                ESC
+              </kbd>
             </div>
 
-            {/* Results */}
-            <div className="max-h-80 overflow-y-auto p-2">
+            {/* Thin separator line */}
+            <div className="h-px bg-white/6 mx-5" />
+
+            {/* Section label */}
+            <p className="px-5 pt-3 pb-1 text-[10px] text-text-muted uppercase
+                          tracking-widest">
+              {query.trim() ? `Results for "${query}"` : 'All Apps'}
+            </p>
+
+            {/* Results list */}
+            <div
+              ref={listRef}
+              className="max-h-[340px] overflow-y-auto p-2 pb-3"
+            >
               {results.length === 0 ? (
-                <p className="text-text-muted text-xs text-center py-6">
+                <p className="text-text-muted text-xs text-center py-8">
                   No results for "{query}"
                 </p>
-              ) : results.map(app => (
-                <button
-                  key={app.id}
-                  onClick={() => { openTab(app.id); setOpen(false) }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-                             hover:bg-bg-hover transition-colors text-left group"
-                >
-                  <span className="text-2xl leading-none">{app.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-text-primary text-sm font-medium">{app.label}</p>
-                    <p className="text-text-muted text-xs truncate">{app.description}</p>
-                  </div>
-                  {app.badge && (
-                    <span className="ai-badge shrink-0">{app.badge}</span>
-                  )}
-                  <span className="text-text-muted text-xs opacity-0 group-hover:opacity-100
-                                   transition-opacity shrink-0">
-                    Open →
-                  </span>
-                </button>
-              ))}
+              ) : results.map((app, idx) => {
+                const highlighted = idx === cursor
+                return (
+                  <button
+                    key={app.id}
+                    onMouseEnter={() => setCursor(idx)}
+                    onClick={() => pick(app.id)}
+                    className={`
+                      w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl
+                      transition-all text-left group
+                      ${highlighted ? 'bg-blue-DEFAULT/15 border border-blue-DEFAULT/25'
+                                    : 'hover:bg-white/5'}
+                    `}
+                  >
+                    <span className="text-2xl leading-none shrink-0
+                                     drop-shadow-[0_0_6px_rgba(0,127,255,0.4)]">
+                      {app.emoji}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-text-primary text-sm font-semibold">
+                        {app.label}
+                      </p>
+                      <p className="text-text-muted text-[11px] truncate mt-0.5">
+                        {app.description}
+                      </p>
+                    </div>
+                    {app.badge && (
+                      <span className="ai-badge shrink-0 text-[9px]">{app.badge}</span>
+                    )}
+                    <span className={`
+                      text-[10px] font-medium shrink-0 transition-opacity
+                      ${highlighted ? 'text-blue-DEFAULT opacity-100' : 'opacity-0'}
+                    `}>
+                      Open ↵
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
-            {/* Footer hint */}
-            <div className="neon-sep" />
-            <div className="px-4 py-2 flex items-center gap-4 text-[10px] text-text-muted">
-              <span><kbd className="bg-bg-hover border border-border-base rounded px-1">↑↓</kbd> Navigate</span>
-              <span><kbd className="bg-bg-hover border border-border-base rounded px-1">↵</kbd> Open</span>
-              <span><kbd className="bg-bg-hover border border-border-base rounded px-1">ESC</kbd> Close</span>
-              <span className="ml-auto ai-badge">Powered by EVOLV</span>
+            {/* Footer */}
+            <div className="h-px bg-white/6 mx-5" />
+            <div className="px-5 py-2.5 flex items-center gap-5 text-[10px]
+                            text-text-muted">
+              <span className="flex items-center gap-1.5">
+                <kbd className="bg-white/8 border border-white/10 rounded px-1">↑↓</kbd>
+                Navigate
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="bg-white/8 border border-white/10 rounded px-1">↵</kbd>
+                Open
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="bg-white/8 border border-white/10 rounded px-1">ESC</kbd>
+                Close
+              </span>
+              <span className="ml-auto ai-badge text-[9px]">Powered by EVOLV</span>
             </div>
           </div>
         </div>
