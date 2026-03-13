@@ -22,6 +22,7 @@ const BENTO = [
   ['academy',            1, 2, ''],
   ['config',             1, 1, ''],
   ['impact-analytics',   1, 1, ''],
+  ['docs',               1, 1, ''],
 ]
 
 const STATS = [

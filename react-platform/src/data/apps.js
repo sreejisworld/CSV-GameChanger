@@ -90,6 +90,18 @@ export const APPS = [
     category:    'analytics',
     badge:       'New',
   },
+  {
+    id:          'docs',
+    label:       'Documentation',
+    icon:        '📚',
+    emoji:       '📚',
+    accentColor: '#007FFF',
+    accentClass: 'blue',
+    description: 'Next-gen audit-ready documentation with Live-Sync version badges, GAMP 5 glossary, and interactive Try-it demos.',
+    closeable:   true,
+    category:    'core',
+    badge:       'Live-Sync',
+  },
 ]
 
 export const APP_MAP = Object.fromEntries(APPS.map(a => [a.id, a]))
@@ -98,7 +110,7 @@ export const APP_MAP = Object.fromEntries(APPS.map(a => [a.id, a]))
 export const NAV_GROUPS = [
   {
     label: 'Platform',
-    items: ['home', 'validation-factory', 'navigator'],
+    items: ['home', 'validation-factory', 'navigator', 'docs'],
   },
   {
     label: 'Developer',

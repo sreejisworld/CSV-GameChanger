@@ -30,6 +30,7 @@ const RENDERERS = {
   'config':             lazy(() => import('./apps/Config.jsx')),
   'academy':            lazy(() => import('./apps/Academy.jsx')),
   'impact-analytics':   lazy(() => import('./apps/ImpactAnalytics.jsx')),
+  'docs':               lazy(() => import('./apps/Docs.jsx')),
 }
 
 function AppLoader() {
