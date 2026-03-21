@@ -35,12 +35,12 @@ export default function TabBar() {
             `}
             onClick={() => switchTab(tab.appId)}
           >
-            <span className="text-sm leading-none shrink-0">{app.emoji}</span>
             <span className="flex-1 truncate font-medium">{app.label}</span>
 
             {pinned ? (
-              <span className="text-[10px] text-text-muted shrink-0 opacity-50">
-                📌
+              <span className="text-[10px] text-text-muted shrink-0 opacity-40
+                               font-mono">
+                ·
               </span>
             ) : (
               <button

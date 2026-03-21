@@ -2,19 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens (dark default) ──────────────────────── */
+:root {
+  --bg-base:    #07070f;
+  --bg-surface: #0d0d1c;
+  --bg-card:    #111124;
+  --bg-hover:   #17172e;
+
+  --text-primary:   #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted:     #475569;
+
+  --border-base:   #1c1c38;
+  --border-bright: #28284a;
+
+  --scrollbar-track: #0d0d1c;
+  --scrollbar-thumb: #28284a;
+  --scrollbar-hover: #3a3a5c;
+
+  --search-backdrop: rgba(7,7,15,0.85);
+  --input-bg:        #111124;
+  --input-border:    #1c1c38;
+
+  /* Accent tokens — same value in both themes; use these in SVG/inline */
+  --accent-blue:    #007FFF;
+  --accent-lime:    #32CD32;
+  --accent-warning: #f59e0b;
+  --accent-error:   #ef4444;
+
+  /* Progress ring track (dark: faint white, light: faint black) */
+  --ring-track: rgba(255,255,255,0.08);
+
+  /* Lifecycle connector unfilled line */
+  --connector-empty: #1e293b;
+}
+
+[data-theme="light"] {
+  --bg-base:    #ffffff;
+  --bg-surface: #f9fafb;
+  --bg-card:    #f1f5f9;
+  --bg-hover:   #e5e7eb;
+
+  --text-primary:   #0f172a;
+  --text-secondary: #334155;
+  --text-muted:     #64748b;
+
+  --border-base:   #e2e8f0;
+  --border-bright: #cbd5e1;
+
+  --scrollbar-track: #f9fafb;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-hover: #94a3b8;
+
+  --search-backdrop: rgba(249,250,251,0.92);
+  --input-bg:        #ffffff;
+  --input-border:    #e2e8f0;
+
+  --ring-track: rgba(0,0,0,0.08);
+  --connector-empty: #e2e8f0;
+}
+
 /* ── Global resets ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; padding: 0; }
 body {
-  background: #07070f;
-  color: #e2e8f0;
+  background: var(--bg-base);
+  color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
-::-webkit-scrollbar-track  { background: #0d0d1c; }
-::-webkit-scrollbar-thumb  { background: #28284a; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: #3a3a5c; }
+::-webkit-scrollbar-track  { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb  { background: var(--scrollbar-thumb); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 /* ── Glassmorphism base ────────────────────────────────── */
 .glass {
@@ -24,6 +84,12 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255,255,255,0.08);
+}
+[data-theme="light"] .glass {
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.9) 0%,
+    rgba(248,250,252,0.8) 100%);
+  border: 1px solid rgba(0,0,0,0.06);
 }
 
 .glass-blue {
@@ -59,6 +125,12 @@ body {
     0 0 40px rgba(0,127,255,0.12),
     inset 0 1px 0 rgba(255,255,255,0.12);
 }
+[data-theme="light"] .bento-card:hover {
+  box-shadow:
+    0 12px 32px rgba(0,0,0,0.12),
+    0 0 24px rgba(0,127,255,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.8);
+}
 .bento-card:hover .app-icon-3d {
   transform: perspective(200px) translateZ(24px) scale(1.1);
   filter: drop-shadow(0 6px 16px rgba(0,127,255,0.5));
@@ -68,6 +140,12 @@ body {
     0 24px 48px rgba(0,0,0,0.6),
     0 0 40px rgba(50,205,50,0.15),
     inset 0 1px 0 rgba(255,255,255,0.12);
+}
+[data-theme="light"] .bento-card.lime:hover {
+  box-shadow:
+    0 12px 32px rgba(0,0,0,0.12),
+    0 0 24px rgba(50,205,50,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.8);
 }
 .bento-card.lime:hover .app-icon-3d {
   filter: drop-shadow(0 6px 16px rgba(50,205,50,0.6));
@@ -95,7 +173,7 @@ body {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 2px;
-  background: #007FFF;
+  background: var(--accent-blue);
   border-radius: 2px 2px 0 0;
 }
 
@@ -112,13 +190,13 @@ body {
 
 /* ── Electric Blue focus ring ──────────────────────────── */
 .focus-blue:focus-visible {
-  outline: 2px solid #007FFF;
+  outline: 2px solid var(--accent-blue);
   outline-offset: 2px;
 }
 
 /* ── Search overlay backdrop ───────────────────────────── */
 .search-backdrop {
-  background: rgba(7,7,15,0.85);
+  background: var(--search-backdrop);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -155,4 +233,78 @@ body {
   height: 100%;
   border: none;
   display: block;
+}
+
+/* ── Form inputs (themed) ──────────────────────────────── */
+.evolv-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.evolv-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(0,127,255,0.12);
+}
+.evolv-input::placeholder { color: var(--text-muted); }
+
+/* ── Select themed ─────────────────────────────────────── */
+.evolv-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+/* ── LifecycleStrip — theme-aware node & connector ─────── */
+.phase-node-active   { border-color: var(--accent-blue); background: var(--accent-blue); }
+.phase-node-complete { border-color: var(--accent-lime); background: var(--accent-lime); }
+.phase-node-locked   { border-color: var(--border-base); background: transparent; }
+.phase-node-avail    { border-color: var(--border-bright); background: transparent; }
+
+.phase-node-active   .phase-glow { box-shadow: 0 0 0 3px rgba(0,127,255,0.20); }
+.phase-node-complete .phase-glow { box-shadow: 0 0 0 2px rgba(50,205,50,0.15); }
+
+.phase-label-active   { color: var(--accent-blue); }
+.phase-label-complete { color: var(--accent-lime); }
+.phase-label-locked   { color: var(--border-bright); }
+.phase-label-avail    { color: var(--text-muted); }
+
+.connector-lime  { background: var(--accent-lime); }
+.connector-half  { background: linear-gradient(90deg, var(--accent-lime) 0%, var(--connector-empty) 100%); }
+.connector-empty { background: var(--connector-empty); }
+
+/* ── Light mode: text-white → text-primary ─────────────────
+ *
+ * In dark mode, text-white was used as a semantic heading colour
+ * (white on dark card/surface). In light mode those surfaces
+ * become white, making the text invisible.
+ *
+ * Fix: override text-white → text-primary for all elements that
+ * are NOT themselves a coloured button (bg-blue-DEFAULT, etc.).
+ * Child spans/labels *inside* a coloured button are restored via
+ * the parent-child rule below.
+ * ─────────────────────────────────────────────────────────── */
+[data-theme="light"] .text-white:not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-lime"]):not([class*="bg-amber"]) {
+  color: var(--text-primary);
+}
+
+/* Restore white text for children nested inside coloured containers */
+[data-theme="light"] [class*="bg-blue-DEFAULT"] .text-white,
+[data-theme="light"] [class*="bg-purple"]       .text-white,
+[data-theme="light"] [class*="bg-lime-DEFAULT"] .text-white,
+[data-theme="light"] [class*="bg-amber"]        .text-white {
+  color: #ffffff;
+}
+
+/* Sidebar nav active item — blue-dim bg needs visible text */
+[data-theme="light"] .bg-blue-dim .text-text-primary {
+  color: var(--text-primary);
 }

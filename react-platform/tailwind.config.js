@@ -4,12 +4,27 @@ export default {
   theme: {
     extend: {
       colors: {
+        // All bg/text/border tokens resolve via CSS variables so
+        // the same Tailwind class works in both dark and light mode.
         bg: {
-          base:    '#07070f',
-          surface: '#0d0d1c',
-          card:    '#111124',
-          hover:   '#17172e',
+          base:    'var(--bg-base)',
+          surface: 'var(--bg-surface)',
+          card:    'var(--bg-card)',
+          hover:   'var(--bg-hover)',
         },
+        text: {
+          primary:   'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted:     'var(--text-muted)',
+        },
+        border: {
+          base:   'var(--border-base)',
+          bright: 'var(--border-bright)',
+          blue:   'rgba(0,127,255,0.3)',
+          lime:   'rgba(50,205,50,0.3)',
+          amber:  'rgba(245,158,11,0.3)',
+        },
+        // Accent colours stay the same across themes
         lime: {
           DEFAULT: '#32CD32',
           50:  '#f0fdf0',
@@ -21,16 +36,15 @@ export default {
           dim: 'rgba(0,127,255,0.12)',
           glow:'rgba(0,127,255,0.25)',
         },
-        border: {
-          base:   '#1c1c38',
-          bright: '#28284a',
-          lime:   'rgba(50,205,50,0.3)',
-          blue:   'rgba(0,127,255,0.3)',
+        amber: {
+          DEFAULT: '#f59e0b',
+          dim:     'rgba(245,158,11,0.12)',
+          glow:    'rgba(245,158,11,0.25)',
         },
-        text: {
-          primary:   '#e2e8f0',
-          secondary: '#94a3b8',
-          muted:     '#475569',
+        purple: {
+          DEFAULT: '#a855f7',
+          dim:     'rgba(168,85,247,0.12)',
+          glow:    'rgba(168,85,247,0.25)',
         },
       },
       fontFamily: {

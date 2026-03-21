@@ -14,6 +14,9 @@ import { useState } from 'react'
 import { NAV_GROUPS, APP_MAP } from '../data/apps.js'
 import { useAppStore }         from '../store/useAppStore.js'
 
+// Accent colors for lifecycle group label
+const LIFECYCLE_ACCENT = '#007FFF'
+
 // ── EVOLV SVG Logo ─────────────────────────────────────────────
 function EvolvLogo({ collapsed }) {
   return (
@@ -53,7 +56,7 @@ function EvolvLogo({ collapsed }) {
 
       {!collapsed && (
         <div className="min-w-0 animate-slide-in">
-          <p className="text-white font-black text-sm leading-none tracking-wide">
+          <p className="text-text-primary font-black text-sm leading-none tracking-wide">
             EVOLV
           </p>
           <p className="text-text-muted text-[9px] uppercase tracking-widest mt-0.5">
@@ -100,10 +103,44 @@ function StatusDot({ badge, collapsed }) {
   )
 }
 
+// ── Monogram for collapsed mode — 32px with colored ring ────────
+function Monogram({ label, accentColor, isActive }) {
+  const initials = label
+    .replace(/[^a-zA-Z ]/g, '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('') || label.slice(0, 2).toUpperCase()
+
+  const color = isActive ? '#007FFF' : accentColor ?? '#64748b'
+  return (
+    <span
+      className="w-8 h-8 rounded-full flex items-center justify-center
+                 text-[11px] font-bold shrink-0 leading-none transition-all"
+      style={{
+        background:  color + '18',
+        border:      `2px solid ${color}${isActive ? 'cc' : '40'}`,
+        color,
+        boxShadow:   isActive ? `0 0 0 2px ${color}30` : 'none',
+      }}
+    >
+      {initials}
+    </span>
+  )
+}
+
 // ── Main Sidebar ───────────────────────────────────────────────
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
-  const { activeTabId, openTab, statusBadges } = useAppStore()
+  const [collapsed,       setCollapsed]       = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set())
+  const { activeTabId, openTab, statusBadges, phaseCompletion, setPhaseComplete } = useAppStore()
+
+  const toggleGroup = label => setCollapsedGroups(prev => {
+    const next = new Set(prev)
+    next.has(label) ? next.delete(label) : next.add(label)
+    return next
+  })
 
   return (
     <aside
@@ -118,85 +155,153 @@ export default function Sidebar() {
 
       {/* ── Nav groups ───────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto py-3 space-y-4">
-        {NAV_GROUPS.map(group => (
+        {NAV_GROUPS.map(group => {
+          const isGroupCollapsed = collapsedGroups.has(group.label)
+          return (
           <div key={group.label}>
             {!collapsed && (
-              <p className="px-4 text-[9px] text-text-muted uppercase
-                            tracking-widest mb-1.5">
-                {group.label}
-              </p>
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className="w-full flex items-center justify-between
+                           px-4 mb-1.5 group focus-blue outline-none"
+              >
+                <p className="text-[9px] text-text-muted uppercase
+                              tracking-widest group-hover:text-text-secondary
+                              transition-colors">
+                  {group.label}
+                </p>
+                <span
+                  className="text-[9px] text-text-muted transition-transform
+                             duration-200 group-hover:text-text-secondary"
+                  style={{
+                    display: 'inline-block',
+                    transform: isGroupCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                  }}
+                >
+                  ▾
+                </span>
+              </button>
             )}
+            {!isGroupCollapsed && (
             <div className="space-y-0.5 px-2">
               {group.items.map(appId => {
-                const app      = APP_MAP[appId]
-                const isActive = activeTabId === appId
-                const badge    = statusBadges[appId] ?? null
-                const dotColor = badge ? DOT_COLORS[badge.type] : null
+                const app        = APP_MAP[appId]
+                const isActive   = activeTabId === appId
+                const badge      = statusBadges[appId] ?? null
+                const dotColor   = badge ? DOT_COLORS[badge.type] : null
+                const isLocked   = app?.locked ?? false
+                const isComplete = !isLocked && (phaseCompletion?.[appId] ?? false)
+
+                // Single indicator — highest priority wins
+                const indicator = badge
+                  ? <StatusDot badge={badge} collapsed={false} />
+                  : isActive
+                    ? <span className="w-1.5 h-1.5 rounded-full bg-blue-DEFAULT
+                                       shrink-0 shadow-[0_0_6px_#007FFF]" />
+                    : isComplete
+                      ? <span className="shrink-0 text-[10px] font-semibold
+                                         text-lime-DEFAULT" title="Phase complete">✓</span>
+                      : isLocked
+                        ? <span className="text-[9px] text-text-muted shrink-0
+                                           border border-border-base rounded px-1">
+                            locked
+                          </span>
+                        : app.badge
+                          ? <span className={`
+                              text-[9px] px-1.5 py-0.5 rounded border shrink-0
+                              ${app.accentClass === 'lime'
+                                ? 'bg-lime-dim border-lime-DEFAULT/30 text-lime-DEFAULT'
+                                : app.accentClass === 'amber'
+                                  ? 'bg-amber-dim border-amber-DEFAULT/30 text-amber-DEFAULT'
+                                  : 'bg-blue-dim border-blue-DEFAULT/30 text-blue-DEFAULT'}
+                            `}>
+                              {app.badge}
+                            </span>
+                          : null
+
+                // Collapsed: single dot above monogram (badge > complete > nothing)
+                const collapsedDot = badge
+                  ? <span className="absolute -top-0.5 -right-0.5 w-2 h-2
+                                     rounded-full border border-bg-surface"
+                           style={{ background: dotColor }} />
+                  : isComplete
+                    ? <span className="absolute -top-0.5 -right-0.5 w-2 h-2
+                                       rounded-full border border-bg-surface
+                                       bg-lime-DEFAULT" />
+                    : null
 
                 return (
                   <button
                     key={appId}
-                    onClick={() => openTab(appId)}
-                    title={collapsed ? app.label : undefined}
+                    onClick={isLocked ? undefined : () => {
+                      openTab(appId)
+                      if (APP_MAP[appId]?.category === 'lifecycle') {
+                        setPhaseComplete(appId)
+                      }
+                    }}
+                    disabled={isLocked}
+                    title={
+                      isLocked
+                        ? (app?.lockedReason ?? 'Locked')
+                        : collapsed
+                          ? app.label
+                          : undefined
+                    }
                     className={`
-                      group w-full flex items-center gap-3 rounded-lg px-2.5 py-2
-                      text-left transition-all duration-150 focus-blue relative
-                      ${isActive
-                        ? 'bg-blue-dim border border-border-blue text-white'
-                        : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'}
+                      group w-full flex items-center gap-2.5 rounded-lg
+                      px-2 py-1.5 text-left transition-all duration-150
+                      focus-blue relative
+                      ${isLocked
+                        ? 'cursor-not-allowed opacity-35'
+                        : isActive
+                          ? 'bg-blue-dim border border-border-blue text-text-primary'
+                          : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'}
                     `}
                   >
-                    {/* App icon */}
-                    <span className={`
-                      text-lg leading-none shrink-0 relative
-                      ${isActive ? 'drop-shadow-[0_0_8px_rgba(0,127,255,0.8)]' : ''}
-                    `}>
-                      {app.emoji}
-                      {/* Collapsed status dot — tiny overlay */}
-                      {collapsed && badge && (
-                        <span
-                          className="absolute -top-0.5 -right-0.5 w-2 h-2
-                                     rounded-full border border-bg-surface"
-                          style={{ background: dotColor }}
+                    {/* Collapsed: monogram + single dot overlay */}
+                    {collapsed ? (
+                      <div className="relative">
+                        <Monogram
+                          label={app.label}
+                          accentColor={app.accentColor}
+                          isActive={isActive}
                         />
-                      )}
-                    </span>
+                        {collapsedDot}
+                      </div>
+                    ) : (
+                      /* Expanded: thin left accent line */
+                      <span
+                        className="w-0.5 h-3.5 rounded-full shrink-0 transition-all"
+                        style={{
+                          background: isActive
+                            ? '#007FFF'
+                            : isComplete
+                              ? '#32CD32'
+                              : 'transparent',
+                          boxShadow: isActive
+                            ? '0 0 6px rgba(0,127,255,0.6)'
+                            : 'none',
+                        }}
+                      />
+                    )}
 
-                    {/* Label */}
+                    {/* Label (expanded only) */}
                     {!collapsed && (
                       <span className="flex-1 text-xs font-medium truncate">
                         {app.label}
                       </span>
                     )}
 
-                    {/* Status badge (expanded only) */}
-                    {!collapsed && badge && (
-                      <StatusDot badge={badge} collapsed={false} />
-                    )}
-
-                    {/* App meta-badge (only when no status badge) */}
-                    {!collapsed && !badge && app.badge && (
-                      <span className={`
-                        text-[9px] px-1.5 py-0.5 rounded border shrink-0
-                        ${app.accentClass === 'lime'
-                          ? 'bg-lime-dim border-lime-DEFAULT/30 text-lime-DEFAULT'
-                          : 'bg-blue-dim border-blue-DEFAULT/30 text-blue-DEFAULT'}
-                      `}>
-                        {app.badge}
-                      </span>
-                    )}
-
-                    {/* Active indicator dot */}
-                    {!collapsed && isActive && !badge && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-DEFAULT shrink-0
-                                       shadow-[0_0_6px_#007FFF]" />
-                    )}
+                    {/* Single right-side indicator (expanded only) */}
+                    {!collapsed && indicator}
                   </button>
                 )
               })}
             </div>
+            )}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* ── Footer ───────────────────────────────────────── */}

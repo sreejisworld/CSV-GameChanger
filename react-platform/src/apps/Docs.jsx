@@ -46,7 +46,7 @@ const NAV = [
     ],
   },
   {
-    id: 'validation-factory', title: 'Validation Factory', icon: '🏭',
+    id: 'verify', title: 'Validation Factory', icon: '🏭',
     articles: [
       { id: 'smart-requirements', title: 'SMART Requirements Engine', tags: ['smart', 'requirements', 'urs', 'ai'] },
       { id: 'urs-generation',     title: 'URS Generation',            tags: ['urs', 'generate', 'requirements'] },
@@ -119,7 +119,7 @@ EVOLV is organised around six core applications, all accessible from a unified s
       { ref: 'FDA CSA Guidance 2022', desc: 'Computer Software Assurance — outcome-focused testing vs. scripted-only approach.' },
       { ref: 'FDA AI/ML Guidance 2026', desc: 'Human-in-the-Loop requirements for AI-assisted regulated decisions.' },
     ],
-    tryIt: { label: 'Open Validation Factory', appId: 'validation-factory' },
+    tryIt: { label: 'Open Validation Factory', appId: 'verify' },
   },
 
   'quick-start': {
@@ -148,7 +148,7 @@ EVOLV is organised around six core applications, all accessible from a unified s
       { ref: 'GAMP 5 §5.4', desc: 'User Requirements Specification must be defined before system design.' },
       { ref: '21 CFR Part 11 §11.50', desc: 'Electronic signatures must include signer name, date/time, and meaning of signature.' },
     ],
-    tryIt: { label: 'Try it in Validation Factory', appId: 'validation-factory' },
+    tryIt: { label: 'Try it in Validation Factory', appId: 'verify' },
   },
 
   'smart-requirements': {
@@ -219,7 +219,7 @@ Unlike Word template-based approaches, EVOLV URS documents are generated fresh f
       { ref: 'GAMP 5 Appendix S2', desc: 'URS must be developed and approved before detailed design.' },
       { ref: 'FDA CSA §IV.A',    desc: 'Requirements must be traceable from business need through to testing.' },
     ],
-    tryIt: { label: 'Open Validation Factory', appId: 'validation-factory' },
+    tryIt: { label: 'Open Validation Factory', appId: 'verify' },
   },
 
   'ur-fr': {
@@ -251,7 +251,7 @@ This deterministic approach is intentional: UR/FR transformation is a regulated 
       { ref: 'GAMP 5 Appendix O4', desc: 'Risk assessment must be documented and linked to test strategy.' },
       { ref: 'FDA CSA §IV.B',      desc: 'Testing effort must be proportional to risk — high risk warrants scripted OQ/UAT.' },
     ],
-    tryIt: { label: 'Open Validation Factory', appId: 'validation-factory' },
+    tryIt: { label: 'Open Validation Factory', appId: 'verify' },
   },
 
   'verification-agent': {
@@ -317,7 +317,7 @@ Every step is structured: Type (Setup/Execution), Step Number, Title, Instructio
       { ref: 'GAMP 5 Appendix O5',          desc: 'Test scripts must include expected results and pass/fail criteria.' },
       { ref: '21 CFR Part 11 §11.10(e)',    desc: 'Test execution records are electronic records subject to audit trail requirements.' },
     ],
-    tryIt: { label: 'Open Validation Factory', appId: 'validation-factory' },
+    tryIt: { label: 'Open Validation Factory', appId: 'verify' },
   },
 
   'validation-report': {
@@ -347,7 +347,7 @@ The Manifestation of Signature page satisfies 21 CFR Part 11 §11.50: it display
       { ref: '21 CFR Part 11 §11.70', desc: 'Electronic signatures must be linked to their records to prevent excision, copying, or falsification.' },
       { ref: 'GAMP 5 §5.4.7',        desc: 'Validation documentation must be reviewed and approved before system go-live.' },
     ],
-    tryIt: { label: 'Open Validation Factory', appId: 'validation-factory' },
+    tryIt: { label: 'Open Validation Factory', appId: 'verify' },
   },
 
   'api-keys': {
