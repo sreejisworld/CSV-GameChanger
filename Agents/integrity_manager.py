@@ -67,8 +67,11 @@ _IMPACT_MAP = {
     "CHANGE_REQUEST_RECEIVED": "Change Control",
     "CHANGE_REQUEST_ASSESSED": "Change Control",
     "CHANGE_REQUEST_FAILED": "Change Control",
-    # SignOff
-    "DOCUMENT_SIGN_OFF": "Electronic Signature",
+    # SignOff / Release
+    "DOCUMENT_SIGN_OFF":        "Electronic Signature",
+    "TEST_RUN_SIGNED_OFF":      "Electronic Signature",
+    "RELEASE_APPROVAL_SIGNED":  "Electronic Signature",
+    "RELEASE_APPROVED":         "Release Authorization",
     # VerificationAgent
     "URS_VERIFIED": "Regulatory Compliance",
     "COMPLIANCE_EXCEPTION": "Compliance Exception",

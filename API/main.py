@@ -53,6 +53,14 @@ from API.schemas import (
 )
 from Agents.sentinel_impact_agent import SentinelImpactAgent
 from API.project_store import ProjectStore, GAMP5_FOLDERS
+from API.routers.verify           import router as verify_router
+from API.routers.release          import router as release_router
+from API.routers.monitor          import router as monitor_router
+from API.routers.generate_script  import router as gen_script_router
+from API.routers.requirements     import router as requirements_router
+from API.routers.exports          import router as exports_router
+from API.routers.plan             import router as plan_router
+from API.routers.audit            import router as audit_router
 
 
 # -----------------------------------------------------------------
@@ -119,11 +127,23 @@ app = FastAPI(
 # to match the active tenant nomenclature map.
 app.add_middleware(TenantDictionaryMiddleware)
 
-# CORSMiddleware — allow React (port 3000) and Streamlit
-# (port 8501) to call this API from the browser.
+# ── Routers ────────────────────────────────────────────────────────
+app.include_router(verify_router,        prefix="/verify")
+app.include_router(gen_script_router,   prefix="/verify")
+app.include_router(release_router,      prefix="/release")
+app.include_router(monitor_router)
+app.include_router(requirements_router)
+app.include_router(exports_router)
+app.include_router(plan_router)
+app.include_router(audit_router)
+
+# CORSMiddleware — allow React (port 5173), legacy React
+# (port 3000), and Streamlit (port 8501).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://localhost:8501",
         "http://127.0.0.1:3000",
