@@ -127,8 +127,15 @@ def render_sidebar(
         )
         st.caption("v0.1.0")
 
-        # ---- Demo Mode toggle ----
+        # ---- Theme Toggle ----
         st.markdown("---")
+        _dark = st.session_state.get("dark_mode", False)
+        _theme_label = "☀️  Light Mode" if _dark else "🌙  Dark Mode"
+        if st.toggle(_theme_label, key="dark_mode"):
+            pass  # rerun on toggle handles theme re-injection
+        st.markdown("---")
+
+        # ---- Demo Mode toggle ----
         demo_on = st.toggle("Demo Mode", key="demo_mode")
         if demo_on:
             st.caption("Showing sample LIMS data")

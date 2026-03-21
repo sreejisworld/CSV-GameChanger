@@ -1,0 +1,817 @@
+/* =================================================================
+   EVOLV — Notion-Style Workspace Extension
+   =================================================================
+   Layered on top of soho_theme.css. Pivots the layout to a
+   centered single-column document workspace:
+     · Geist / Inter typography
+     · max-width 800px centered content
+     · 4px baseline grid
+     · shadow-sm block cards (no heavy borders)
+     · Ghost text + selection toolbar (see ai_input.py)
+     · Soft #F9FAFB background
+   ================================================================= */
+
+/* ── Geist font stack (system-installed or npm; Inter fallback) ── */
+:root {
+    --font-stack: 'Geist', 'Geist Sans', 'Inter',
+                  system-ui, -apple-system, sans-serif;
+
+    /* ── Override page background ──────────────────────────────── */
+    --ev-bg-page: #F9FAFB;
+    --ev-bg:      #FFFFFF;
+    --ev-bg-alt:  #F3F4F6;
+
+    /* ── Shadow scale ───────────────────────────────────────────── */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.07),
+                 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06),
+                 0 2px 4px  rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08),
+                 0 4px 8px  rgba(0, 0, 0, 0.04);
+
+    /* ── 4px grid token ─────────────────────────────────────────── */
+    --g:  4px;   /* 1 grid unit */
+    --g2: 8px;
+    --g3: 12px;
+    --g4: 16px;
+    --g5: 20px;
+    --g6: 24px;
+    --g8: 32px;
+    --g10: 40px;
+    --g12: 48px;
+    --g16: 64px;
+
+    /* ── Block card ─────────────────────────────────────────────── */
+    --block-radius: 10px;
+    --block-padding: var(--g6) var(--g8);
+
+    /* ── Workspace ──────────────────────────────────────────────── */
+    --workspace-max:     800px;
+    --workspace-padding: var(--g10) var(--g12);
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+[data-theme="dark"] {
+    --ev-bg-page: #0F172A;
+    --ev-bg:      #1E293B;
+    --ev-bg-alt:  #162032;
+
+    --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.25),
+                 0 1px 2px rgba(0, 0, 0, 0.15);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.30),
+                 0 2px 4px  rgba(0, 0, 0, 0.20);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.40),
+                 0 4px 8px  rgba(0, 0, 0, 0.25);
+}
+
+/* ── Global font application ────────────────────────────────── */
+html, body,
+[data-testid="stAppViewContainer"],
+.stMarkdown, .stTextInput, .stTextArea,
+button, input, select, textarea {
+    font-family: var(--font-stack) !important;
+}
+
+/* ── Centered workspace: single-column layout ───────────────── */
+.main .block-container,
+[data-testid="stMainBlockContainer"],
+div[class*="block-container"] {
+    max-width: var(--workspace-max) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-top: var(--g10) !important;
+    padding-bottom: var(--g16) !important;
+    padding-left: var(--g10) !important;
+    padding-right: var(--g10) !important;
+    width: 100% !important;
+}
+
+/* Also target the inner Streamlit wrapper */
+section:not([data-testid="stSidebar"])
+    > div:first-child {
+    background: var(--ev-bg-page) !important;
+}
+
+/* ── Page-level background ──────────────────────────────────── */
+[data-testid="stAppViewContainer"] {
+    background: var(--ev-bg-page) !important;
+}
+
+/* ── Notion-style page header ────────────────────────────────── */
+.notion-page-header {
+    padding: var(--g8) 0 var(--g6) 0;
+    margin-bottom: var(--g8);
+    border-bottom: none;
+}
+.notion-page-header .nph-title {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--ev-slate);
+    line-height: 1.2;
+    margin: 0 0 var(--g2) 0;
+}
+.notion-page-header .nph-subtitle {
+    font-size: 0.95rem;
+    color: var(--ev-slate-light);
+    margin: 0;
+    line-height: 1.5;
+}
+.notion-page-header .nph-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--g3);
+    margin-top: var(--g3);
+    font-size: 0.8rem;
+    color: var(--ev-slate-light);
+}
+
+/* ── Block divider ───────────────────────────────────────────── */
+.notion-divider {
+    height: 1px;
+    background: var(--ev-border);
+    margin: var(--g8) 0;
+    opacity: 0.6;
+}
+
+/* ── Override soho-header: softer, Notion-style ──────────────── */
+.soho-header {
+    border: none !important;
+    border-top: none !important;
+    border-radius: var(--block-radius) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: var(--g8) var(--g8) !important;
+    margin-bottom: var(--g8) !important;
+    background: var(--ev-bg) !important;
+}
+.soho-header h2 {
+    font-size: 1.5rem !important;
+    letter-spacing: -0.03em !important;
+}
+
+/* ── Override soho-container: block card ─────────────────────── */
+.soho-container {
+    border: none !important;
+    border-top: none !important;
+    border-radius: var(--block-radius) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: var(--g6) var(--g8) !important;
+    margin-bottom: var(--g5) !important;
+    background: var(--ev-bg) !important;
+    transition:
+        box-shadow var(--dur-medium) ease,
+        background var(--dur-theme) ease !important;
+}
+.soho-container:hover {
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* ── Block Card Component ────────────────────────────────────── */
+.block-card {
+    background: var(--ev-bg);
+    border-radius: var(--block-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--g4);
+    overflow: hidden;
+    transition:
+        box-shadow var(--dur-medium) ease,
+        background var(--dur-theme) ease;
+}
+.block-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Header row of each block */
+.block-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--g3);
+    padding: var(--g5) var(--g6);
+    cursor: pointer;
+    user-select: none;
+    border-radius: var(--block-radius) var(--block-radius) 0 0;
+}
+.block-card-header:hover {
+    background: var(--ev-bg-alt);
+}
+
+.block-indicator {
+    width: var(--g2);
+    height: var(--g2);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.block-indicator.high   { background: var(--ev-red); }
+.block-indicator.medium { background: var(--ev-amber); }
+.block-indicator.low    { background: var(--ev-green); }
+.block-indicator.info   { background: var(--ev-blue); }
+
+.block-card-title {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ev-slate);
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+}
+
+.block-card-arrow {
+    font-size: 0.75rem;
+    color: var(--ev-slate-light);
+    transition: transform var(--dur-quick) ease;
+    flex-shrink: 0;
+}
+.block-card.open .block-card-arrow {
+    transform: rotate(90deg);
+}
+
+/* Body revealed on expand */
+.block-card-body {
+    padding: 0 var(--g6) var(--g6) var(--g6);
+    border-top: 1px solid var(--ev-border);
+}
+
+/* SMART field grid inside body */
+.smart-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--g4);
+    margin-top: var(--g4);
+}
+.smart-field {
+    background: var(--ev-bg-alt);
+    border-radius: 6px;
+    padding: var(--g3) var(--g4);
+}
+.smart-field-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ev-slate-light);
+    margin-bottom: var(--g);
+}
+.smart-field-value {
+    font-size: 0.9rem;
+    color: var(--ev-slate);
+    line-height: 1.4;
+}
+
+/* ── Notion-style Expander override ──────────────────────────── */
+/* Make st.expander look like a block card */
+details[data-testid="stExpander"] {
+    background: var(--ev-bg) !important;
+    border: none !important;
+    border-radius: var(--block-radius) !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-bottom: var(--g4) !important;
+    overflow: hidden !important;
+    transition:
+        box-shadow var(--dur-medium) ease,
+        background var(--dur-theme) ease !important;
+}
+details[data-testid="stExpander"]:hover {
+    box-shadow: var(--shadow-md) !important;
+}
+details[data-testid="stExpander"] > summary {
+    padding: var(--g5) var(--g6) !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    letter-spacing: -0.01em !important;
+    color: var(--ev-slate) !important;
+    border-radius: var(--block-radius) !important;
+}
+details[data-testid="stExpander"][open] > summary {
+    border-radius: var(--block-radius) var(--block-radius) 0 0 !important;
+    border-bottom: 1px solid var(--ev-border) !important;
+}
+details[data-testid="stExpander"] > div {
+    padding: var(--g5) var(--g6) !important;
+}
+
+/* ── Metric cards: block-card style ─────────────────────────── */
+div[data-testid="stMetric"] {
+    border: none !important;
+    border-radius: var(--block-radius) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: var(--g5) var(--g6) !important;
+    transition:
+        box-shadow var(--dur-medium) ease,
+        background var(--dur-theme) ease !important;
+}
+div[data-testid="stMetric"]:hover {
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* ── Subtle "Generate" button transformation ─────────────────── */
+/* Demote primary generate buttons to look like Notion actions */
+button[kind="primary"] {
+    background: var(--ev-blue) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 13.5px !important;
+    padding: 0.45rem 1.1rem !important;
+    letter-spacing: 0.01em !important;
+    box-shadow: var(--shadow-xs) !important;
+}
+button[kind="primary"]:hover {
+    box-shadow: var(--shadow-sm) !important;
+    transform: translateY(-1px);
+}
+button[kind="secondary"] {
+    border: 1px solid var(--ev-border) !important;
+    background: var(--ev-bg) !important;
+    border-radius: 6px !important;
+    font-size: 13.5px !important;
+    padding: 0.45rem 1.1rem !important;
+    box-shadow: none !important;
+}
+button[kind="secondary"]:hover {
+    background: var(--ev-bg-alt) !important;
+    border-color: var(--ev-slate-light) !important;
+}
+
+/* ── Ghost text + input enhancements ─────────────────────────── */
+/* Wrapper set in ai_input.py via parent.document manipulation */
+.evolv-ghost-container {
+    position: relative;
+    display: block;
+}
+.evolv-ghost-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    padding: 10px 14px;
+    font-family: var(--font-stack);
+    font-size: 15px;
+    line-height: 1.65;
+    color: transparent;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: hidden;
+    z-index: 0;
+}
+.evolv-ghost-suggestion {
+    color: #CBD5E1;   /* slate-300 — the ghost text color */
+    font-style: italic;
+}
+
+/* Tab hint pill shown near the textarea */
+.evolv-tab-hint {
+    position: absolute;
+    bottom: var(--g2);
+    right: var(--g3);
+    background: var(--ev-bg-alt);
+    border: 1px solid var(--ev-border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--ev-slate-light);
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity var(--dur-quick) ease;
+}
+.evolv-tab-hint.visible {
+    opacity: 1;
+}
+
+/* ── Floating selection toolbar ──────────────────────────────── */
+.evolv-selection-toolbar {
+    position: fixed;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    gap: var(--g);
+    background: #1E293B;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+    padding: var(--g) var(--g2);
+    box-shadow: var(--shadow-lg);
+    /* Small arrow pointing down */
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+}
+.evolv-selection-toolbar.visible {
+    display: flex;
+}
+.sel-toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--g2);
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    padding: var(--g2) var(--g3);
+    font-family: var(--font-stack);
+    font-size: 12px;
+    font-weight: 600;
+    color: #E2E8F0;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--dur-quick) ease;
+    letter-spacing: 0.01em;
+}
+.sel-toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.10);
+}
+.sel-toolbar-btn .btn-icon {
+    font-size: 11px;
+    opacity: 0.85;
+}
+.sel-toolbar-divider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+/* Toast notification */
+.evolv-toast {
+    position: fixed;
+    bottom: var(--g6);
+    right: var(--g6);
+    background: #1E293B;
+    color: #F1F5F9;
+    padding: var(--g3) var(--g5);
+    border-radius: 8px;
+    font-family: var(--font-stack);
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 100000;
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    max-width: 340px;
+    line-height: 1.5;
+    pointer-events: none;
+}
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes toast-out {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(8px); }
+}
+.evolv-toast.entering { animation: toast-in  200ms ease forwards; }
+.evolv-toast.leaving  { animation: toast-out 200ms ease forwards; }
+
+/* ── 4px grid utility classes ────────────────────────────────── */
+.mt-1 { margin-top:    var(--g)  !important; }
+.mt-2 { margin-top:    var(--g2) !important; }
+.mt-3 { margin-top:    var(--g3) !important; }
+.mt-4 { margin-top:    var(--g4) !important; }
+.mt-6 { margin-top:    var(--g6) !important; }
+.mt-8 { margin-top:    var(--g8) !important; }
+
+.mb-1 { margin-bottom: var(--g)  !important; }
+.mb-2 { margin-bottom: var(--g2) !important; }
+.mb-3 { margin-bottom: var(--g3) !important; }
+.mb-4 { margin-bottom: var(--g4) !important; }
+.mb-6 { margin-bottom: var(--g6) !important; }
+.mb-8 { margin-bottom: var(--g8) !important; }
+
+.p-2  { padding: var(--g2) !important; }
+.p-4  { padding: var(--g4) !important; }
+.p-6  { padding: var(--g6) !important; }
+.p-8  { padding: var(--g8) !important; }
+
+.gap-2 { gap: var(--g2) !important; }
+.gap-3 { gap: var(--g3) !important; }
+.gap-4 { gap: var(--g4) !important; }
+
+/* ── Typography rhythm ───────────────────────────────────────── */
+/* Tighter headings in Notion style */
+.stMarkdown h1 {
+    font-size: 1.9rem !important;
+    letter-spacing: -0.04em !important;
+    font-weight: 800 !important;
+    margin-bottom: var(--g4) !important;
+    color: var(--ev-slate) !important;
+}
+.stMarkdown h2 {
+    font-size: 1.45rem !important;
+    letter-spacing: -0.03em !important;
+    font-weight: 700 !important;
+    margin-bottom: var(--g3) !important;
+}
+.stMarkdown h3 {
+    font-size: 1.15rem !important;
+    letter-spacing: -0.02em !important;
+    font-weight: 700 !important;
+    margin-bottom: var(--g2) !important;
+}
+.stMarkdown p {
+    color: var(--ev-slate) !important;
+    line-height: 1.75 !important;
+    margin-bottom: var(--g4) !important;
+}
+
+/* ── Streamlit column gap tightening ────────────────────────── */
+/* Columns should breathe but not feel spreadsheet-y */
+[data-testid="stHorizontalBlock"] {
+    gap: var(--g4) !important;
+}
+
+/* ── Streamlit form: more breathing room ────────────────────── */
+[data-testid="stForm"] {
+    background: var(--ev-bg) !important;
+    border: none !important;
+    border-radius: var(--block-radius) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: var(--g6) var(--g8) !important;
+}
+
+/* ── Clean Slate empty state (Notion feel) ───────────────────── */
+.soho-empty-state {
+    padding: 5rem 2rem !important;
+    border-radius: var(--block-radius) !important;
+    border: 1.5px dashed var(--ev-border) !important;
+    box-shadow: none !important;
+}
+
+/* =================================================================
+   AGENTFORCE-STYLE AGENTIC STREAM
+   ================================================================= */
+
+/* ── Gradient background (Gusto / Notion quality) ────────────── */
+[data-testid="stAppViewContainer"],
+section:not([data-testid="stSidebar"]) > div:first-child {
+    background: linear-gradient(
+        160deg,
+        #F8FAFC 0%,
+        #FFFFFF 55%,
+        #F8FAFC 100%
+    ) !important;
+}
+
+/* ── Soft-UI tokens (neumorphism-lite) ───────────────────────── */
+:root {
+    --neu-bg:           #F0F2F5;
+    --neu-light:        rgba(255, 255, 255, 0.90);
+    --neu-dark:         rgba(0,   0,   0,   0.10);
+    --shadow-neu:
+        5px 5px 12px var(--neu-dark),
+       -4px -4px 10px var(--neu-light);
+    --shadow-neu-sm:
+        3px 3px 7px  var(--neu-dark),
+       -2px -2px 6px var(--neu-light);
+    --shadow-neu-inset:
+        inset 2px 2px 5px var(--neu-dark),
+        inset -2px -2px 5px var(--neu-light);
+
+    /* Radii upgrade for soft-UI */
+    --block-radius: 14px;
+    --radius-pill:  999px;
+}
+[data-theme="dark"] {
+    --neu-light: rgba(255, 255, 255, 0.04);
+    --neu-dark:  rgba(0,   0,   0,   0.35);
+}
+
+/* Apply neumorphism to all block cards */
+details[data-testid="stExpander"],
+.soho-container,
+div[data-testid="stMetric"],
+.action-stream-block {
+    box-shadow: var(--shadow-neu) !important;
+    border-radius: var(--block-radius) !important;
+    border: none !important;
+}
+details[data-testid="stExpander"]:hover,
+.soho-container:hover,
+div[data-testid="stMetric"]:hover {
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* ── Agentic stream container ────────────────────────────────── */
+.action-stream {
+    display: flex;
+    flex-direction: column;
+    gap: var(--g4);
+}
+
+/* ── Action block ────────────────────────────────────────────── */
+.action-stream-block {
+    background: var(--ev-bg);
+    border-radius: var(--block-radius);
+    overflow: hidden;
+    transition:
+        box-shadow var(--dur-medium) ease,
+        background var(--dur-theme) ease;
+}
+
+.action-block-header {
+    display: flex;
+    align-items: center;
+    gap: var(--g3);
+    padding: var(--g4) var(--g6);
+    border-bottom: 1px solid var(--ev-border);
+    flex-wrap: wrap;
+}
+
+.agent-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--g2);
+    padding: 2px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.action-block-title {
+    flex: 1;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--ev-slate);
+    letter-spacing: -0.01em;
+    min-width: 120px;
+}
+
+.action-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--g2);
+    margin-left: auto;
+}
+.status-dot { font-size: 0.7rem; }
+.action-ts {
+    font-size: 0.75rem;
+    color: var(--ev-slate-light);
+    font-weight: 500;
+}
+
+.action-block-body {
+    padding: var(--g5) var(--g6);
+}
+
+/* ── Thought Log ─────────────────────────────────────────────── */
+.thought-log {
+    margin: 0 var(--g6) var(--g4) var(--g6);
+    background: rgba(50, 205, 50, 0.04);
+    border-left: 2px solid var(--ev-accent);
+    border-radius: 0 8px 8px 0;
+    padding: var(--g3) var(--g4);
+    transition: background var(--dur-theme) ease;
+}
+
+.thought-log-header {
+    display: flex;
+    align-items: center;
+    gap: var(--g2);
+    margin-bottom: var(--g3);
+}
+.thought-icon {
+    font-size: 13px;
+}
+.thought-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ev-accent);
+}
+
+.thought-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--g2);
+}
+
+@keyframes thought-appear {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.thought-step {
+    display: flex;
+    align-items: center;
+    gap: var(--g2);
+    opacity: 0;
+    animation: thought-appear 0.3s var(--ease-out) forwards;
+}
+.thought-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+.thought-text {
+    font-size: 0.8rem;
+    color: var(--ev-slate-light);
+    line-height: 1.4;
+}
+
+/* Pulsing spinner for in-progress last step */
+@keyframes thought-spin {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+.thought-spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--ev-accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-left: var(--g2);
+    flex-shrink: 0;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Next Steps bar ──────────────────────────────────────────── */
+.next-steps-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--g2);
+    padding: var(--g3) var(--g6);
+    background: var(--ev-bg-alt);
+    border-top: 1px solid var(--ev-border);
+    flex-wrap: wrap;
+    border-radius: 0 0 var(--block-radius) var(--block-radius);
+}
+.next-steps-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ev-slate-light);
+    margin-right: var(--g);
+    white-space: nowrap;
+}
+.next-step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--g2);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--ev-blue);
+    background: transparent;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ev-blue);
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background var(--dur-quick) ease,
+        color var(--dur-quick) ease,
+        transform var(--dur-quick) ease;
+    user-select: none;
+}
+.next-step-pill:hover {
+    background: var(--ev-blue);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+
+/* Hide the real Streamlit buttons powering the pills */
+[data-testid="stButton"]:has(button[data-testid*="_ns_"]) {
+    position: absolute;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* =================================================================
+   GLASSMORPHISM TOP-AREA ACCENT (DataLens header feel)
+   ================================================================= */
+
+/* Override soho-header to use glassmorphism */
+.soho-header {
+    background: rgba(255, 255, 255, 0.72) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    border: 1px solid rgba(226, 232, 240, 0.80) !important;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.05),
+        0 1px 2px rgba(0, 0, 0, 0.03) !important;
+}
+[data-theme="dark"] .soho-header {
+    background: rgba(30, 41, 59, 0.72) !important;
+    border-color: rgba(51, 65, 85, 0.60) !important;
+}
+
+/* Notion page header: glassmorphism variant */
+.notion-page-header {
+    background: rgba(255, 255, 255, 0.60);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: var(--block-radius);
+    padding: var(--g6) var(--g8) !important;
+    margin-bottom: var(--g6) !important;
+}
+[data-theme="dark"] .notion-page-header {
+    background: rgba(30, 41, 59, 0.60);
+}

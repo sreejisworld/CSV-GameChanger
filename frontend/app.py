@@ -36,19 +36,67 @@ except Exception:
     AgentController = None  # type: ignore[assignment,misc]
 
 # -------------------------------------------------------------------
+# -------------------------------------------------------------------
+# Embedded-mode detection (must precede set_page_config)
+# When served inside the React Platform shell the URL carries:
+#   ?embedded=true  — hides Streamlit chrome (sidebar / header / footer)
+#   ?page=<phase>   — maps lifecycle phase to the internal page number
+# -------------------------------------------------------------------
+_embedded = st.query_params.get("embedded", "false") == "true"
+_phase    = st.query_params.get("page", None)
+
+# Phase → internal page-number mapping
+_PHASE_PAGE_MAP: Dict[str, str] = {
+    "plan":         "13",
+    "requirements": "2",
+    "smart":        "12",
+    "risk":         "3",
+    "verify":       "6",
+    "release":      "10",
+    "monitor":      "11",
+}
+
+# -------------------------------------------------------------------
 # Page configuration (must be first Streamlit call)
 # -------------------------------------------------------------------
 st.set_page_config(
     page_title="EVOLV: The Validation Factory",
     page_icon="\u2666",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state=(
+        "collapsed" if _embedded else "expanded"
+    ),
 )
 
 # -------------------------------------------------------------------
 # SOHO Design System — load external theme + keyboard shortcuts
 # -------------------------------------------------------------------
 load_theme(PROJECT_ROOT)
+
+# -------------------------------------------------------------------
+# Embedded chrome — hide Streamlit UI when inside React Platform
+# -------------------------------------------------------------------
+if _embedded:
+    st.markdown(
+        """
+        <style>
+        /* Hide Streamlit sidebar entirely */
+        section[data-testid="stSidebar"]   { display: none !important; }
+        /* Hide top hamburger / main menu */
+        #MainMenu                           { display: none !important; }
+        button[data-testid="stBaseButton-headerNoPadding"]
+                                            { display: none !important; }
+        /* Hide deploy button and footer */
+        .stDeployButton                     { display: none !important; }
+        footer                              { display: none !important; }
+        /* Remove the top header bar */
+        header[data-testid="stHeader"]      { display: none !important; }
+        /* Collapse the top padding that assumes a header exists */
+        .block-container                    { padding-top: 1rem !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # -------------------------------------------------------------------
 # Paths
@@ -826,7 +874,12 @@ if st.session_state.get("_load_demo_requested"):
 # -------------------------------------------------------------------
 # Sidebar: Logo + Grouped Navigation + Status + Audit Feed
 # -------------------------------------------------------------------
-page = render_sidebar(audit_csv=AUDIT_CSV)
+# When embedded in the React Platform, bypass the sidebar and use
+# the ?page= query param to select the appropriate internal page.
+if _embedded and _phase and _phase in _PHASE_PAGE_MAP:
+    page = _PHASE_PAGE_MAP[_phase]
+else:
+    page = render_sidebar(audit_csv=AUDIT_CSV)
 
 
 # -------------------------------------------------------------------
@@ -3088,6 +3141,51 @@ elif page.startswith("6"):
                     mime="application/pdf",
                     key="vf_ur_pdf",
                 )
+
+            # ---- Save to Risk Matrix (data bridge) ----
+            st.markdown("")
+            _save_col, _save_msg = st.columns([1, 3])
+            with _save_col:
+                _save_clicked = st.button(
+                    "→ Save to Risk Matrix",
+                    key="vf_save_to_risk",
+                    help=(
+                        "Push this UR/FR to the React "
+                        "Risk Matrix page via FastAPI"
+                    ),
+                    use_container_width=True,
+                )
+            if _save_clicked:
+                try:
+                    import requests as _req
+                    _resp = _req.post(
+                        "http://localhost:8000"
+                        "/requirements/save",
+                        json={
+                            "requirements": [ur_fr],
+                            "source": "streamlit",
+                        },
+                        timeout=5,
+                    )
+                    if _resp.ok:
+                        _data = _resp.json()
+                        with _save_msg:
+                            st.success(
+                                f"✓ Saved "
+                                f"{_data.get('count', '?')}"
+                                f" requirements to Risk Matrix"
+                            )
+                    else:
+                        with _save_msg:
+                            st.error(
+                                f"Save failed: {_resp.text}"
+                            )
+                except Exception as _e:
+                    with _save_msg:
+                        st.warning(
+                            f"Could not reach FastAPI "
+                            f"(port 8000): {_e}"
+                        )
 
             with st.expander("UR/FR Raw JSON"):
                 st.json(ur_fr)
