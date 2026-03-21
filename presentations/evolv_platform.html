@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EVOLV — The Validation Factory | Platform Overview</title>
+<style>
+  :root {
+    --blue:   #007FFF;
+    --lime:   #32CD32;
+    --amber:  #f59e0b;
+    --red:    #ef4444;
+    --dark:   #07070f;
+    --card:   #0f0f1a;
+    --surface:#13131f;
+    --border: rgba(255,255,255,0.08);
+    --muted:  #64748b;
+    --text:   #e2e8f0;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; background:var(--dark); color:var(--text);
+    font-family:'Segoe UI',system-ui,sans-serif; overflow:hidden; }
+
+  /* ── Slide engine ─────────────────────────────────────────────── */
+  .deck { width:100vw; height:100vh; position:relative; }
+  .slide {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    padding:60px 80px; opacity:0; transform:translateY(30px);
+    transition:opacity .45s ease, transform .45s ease;
+    pointer-events:none;
+  }
+  .slide.active { opacity:1; transform:translateY(0); pointer-events:auto; }
+
+  /* ── Navigation ───────────────────────────────────────────────── */
+  .nav {
+    position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:16px; z-index:100;
+    background:rgba(15,15,26,.85); backdrop-filter:blur(12px);
+    border:1px solid var(--border); border-radius:50px;
+    padding:10px 20px;
+  }
+  .nav button {
+    background:none; border:1px solid var(--border); color:var(--muted);
+    border-radius:50px; padding:6px 18px; font-size:12px; cursor:pointer;
+    transition:all .2s;
+  }
+  .nav button:hover { border-color:var(--blue); color:var(--blue); }
+  .nav .counter { font-size:11px; color:var(--muted); min-width:60px; text-align:center; }
+  .dot-row { display:flex; gap:5px; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--border);
+    cursor:pointer; transition:background .2s; }
+  .dot.on { background:var(--blue); }
+
+  /* Progress bar */
+  .progress { position:fixed; top:0; left:0; height:2px;
+    background:linear-gradient(90deg,var(--blue),var(--lime));
+    transition:width .4s ease; z-index:200; }
+
+  /* ── Common components ────────────────────────────────────────── */
+  .tag {
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+    padding:4px 12px; border-radius:50px;
+  }
+  .tag.blue   { background:rgba(0,127,255,.12); border:1px solid rgba(0,127,255,.3);  color:var(--blue); }
+  .tag.lime   { background:rgba(50,205,50,.12);  border:1px solid rgba(50,205,50,.3);  color:var(--lime); }
+  .tag.amber  { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); color:var(--amber); }
+  .tag.red    { background:rgba(239,68,68,.12);  border:1px solid rgba(239,68,68,.3);  color:var(--red); }
+
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:16px; padding:24px 28px;
+  }
+  .card.glow-blue { box-shadow:0 0 30px rgba(0,127,255,.10); border-color:rgba(0,127,255,.2); }
+  .card.glow-lime { box-shadow:0 0 30px rgba(50,205,50,.10); border-color:rgba(50,205,50,.2); }
+
+  h1 { font-size:56px; font-weight:900; line-height:1.05; letter-spacing:-.02em; }
+  h2 { font-size:40px; font-weight:800; line-height:1.1;  letter-spacing:-.01em; }
+  h3 { font-size:22px; font-weight:700; }
+  h4 { font-size:15px; font-weight:600; margin-bottom:6px; }
+  p  { font-size:15px; line-height:1.65; color:var(--muted); }
+
+  .gradient-text {
+    background:linear-gradient(135deg,var(--blue) 0%,var(--lime) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .subtle { color:var(--muted); font-size:13px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; width:100%; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; width:100%; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; width:100%; }
+  .w100  { width:100%; }
+  .mb12  { margin-bottom:12px; }
+  .mb20  { margin-bottom:20px; }
+  .mb32  { margin-bottom:32px; }
+  .row   { display:flex; align-items:center; gap:12px; }
+  .col   { display:flex; flex-direction:column; gap:10px; }
+  .spacer{ flex:1; }
+  .divider { width:100%; height:1px; background:var(--border); margin:24px 0; }
+  .bullet { font-size:13px; color:var(--muted); padding:6px 0;
+    border-bottom:1px solid var(--border); display:flex; gap:10px; align-items:flex-start; }
+  .bullet:last-child { border-bottom:none; }
+  .bullet::before { content:'→'; color:var(--blue); flex-shrink:0; font-weight:700; }
+  .check { font-size:13px; color:var(--muted); padding:5px 0; display:flex; gap:8px; }
+  .check::before { content:'✓'; color:var(--lime); flex-shrink:0; font-weight:700; }
+
+  /* phase node */
+  .phase-node {
+    display:flex; flex-direction:column; align-items:center; gap:6px; flex:1;
+  }
+  .phase-circle {
+    width:40px; height:40px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-weight:800;
+    border:2px solid var(--blue);
+    color:var(--blue); transition:all .3s;
+  }
+  .phase-circle.done { background:var(--lime); border-color:var(--lime); color:#07070f; }
+  .phase-circle.active { background:var(--blue); color:#fff; box-shadow:0 0 16px rgba(0,127,255,.4); }
+  .phase-label { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .phase-connector { flex:1; height:2px; background:var(--border); align-self:center; margin-bottom:20px; }
+  .phase-connector.done { background:var(--lime); }
+
+  /* metric card */
+  .metric { padding:20px 24px; background:var(--card); border:1px solid var(--border); border-radius:12px; }
+  .metric .val { font-size:32px; font-weight:900; }
+  .metric .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-top:2px; }
+
+  /* timeline */
+  .tl-item { display:flex; gap:16px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .tl-item:last-child { border-bottom:none; }
+  .tl-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:12px; flex-shrink:0; margin-top:2px; }
+
+  /* code block */
+  .code { background:#0a0a14; border:1px solid var(--border); border-radius:10px;
+    padding:16px 20px; font-family:monospace; font-size:12px; color:#94a3b8;
+    line-height:1.7; overflow-x:auto; }
+  .code .kw  { color:var(--blue); }
+  .code .str { color:var(--lime); }
+  .code .cmt { color:#475569; }
+
+  /* arch diagram */
+  .arch-box {
+    border:1px solid var(--border); border-radius:12px; padding:14px 18px;
+    background:var(--card); text-align:center; font-size:12px; font-weight:600;
+  }
+  .arch-arrow { display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:var(--blue); }
+
+  /* watermark */
+  .wm {
+    position:fixed; bottom:72px; right:32px;
+    font-size:10px; color:rgba(100,116,139,.4);
+    letter-spacing:.1em; text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 1 — Title
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s1">
+  <div style="text-align:center;max-width:820px">
+    <div class="tag lime mb20" style="margin:0 auto 24px">WingstarTech Inc.</div>
+    <h1 class="mb20">
+      <span class="gradient-text">EVOLV</span>
+    </h1>
+    <h2 style="font-weight:400;font-size:28px;color:var(--muted);margin-bottom:32px">
+      The Validation Factory
+    </h2>
+    <p style="font-size:18px;max-width:600px;margin:0 auto 48px">
+      A GAMP 5 &amp; 21 CFR Part 11 compliant Computer System Validation Engine
+      powered by AI — from requirements to release in a single lifecycle platform.
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <span class="tag blue">21 CFR Part 11</span>
+      <span class="tag lime">GAMP 5</span>
+      <span class="tag amber">FDA CSA 2022</span>
+      <span class="tag blue">EU GMP Annex 11</span>
+      <span class="tag lime">ISO 13485</span>
+      <span class="tag amber">ICH Q9</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 2 — The Problem
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="w100" style="max-width:900px">
+    <div class="tag red mb20">The Problem</div>
+    <h2 class="mb32">CSV is broken — and it's costing you</h2>
+    <div class="grid3">
+      <div class="card">
+        <div style="font-size:36px;margin-bottom:12px">⏳</div>
+        <h4>Months of Manual Work</h4>
+        <p>URS, risk assessments, test scripts, and approval workflows built in Word and Excel with no traceability.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:36px;margin-bottom:12px">⚠️</div>
+        <h4>Compliance Risk</h4>
+        <p>Audit trails break. Requirements don't trace to tests. Signatures aren't 21 CFR Part 11 compliant. Inspections fail.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:36px;margin-bottom:12px">💸</div>
+        <h4>Rework &amp; Delays</h4>
+        <p>Vague requirements generate wrong test scripts. Rejected URS drafts require full re-review cycles. Go-live slips.</p>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="row" style="justify-content:center;gap:48px">
+      <div class="metric"><div class="val" style="color:var(--red)">6–18</div><div class="lbl">months per validation</div></div>
+      <div class="metric"><div class="val" style="color:var(--amber)">40%</div><div class="lbl">of FDA 483s cite CSV gaps</div></div>
+      <div class="metric"><div class="val" style="color:var(--red)">$2M+</div><div class="lbl">avg. remediation cost</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 3 — The Solution
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="w100" style="max-width:900px">
+    <div class="tag lime mb20">The Solution</div>
+    <h2 class="mb12">EVOLV: End-to-end validation in one platform</h2>
+    <p class="mb32">AI-generated requirements, automated risk assessment, live test execution, and 21 CFR Part 11 sign-off — all connected in a single auditable lifecycle.</p>
+    <div class="grid2">
+      <div class="col">
+        <div class="check">Generate GAMP 5-compliant URS from plain English in seconds</div>
+        <div class="check">Auto-classify requirements as High / Medium / Low criticality</div>
+        <div class="check">Risk matrix: GxP category × Implementation → Test strategy</div>
+        <div class="check">CSA test scripts (Informal, OQ, UAT) with acceptance criteria</div>
+        <div class="check">Step-by-step test execution with Pass / Fail / Blocked recording</div>
+        <div class="check">Multi-approver electronic sign-off per 21 CFR Part 11 §11.50</div>
+      </div>
+      <div class="col">
+        <div class="check">Immutable append-only audit trail with SHA-256 tamper evidence</div>
+        <div class="check">Logic archives — AI reasoning stored alongside every audit record</div>
+        <div class="check">GAMP 5 knowledge base (Pinecone) for live regulatory grounding</div>
+        <div class="check">SMART requirements engine with FDA/EMA 2026 AI guidance alignment</div>
+        <div class="check">Deviation &amp; CAPA tracking in the Monitor phase</div>
+        <div class="check">Docker Compose one-command deploy; Kubernetes-ready</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="row" style="justify-content:center;gap:48px">
+      <div class="metric"><div class="val" style="color:var(--lime)">Days</div><div class="lbl">not months to validate</div></div>
+      <div class="metric"><div class="val" style="color:var(--blue)">100%</div><div class="lbl">audit-ready output</div></div>
+      <div class="metric"><div class="val" style="color:var(--lime)">0</div><div class="lbl">Word/Excel documents</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 4 — Lifecycle V-Model
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="w100" style="max-width:960px">
+    <div class="tag blue mb20">Platform Architecture</div>
+    <h2 class="mb32">The GAMP 5 V-Model Lifecycle</h2>
+
+    <!-- V-Model strip -->
+    <div style="display:flex;align-items:flex-start;width:100%;margin-bottom:40px">
+      <div class="phase-node">
+        <div class="phase-circle done">📋</div>
+        <div class="phase-label">Plan</div>
+      </div>
+      <div class="phase-connector done"></div>
+      <div class="phase-node">
+        <div class="phase-circle done">📝</div>
+        <div class="phase-label">Reqs</div>
+      </div>
+      <div class="phase-connector done"></div>
+      <div class="phase-node">
+        <div class="phase-circle done">⚖️</div>
+        <div class="phase-label">Risk</div>
+      </div>
+      <div class="phase-connector"></div>
+      <div class="phase-node">
+        <div class="phase-circle" style="border-color:var(--muted);color:var(--muted)">🔒</div>
+        <div class="phase-label">Design</div>
+      </div>
+      <div class="phase-connector"></div>
+      <div class="phase-node">
+        <div class="phase-circle active">🏭</div>
+        <div class="phase-label">Verify</div>
+      </div>
+      <div class="phase-connector done"></div>
+      <div class="phase-node">
+        <div class="phase-circle done">📄</div>
+        <div class="phase-label">Release</div>
+      </div>
+      <div class="phase-connector done"></div>
+      <div class="phase-node">
+        <div class="phase-circle done">📡</div>
+        <div class="phase-label">Monitor</div>
+      </div>
+      <div class="phase-connector"></div>
+      <div class="phase-node">
+        <div class="phase-circle" style="border-color:var(--muted);color:var(--muted)">🔒</div>
+        <div class="phase-label">Retire</div>
+      </div>
+    </div>
+
+    <div class="grid4">
+      <div class="card">
+        <h4>📋 Plan</h4>
+        <p style="font-size:12px">Project scope, GAMP 5 category, regulatory frameworks, Validation Master Plan</p>
+      </div>
+      <div class="card">
+        <h4>📝 Requirements</h4>
+        <p style="font-size:12px">AI-generated URS + SMART engine for GAMP 5 compliant requirements</p>
+      </div>
+      <div class="card">
+        <h4>⚖️ Risk</h4>
+        <p style="font-size:12px">Per-UR/FR risk matrix: GxP category × Implementation → Risk level + Test strategy</p>
+      </div>
+      <div class="card">
+        <h4>🏭 Verify</h4>
+        <p style="font-size:12px">Step execution, Pass/Fail/Blocked, evidence upload, electronic sign-off</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 5 — AI Features
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="w100" style="max-width:900px">
+    <div class="tag blue mb20">Artificial Intelligence</div>
+    <h2 class="mb32">7 AI agents — purpose-built for life sciences</h2>
+    <div class="grid2">
+      <div class="col">
+        <div class="card glow-blue">
+          <div class="row mb12"><span style="font-size:20px">🧠</span><h4 style="margin:0">Requirement Architect</h4></div>
+          <p style="font-size:12px">Generates GAMP 5-compliant URS from plain English. Queries Pinecone knowledge base, classifies criticality (High/Medium/Low), assigns URS IDs, builds regulatory rationale with page citations.</p>
+        </div>
+        <div class="card glow-blue">
+          <div class="row mb12"><span style="font-size:20px">🔍</span><h4 style="margin:0">Verification Agent</h4></div>
+          <p style="font-size:12px">3-check compliance review: Criticality Alignment, Rationale Relevance (≥0.45 score), Contradiction Scan. Rejects URS that contradict GAMP 5 guidance. Logs Compliance Exceptions.</p>
+        </div>
+        <div class="card glow-blue">
+          <div class="row mb12"><span style="font-size:20px">✨</span><h4 style="margin:0">SMART Requirements Engine</h4></div>
+          <p style="font-size:12px">Detects vague language, rewrites to SMART format, applies FDA/EMA 2026 AI guidance triggers, generates acceptance criteria and negative test scenarios.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card glow-lime">
+          <div class="row mb12"><span style="font-size:20px">🧪</span><h4 style="margin:0">Delta Agent</h4></div>
+          <p style="font-size:12px">Deterministic CSA test script generation. Informal (positive + negative + edge), Formal OQ, and Formal UAT. Each step includes instruction, expected result, case type, and FR reference.</p>
+        </div>
+        <div class="card glow-lime">
+          <div class="row mb12"><span style="font-size:20px">📊</span><h4 style="margin:0">Risk Strategist</h4></div>
+          <p style="font-size:12px">GAMP 5 RPN calculation (Severity × Occurrence × Detectability). Patient safety override. Maps ServiceNow fields to GAMP 5 risk levels. Recommends CSA testing strategy.</p>
+        </div>
+        <div class="card glow-lime">
+          <div class="row mb12"><span style="font-size:20px">🔒</span><h4 style="margin:0">Integrity Manager</h4></div>
+          <p style="font-size:12px">Central append-only audit trail. SHA-256 tamper-evident hashing. Logic archives store full AI reasoning chains alongside every audit record. Thread-safe CSV writes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 6 — Compliance Deep Dive
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="w100" style="max-width:900px">
+    <div class="tag amber mb20">Compliance &amp; Security</div>
+    <h2 class="mb32">21 CFR Part 11 — Built in, not bolted on</h2>
+    <div class="grid3 mb32">
+      <div class="card">
+        <h4>§11.10 — Controls</h4>
+        <div class="col" style="gap:4px;margin-top:8px">
+          <div class="check" style="font-size:11px">Append-only audit trail (CSV)</div>
+          <div class="check" style="font-size:11px">SHA-256 tamper detection</div>
+          <div class="check" style="font-size:11px">Protected write via PreToolUse hook</div>
+          <div class="check" style="font-size:11px">Timestamps in UTC ISO-8601</div>
+        </div>
+      </div>
+      <div class="card">
+        <h4>§11.50 — Signatures</h4>
+        <div class="col" style="gap:4px;margin-top:8px">
+          <div class="check" style="font-size:11px">Signer name + role + meaning</div>
+          <div class="check" style="font-size:11px">Approved meanings enforced server-side</div>
+          <div class="check" style="font-size:11px">Multi-approver (up to 3)</div>
+          <div class="check" style="font-size:11px">Chain-of-custody hash displayed</div>
+        </div>
+      </div>
+      <div class="card">
+        <h4>§11.70 — Linking</h4>
+        <div class="col" style="gap:4px;margin-top:8px">
+          <div class="check" style="font-size:11px">Each signature linked to audit row</div>
+          <div class="check" style="font-size:11px">Run ID cross-referenced to script ID</div>
+          <div class="check" style="font-size:11px">Reasoning hash ties CSV to JSON archive</div>
+          <div class="check" style="font-size:11px">URS → UR → FR → Test → Sign chain</div>
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="grid2">
+      <div>
+        <h4 class="mb12">GAMP 5 Compliance</h4>
+        <div class="bullet">Risk-based approach: RPN = Severity × Occurrence × Detectability</div>
+        <div class="bullet">Category classification: Cat 1 / 3 / 4 / 5 per system type</div>
+        <div class="bullet">GxP impact matrix drives test strategy selection</div>
+        <div class="bullet">GAMP 5 knowledge base grounding via Pinecone vector search</div>
+      </div>
+      <div>
+        <h4 class="mb12">Audit Trail Architecture</h4>
+        <div class="bullet">Every agent action appended via integrity_manager.log_audit_event()</div>
+        <div class="bullet">Compliance Exception logged on any URS rejection</div>
+        <div class="bullet">Logic archives: full AI thought-process in JSON alongside CSV row</div>
+        <div class="bullet">Claude Code hook blocks direct file edits to audit artifacts</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 7 — Security Architecture
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="w100" style="max-width:900px">
+    <div class="tag red mb20">Security</div>
+    <h2 class="mb32">Defense-in-depth security model</h2>
+    <div class="grid2">
+      <div class="col">
+        <div class="card">
+          <h4>🛡️ Claude Code Hooks</h4>
+          <p style="font-size:12px;margin-top:8px">
+            <strong style="color:var(--text)">PreToolUse — protect_audit_trail.py</strong><br/>
+            Blocks ANY write to output/audit_trail.csv or output/logic_archives/ at the tool-call level. Exit code 2 = hard block before execution.
+          </p>
+        </div>
+        <div class="card">
+          <h4>🔑 Scoped API Keys</h4>
+          <p style="font-size:12px;margin-top:8px">KeyStore with scope-based access control. audit-only scope enforced via dependency injection on sensitive endpoints. Keys never stored in plaintext in code.</p>
+        </div>
+        <div class="card">
+          <h4>🌐 CORS Policy</h4>
+          <p style="font-size:12px;margin-top:8px">Explicit allowlist: localhost:5173, localhost:8501, localhost:3000. No wildcard origins. Credentials allowed only for listed origins.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <h4>🔐 Input Validation</h4>
+          <p style="font-size:12px;margin-top:8px">Pydantic v2 models on all FastAPI endpoints. Server-side signature meaning validation (allowlist). File size limits on evidence uploads (5 MB max). No bare except:pass patterns.</p>
+        </div>
+        <div class="card">
+          <h4>📝 Typed Errors</h4>
+          <p style="font-size:12px;margin-top:8px">All exceptions carry CSV-NNN error codes. No silent failures. Every exception logged to audit trail before propagation. Validation/Audit/Processing error hierarchy.</p>
+        </div>
+        <div class="card">
+          <h4>🔒 Sandbox Mode</h4>
+          <p style="font-size:12px;margin-top:8px">AuditGuard middleware prevents state-changing operations in audit-only mode. TenantDictionaryMiddleware enforces tenant isolation on all responses.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 8 — Architecture Diagram
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="w100" style="max-width:960px">
+    <div class="tag blue mb20">Technical Architecture</div>
+    <h2 class="mb32">Three-tier platform architecture</h2>
+
+    <div style="display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;gap:0;align-items:start;width:100%">
+
+      <!-- Column 1: Frontend -->
+      <div class="col" style="gap:10px">
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Frontend</div>
+        <div class="arch-box" style="border-color:rgba(0,127,255,.3);background:rgba(0,127,255,.06)">
+          <div style="font-size:20px;margin-bottom:4px">⚛️</div>
+          <strong>React Platform Shell</strong><br/>
+          <span style="color:var(--muted);font-size:11px">Port 5173 · Vite + Zustand</span>
+        </div>
+        <div class="arch-box" style="font-size:11px;padding:10px 14px">
+          Sidebar · TabBar · LifecycleStrip<br/>TopHeader (Ctrl+K search)<br/>Dark/Light theme toggle
+        </div>
+        <div class="arch-box" style="font-size:11px;padding:10px 14px">
+          Plan · Risk · Verify · Release<br/>Monitor (React-native)<br/>Requirements · SMART (iframe)
+        </div>
+        <div class="arch-box" style="border-color:rgba(50,205,50,.3);background:rgba(50,205,50,.06)">
+          <div style="font-size:20px;margin-bottom:4px">🐍</div>
+          <strong>Streamlit</strong><br/>
+          <span style="color:var(--muted);font-size:11px">Port 8501 · Embedded iframes</span>
+        </div>
+      </div>
+
+      <!-- Arrow 1 -->
+      <div class="arch-arrow" style="margin-top:80px">⇄</div>
+
+      <!-- Column 2: API -->
+      <div class="col" style="gap:10px">
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">API Layer</div>
+        <div class="arch-box" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.06)">
+          <div style="font-size:20px;margin-bottom:4px">⚡</div>
+          <strong>FastAPI</strong><br/>
+          <span style="color:var(--muted);font-size:11px">Port 8000 · OpenAPI 3.0</span>
+        </div>
+        <div class="arch-box" style="font-size:11px;padding:10px 14px">
+          POST /verify/sign-off<br/>POST /release/approve<br/>POST /release/go-live<br/>GET /audit-trail<br/>POST /verify/generate-script
+        </div>
+        <div class="arch-box" style="font-size:11px;padding:10px 14px">
+          CORS · Pydantic v2<br/>Scoped API Keys<br/>AuditGuard · Sandbox<br/>TenantDictionary
+        </div>
+        <div class="arch-box" style="font-size:11px;padding:10px 14px">
+          MCP Server<br/>(7 EVOLV tools for<br/>Claude Code)
+        </div>
+      </div>
+
+      <!-- Arrow 2 -->
+      <div class="arch-arrow" style="margin-top:80px">⇄</div>
+
+      <!-- Column 3: Agents + Storage -->
+      <div class="col" style="gap:10px">
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--lime);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Agents &amp; Storage</div>
+        <div class="arch-box" style="border-color:rgba(50,205,50,.3);background:rgba(50,205,50,.06);font-size:11px">
+          <strong>6 AI Agents</strong><br/>
+          RequirementArchitect · VerificationAgent<br/>DeltaAgent · RiskStrategist<br/>SMARTEngine · IntegrityManager
+        </div>
+        <div class="arch-box" style="font-size:11px;padding:10px 14px">
+          <strong style="color:var(--blue)">Pinecone</strong><br/>
+          GAMP 5 knowledge base<br/>text-embedding-3-small<br/>Similarity search
+        </div>
+        <div class="arch-box" style="font-size:11px;padding:10px 14px">
+          <strong style="color:var(--amber)">OpenAI GPT-4</strong><br/>
+          URS generation<br/>SMART refinement<br/>Rationale building
+        </div>
+        <div class="arch-box" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06);font-size:11px">
+          <strong>Audit Trail</strong><br/>
+          output/audit_trail.csv<br/>SHA-256 hashed rows<br/>Logic archive JSON files
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 9 — Claude Code Integration
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="w100" style="max-width:900px">
+    <div class="tag blue mb20">Developer Experience</div>
+    <h2 class="mb32">Claude Code — AI-native development</h2>
+    <div class="grid3 mb32">
+      <div class="card glow-blue">
+        <h4>🪝 Hooks (3)</h4>
+        <div class="col" style="gap:4px;margin-top:8px">
+          <div class="check" style="font-size:11px"><strong>protect_audit_trail</strong> — blocks direct writes (exit 2)</div>
+          <div class="check" style="font-size:11px"><strong>log_dev_change</strong> — appends SHA-256 dev audit log</div>
+          <div class="check" style="font-size:11px"><strong>validate_urs_tag</strong> — warns on missing :requirement: tags</div>
+        </div>
+      </div>
+      <div class="card glow-blue">
+        <h4>🔧 MCP Server (7 tools)</h4>
+        <div class="col" style="gap:4px;margin-top:8px">
+          <div class="check" style="font-size:11px">generate_urs · verify_urs</div>
+          <div class="check" style="font-size:11px">transform_ur_fr · generate_csa_test</div>
+          <div class="check" style="font-size:11px">assess_risk · refine_smart</div>
+          <div class="check" style="font-size:11px">query_knowledge_base</div>
+        </div>
+      </div>
+      <div class="card glow-blue">
+        <h4>⚡ Skills (4)</h4>
+        <div class="col" style="gap:4px;margin-top:8px">
+          <div class="check" style="font-size:11px">/generate-urs</div>
+          <div class="check" style="font-size:11px">/verify-compliance</div>
+          <div class="check" style="font-size:11px">/generate-test</div>
+          <div class="check" style="font-size:11px">/full-lifecycle</div>
+        </div>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="card">
+        <h4>📏 Path-scoped Rules (4)</h4>
+        <p style="font-size:12px;margin-top:6px">Agents/, frontend/, react-platform/, API/ each have dedicated coding rules auto-loaded by Claude when editing those paths.</p>
+      </div>
+      <div class="card">
+        <h4>🤖 Subagents (3)</h4>
+        <p style="font-size:12px;margin-top:6px">batch-urs-generator, compliance-reviewer (0–100 score), gamp5-researcher — specialized autonomous agents for complex tasks.</p>
+      </div>
+      <div class="card">
+        <h4>🔄 CI/CD Gate</h4>
+        <p style="font-size:12px;margin-top:6px">GitHub Actions: URS traceability, audit trail protection, error codes, type hints, branding, hook scripts — blocks merge on failure.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 10 — Tech Stack
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="w100" style="max-width:900px">
+    <div class="tag lime mb20">Technology Stack</div>
+    <h2 class="mb32">Built on proven, production-grade technology</h2>
+    <div class="grid4 mb24">
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">⚛️</div>
+        <h4>React 18</h4>
+        <p style="font-size:11px">Vite · Zustand · Framer Motion · Tailwind CSS</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">⚡</div>
+        <h4>FastAPI</h4>
+        <p style="font-size:11px">Python 3.11 · Pydantic v2 · OpenAPI 3.0 · Uvicorn</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🌊</div>
+        <h4>Streamlit</h4>
+        <p style="font-size:11px">Rapid UI · Session state · Embedded iframe mode</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🧠</div>
+        <h4>OpenAI</h4>
+        <p style="font-size:11px">GPT-4 · text-embedding-3-small · Function calling</p>
+      </div>
+    </div>
+    <div class="grid4 mb24">
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">📌</div>
+        <h4>Pinecone</h4>
+        <p style="font-size:11px">Vector DB · GAMP 5 knowledge base · Semantic search</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🐳</div>
+        <h4>Docker</h4>
+        <p style="font-size:11px">Docker Compose · Multi-stage builds · nginx reverse proxy</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">☁️</div>
+        <h4>Kubernetes</h4>
+        <p style="font-size:11px">AWS NLB · ALB Ingress · Deployment YAML ready</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🔄</div>
+        <h4>GitHub Actions</h4>
+        <p style="font-size:11px">Compliance gate · PEP 8 lint · React build check</p>
+      </div>
+    </div>
+    <div class="code">
+      <span class="cmt"># One-command startup</span><br/>
+      <span class="kw">docker-compose</span> up --build<br/><br/>
+      <span class="cmt"># React:     </span><span class="str">http://localhost:5173</span><br/>
+      <span class="cmt"># Streamlit: </span><span class="str">http://localhost:8501</span><br/>
+      <span class="cmt"># FastAPI:   </span><span class="str">http://localhost:8000/docs</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 11 — URS Traceability
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s11">
+  <div class="w100" style="max-width:900px">
+    <div class="tag amber mb20">Traceability</div>
+    <h2 class="mb32">Full requirements traceability — URS to test to sign-off</h2>
+
+    <!-- Traceability chain -->
+    <div style="display:flex;align-items:center;gap:0;width:100%;margin-bottom:36px">
+      <div style="flex:1;text-align:center;padding:16px;background:var(--card);border:1px solid rgba(0,127,255,.3);border-radius:12px 0 0 12px">
+        <div style="font-size:20px;margin-bottom:4px">📝</div>
+        <div style="font-size:11px;font-weight:700;color:var(--blue)">URS</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">URS-7.1<br/>Criticality<br/>Rationale</div>
+      </div>
+      <div style="padding:0 6px;color:var(--blue);font-size:20px">→</div>
+      <div style="flex:1;text-align:center;padding:16px;background:var(--card);border:1px solid rgba(0,127,255,.2)">
+        <div style="font-size:20px;margin-bottom:4px">✅</div>
+        <div style="font-size:11px;font-weight:700;color:var(--blue)">Verify</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">3 checks<br/>Approved<br/>Rejected</div>
+      </div>
+      <div style="padding:0 6px;color:var(--blue);font-size:20px">→</div>
+      <div style="flex:1;text-align:center;padding:16px;background:var(--card);border:1px solid rgba(0,127,255,.2)">
+        <div style="font-size:20px;margin-bottom:4px">⚖️</div>
+        <div style="font-size:11px;font-weight:700;color:var(--blue)">UR/FR</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Risk matrix<br/>Test strategy<br/>FRs</div>
+      </div>
+      <div style="padding:0 6px;color:var(--blue);font-size:20px">→</div>
+      <div style="flex:1;text-align:center;padding:16px;background:var(--card);border:1px solid rgba(0,127,255,.2)">
+        <div style="font-size:20px;margin-bottom:4px">🧪</div>
+        <div style="font-size:11px;font-weight:700;color:var(--blue)">Test Script</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Steps<br/>Criteria<br/>Case types</div>
+      </div>
+      <div style="padding:0 6px;color:var(--lime);font-size:20px">→</div>
+      <div style="flex:1;text-align:center;padding:16px;background:var(--card);border:1px solid rgba(50,205,50,.3)">
+        <div style="font-size:20px;margin-bottom:4px">🏭</div>
+        <div style="font-size:11px;font-weight:700;color:var(--lime)">Execution</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Pass/Fail<br/>Evidence<br/>Actual results</div>
+      </div>
+      <div style="padding:0 6px;color:var(--lime);font-size:20px">→</div>
+      <div style="flex:1;text-align:center;padding:16px;background:var(--card);border:1px solid rgba(50,205,50,.3);border-radius:0 12px 12px 0">
+        <div style="font-size:20px;margin-bottom:4px">✍️</div>
+        <div style="font-size:11px;font-weight:700;color:var(--lime)">Sign-off</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">e-Signature<br/>SHA-256<br/>Audit record</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <h4 class="mb12">What every audit record contains</h4>
+        <div class="bullet">timestamp (UTC ISO-8601)</div>
+        <div class="bullet">agent_name, action, user_id</div>
+        <div class="bullet">decision_logic (human-readable summary)</div>
+        <div class="bullet">compliance_impact classification</div>
+        <div class="bullet">reasoning_hash (SHA-256, tamper-evident)</div>
+      </div>
+      <div>
+        <h4 class="mb12">Logic archive (AI transparency)</h4>
+        <div class="bullet">Full inputs, steps, and outputs for every AI action</div>
+        <div class="bullet">Cross-referenced to CSV row via reasoning_hash</div>
+        <div class="bullet">Integrity hash on the JSON file itself</div>
+        <div class="bullet">Schema version 1.0.0 for forward compatibility</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 12 — Summary / ROI
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="s12">
+  <div style="text-align:center;max-width:860px">
+    <div class="tag lime mb20" style="margin:0 auto 24px">Summary</div>
+    <h2 class="mb12">EVOLV is the validation platform for the AI era</h2>
+    <p style="margin-bottom:48px;font-size:16px">
+      The only platform that combines GAMP 5 regulatory intelligence, 21 CFR Part 11 compliance,
+      AI-generated artefacts, and a fully auditable development environment — in one lifecycle shell.
+    </p>
+
+    <div class="grid3 mb40" style="text-align:left">
+      <div class="card glow-lime">
+        <div style="font-size:28px;margin-bottom:8px">⚡</div>
+        <h4>Speed</h4>
+        <p style="font-size:12px;margin-top:6px">From raw requirement to signed test script in minutes. AI handles URS generation, verification, risk matrix, and test script — automatically.</p>
+      </div>
+      <div class="card glow-blue">
+        <div style="font-size:28px;margin-bottom:8px">🔒</div>
+        <h4>Compliance</h4>
+        <p style="font-size:12px;margin-top:6px">Every action is audit-logged. Every signature is 21 CFR Part 11 compliant. Every AI decision is archived with its full reasoning chain.</p>
+      </div>
+      <div class="card glow-lime">
+        <div style="font-size:28px;margin-bottom:8px">🧠</div>
+        <h4>Intelligence</h4>
+        <p style="font-size:12px;margin-top:6px">GAMP 5 knowledge base, contradiction detection, SMART rewriting, FDA/EMA 2026 AI guidance alignment — built into every step.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:32px">
+      <span class="tag lime">21 CFR Part 11 ✓</span>
+      <span class="tag blue">GAMP 5 ✓</span>
+      <span class="tag amber">FDA CSA 2022 ✓</span>
+      <span class="tag lime">EU GMP Annex 11 ✓</span>
+      <span class="tag blue">ISO 13485 ✓</span>
+      <span class="tag amber">ICH Q9 ✓</span>
+      <span class="tag lime">FDA/EMA AI 2026 ✓</span>
+    </div>
+
+    <p style="font-size:13px;color:var(--muted)">
+      Powered by <strong style="color:white">EVOLV</strong> | A WingstarTech Inc. Product
+    </p>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- Navigation -->
+<div class="nav" id="nav">
+  <button onclick="prev()">← Prev</button>
+  <div class="dot-row" id="dots"></div>
+  <span class="counter" id="counter">1 / 12</span>
+  <button onclick="next()">Next →</button>
+</div>
+
+<div class="wm">EVOLV | WingstarTech Inc. | Confidential</div>
+
+<script>
+  const TOTAL = 12
+  let cur = 1
+
+  const progress = document.getElementById('progress')
+  const counter  = document.getElementById('counter')
+  const dotsEl   = document.getElementById('dots')
+
+  // Build dots
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div')
+    d.className = 'dot'
+    d.onclick = () => go(i)
+    dotsEl.appendChild(d)
+  }
+
+  function go(n) {
+    document.getElementById('s' + cur)?.classList.remove('active')
+    cur = Math.max(1, Math.min(TOTAL, n))
+    document.getElementById('s' + cur)?.classList.add('active')
+    counter.textContent = cur + ' / ' + TOTAL
+    progress.style.width = (cur / TOTAL * 100) + '%'
+    dotsEl.querySelectorAll('.dot').forEach((d, i) =>
+      d.classList.toggle('on', i + 1 === cur))
+  }
+
+  function next() { go(cur + 1) }
+  function prev() { go(cur - 1) }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown'  || e.key === ' ') { e.preventDefault(); next() }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                       { e.preventDefault(); prev() }
+    if (e.key === 'Home') go(1)
+    if (e.key === 'End')  go(TOTAL)
+  })
+
+  go(1)
+</script>
+</body>
+</html>

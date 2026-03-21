@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "evolv": {
+      "command": "python",
+      "args": ["-m", "mcp_server.evolv_mcp"],
+      "cwd": "${workspaceFolder}",
+      "env": {}
+    }
+  }
+}

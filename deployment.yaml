@@ -1,0 +1,29 @@
+﻿apiVersion: v1
+kind: Service
+metadata:
+  name: csv-tool-service
+  annotations:
+    # This triggers the NEW controller you just installed
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    # This tells it to use the Fargate Pod IPs directly (Required for Fargate)
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    # This makes the URL public
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: csv-tool 
+  containers:
+      - name: csv-tool
+        image: <your-image-id>
+        ports:
+        - containerPort: 8501
+        # This tells the container specifically to run your app.py
+        command: ["streamlit", "run", "frontend/app.py"]
+        args:
+        - "--server.port=8501"
+        - "--server.address=0.0.0.0"

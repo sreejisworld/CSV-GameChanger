@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EVOLV | Architecture Flow Diagram</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07070F;
+      --surface:   #0E0E1A;
+      --card:      #12121E;
+      --border:    rgba(255,255,255,0.08);
+      --border-hi: rgba(0,127,255,0.40);
+      --blue:      #007FFF;
+      --blue-dim:  rgba(0,127,255,0.12);
+      --blue-glow: rgba(0,127,255,0.35);
+      --lime:      #32CD32;
+      --lime-dim:  rgba(50,205,50,0.12);
+      --amber:     #F59E0B;
+      --amber-dim: rgba(245,158,11,0.12);
+      --red:       #EF4444;
+      --red-dim:   rgba(239,68,68,0.12);
+      --purple:    #A855F7;
+      --purple-dim:rgba(168,85,247,0.12);
+      --cyan:      #06B6D4;
+      --cyan-dim:  rgba(6,182,212,0.12);
+      --text:      #E8E8F0;
+      --muted:     rgba(232,232,240,0.45);
+      --faint:     rgba(232,232,240,0.20);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 24px 48px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header-logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--blue);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .header p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Diagram wrapper ── */
+    .diagram {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* ── Tier ── */
+    .tier {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .tier-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 16px;
+      margin-bottom: 8px;
+    }
+    .tier-row {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 0;
+      position: relative;
+    }
+    .tier-row.tier-ui     { background: rgba(0,127,255,0.04); border-color: rgba(0,127,255,0.18); }
+    .tier-row.tier-api    { background: rgba(168,85,247,0.04); border-color: rgba(168,85,247,0.18); }
+    .tier-row.tier-agents { background: rgba(50,205,50,0.04);  border-color: rgba(50,205,50,0.18); }
+    .tier-row.tier-infra  { background: rgba(6,182,212,0.04);  border-color: rgba(6,182,212,0.18); }
+    .tier-row.tier-storage{ background: rgba(245,158,11,0.04); border-color: rgba(245,158,11,0.18); }
+
+    /* connector between tiers */
+    .connector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 36px;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      position: relative;
+    }
+    .connector::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, transparent, var(--border), transparent);
+    }
+    .connector-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      z-index: 1;
+    }
+
+    /* ── Box ── */
+    .box {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: var(--card);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.2s;
+    }
+    .box:hover { border-color: var(--border-hi); }
+
+    .box-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .box-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .box-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .box-sub {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .box-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .tag {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .tag-blue   { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(0,127,255,0.25); }
+    .tag-lime   { background: var(--lime-dim);   color: var(--lime);   border: 1px solid rgba(50,205,50,0.25); }
+    .tag-amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(245,158,11,0.25); }
+    .tag-red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(239,68,68,0.25); }
+    .tag-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(168,85,247,0.25); }
+    .tag-cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(6,182,212,0.25); }
+
+    /* box accent colors */
+    .accent-blue   .box-icon { background: var(--blue-dim);   color: var(--blue); }
+    .accent-purple .box-icon { background: var(--purple-dim); color: var(--purple); }
+    .accent-lime   .box-icon { background: var(--lime-dim);   color: var(--lime); }
+    .accent-amber  .box-icon { background: var(--amber-dim);  color: var(--amber); }
+    .accent-red    .box-icon { background: var(--red-dim);    color: var(--red); }
+    .accent-cyan   .box-icon { background: var(--cyan-dim);   color: var(--cyan); }
+
+    /* narrow boxes */
+    .box.narrow { flex: 0 0 auto; width: 160px; }
+    .box.wide   { flex: 2; }
+
+    /* ── Lifecycle strip ── */
+    .lifecycle-strip {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: 6px 0 0;
+      overflow-x: auto;
+    }
+    .phase {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+      position: relative;
+    }
+    .phase:not(:last-child)::after {
+      content: '→';
+      position: absolute;
+      right: -8px;
+      top: 10px;
+      color: var(--faint);
+      font-size: 10px;
+      z-index: 1;
+    }
+    .phase-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border: 2px solid transparent;
+    }
+    .phase-name {
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--muted);
+      text-align: center;
+      white-space: nowrap;
+    }
+    .phase.active .phase-dot { border-color: var(--blue); background: var(--blue-dim); }
+    .phase.active .phase-name { color: var(--blue); }
+    .phase.done   .phase-dot { border-color: var(--lime); background: var(--lime-dim); }
+    .phase.done   .phase-name { color: var(--lime); }
+    .phase.locked .phase-dot { border-color: var(--border); background: transparent; opacity: 0.4; }
+
+    /* ── Data flow arrows ── */
+    .flow-section {
+      max-width: 1280px;
+      margin: 32px auto 0;
+    }
+    .flow-section h2 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 12px;
+    }
+
+    .flow-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .flow-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .flow-step:last-child { margin-bottom: 0; }
+    .flow-num {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--blue-dim);
+      border: 1px solid rgba(0,127,255,0.3);
+      color: var(--blue);
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .flow-text {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .flow-text strong { color: var(--text); }
+    .flow-arrow {
+      display: flex;
+      justify-content: center;
+      color: var(--faint);
+      font-size: 11px;
+      margin: 2px 0;
+      padding-left: 28px;
+    }
+
+    /* ── Compliance section ── */
+    .compliance-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      max-width: 1280px;
+      margin: 32px auto 0;
+    }
+    .compliance-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .compliance-card-head {
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .compliance-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 5px;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .compliance-item::before {
+      content: '✓';
+      color: var(--lime);
+      font-size: 9px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      max-width: 1280px;
+      margin: 32px auto 0;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 10px;
+      color: var(--faint);
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-logo">EVOLV · Architecture Flow Diagram</div>
+  <h1>EVOLV — The Validation Factory</h1>
+  <p>End-to-end GAMP 5 / CSA / 21 CFR Part 11 platform · WingstarTech Inc.</p>
+</div>
+
+<!-- ── Main Diagram ── -->
+<div class="diagram">
+
+  <!-- Tier 1: User Interfaces -->
+  <div class="tier">
+    <div class="tier-label">◈ Presentation Tier — User Interfaces</div>
+    <div class="tier-row tier-ui">
+
+      <div class="box wide accent-blue">
+        <div class="box-head">
+          <div class="box-icon">⚛</div>
+          <div>
+            <div class="box-title">React Platform Shell</div>
+            <div class="box-sub">Port 5173 · Primary UI</div>
+          </div>
+        </div>
+        <div class="box-sub">Full lifecycle navigation with V-model strip, Zustand persist state, Framer Motion transitions, dark/light theme, Spotlight search (Ctrl+K), localStorage persistence.</div>
+        <div class="box-tags">
+          <span class="tag tag-blue">React 18</span>
+          <span class="tag tag-blue">Zustand 5</span>
+          <span class="tag tag-blue">Framer Motion</span>
+          <span class="tag tag-blue">Tailwind CSS</span>
+          <span class="tag tag-blue">Vite</span>
+        </div>
+        <!-- Lifecycle strip -->
+        <div class="lifecycle-strip">
+          <div class="phase done">
+            <div class="phase-dot">📋</div>
+            <div class="phase-name">Plan</div>
+          </div>
+          <div class="phase done">
+            <div class="phase-dot">📝</div>
+            <div class="phase-name">Reqs</div>
+          </div>
+          <div class="phase done">
+            <div class="phase-dot">⚠️</div>
+            <div class="phase-name">Risk</div>
+          </div>
+          <div class="phase locked">
+            <div class="phase-dot">🏗️</div>
+            <div class="phase-name">Design</div>
+          </div>
+          <div class="phase active">
+            <div class="phase-dot">✅</div>
+            <div class="phase-name">Verify</div>
+          </div>
+          <div class="phase active">
+            <div class="phase-dot">🚀</div>
+            <div class="phase-name">Release</div>
+          </div>
+          <div class="phase active">
+            <div class="phase-dot">📊</div>
+            <div class="phase-name">Monitor</div>
+          </div>
+          <div class="phase locked">
+            <div class="phase-dot">🔒</div>
+            <div class="phase-name">Retire</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box accent-purple">
+        <div class="box-head">
+          <div class="box-icon">🐍</div>
+          <div>
+            <div class="box-title">Streamlit App</div>
+            <div class="box-sub">Port 8501 · AI Workflows</div>
+          </div>
+        </div>
+        <div class="box-sub">AI-driven requirement generation, SMART refinement, Intelligence Engine, UR/FR builder. Embedded as iframes inside React shell.</div>
+        <div class="box-tags">
+          <span class="tag tag-purple">Streamlit</span>
+          <span class="tag tag-purple">Python 3.11</span>
+          <span class="tag tag-purple">Embedded iframes</span>
+        </div>
+      </div>
+
+      <div class="box narrow accent-blue">
+        <div class="box-head">
+          <div class="box-icon">🔍</div>
+          <div>
+            <div class="box-title">Spotlight Search</div>
+            <div class="box-sub">Ctrl+K</div>
+          </div>
+        </div>
+        <div class="box-sub">Full-text search across all 14 app modules. Keyboard nav, grouped results, live highlight.</div>
+        <div class="box-tags">
+          <span class="tag tag-blue">Global</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="connector">
+    <div class="connector-pill">REST / JSON · CORS-secured · http://localhost:8000</div>
+  </div>
+
+  <!-- Tier 2: API Gateway -->
+  <div class="tier">
+    <div class="tier-label">◈ API Tier — FastAPI Gateway</div>
+    <div class="tier-row tier-api">
+
+      <div class="box narrow accent-purple">
+        <div class="box-head">
+          <div class="box-icon">🔐</div>
+          <div>
+            <div class="box-title">CORS Middleware</div>
+            <div class="box-sub">Origin allowlist</div>
+          </div>
+        </div>
+        <div class="box-sub">Restricts origins to :5173 and :8501. Blocks unauthorized cross-origin requests.</div>
+        <div class="box-tags">
+          <span class="tag tag-purple">FastAPI</span>
+        </div>
+      </div>
+
+      <div class="box accent-purple">
+        <div class="box-head">
+          <div class="box-icon">📡</div>
+          <div>
+            <div class="box-title">Verify Router</div>
+            <div class="box-sub">/verify/*</div>
+          </div>
+        </div>
+        <div class="box-sub">
+          POST /verify/generate-script — risk rows → CSA test script<br/>
+          POST /verify/sign-off — 21 CFR §11.50 e-signature
+        </div>
+        <div class="box-tags">
+          <span class="tag tag-lime">21 CFR §11.50</span>
+          <span class="tag tag-purple">DeltaAgent</span>
+        </div>
+      </div>
+
+      <div class="box accent-purple">
+        <div class="box-head">
+          <div class="box-icon">🚀</div>
+          <div>
+            <div class="box-title">Release Router</div>
+            <div class="box-sub">/release/*</div>
+          </div>
+        </div>
+        <div class="box-sub">
+          POST /release/approve — multi-approver e-signature<br/>
+          POST /release/go-live — formal release authorization
+        </div>
+        <div class="box-tags">
+          <span class="tag tag-lime">Multi-approver</span>
+          <span class="tag tag-purple">Chain-of-custody</span>
+        </div>
+      </div>
+
+      <div class="box accent-purple">
+        <div class="box-head">
+          <div class="box-icon">📊</div>
+          <div>
+            <div class="box-title">Monitor Router</div>
+            <div class="box-sub">/audit-trail</div>
+          </div>
+        </div>
+        <div class="box-sub">
+          GET /audit-trail — CSV audit log as JSON<br/>
+          Newest-first, filterable by action type
+        </div>
+        <div class="box-tags">
+          <span class="tag tag-amber">21 CFR §11.10</span>
+          <span class="tag tag-purple">Live refresh</span>
+        </div>
+      </div>
+
+      <div class="box accent-purple">
+        <div class="box-head">
+          <div class="box-icon">🔗</div>
+          <div>
+            <div class="box-title">Webhook Router</div>
+            <div class="box-sub">/webhook/sn-change</div>
+          </div>
+        </div>
+        <div class="box-sub">ServiceNow Change Request intake. Triggers automated risk assessment via RiskStrategist Agent.</div>
+        <div class="box-tags">
+          <span class="tag tag-purple">ServiceNow</span>
+          <span class="tag tag-amber">Auto-assess</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="connector">
+    <div class="connector-pill">Python function calls · Async · Typed interfaces</div>
+  </div>
+
+  <!-- Tier 3: AI Agents -->
+  <div class="tier">
+    <div class="tier-label">◈ Intelligence Tier — AI Agents</div>
+    <div class="tier-row tier-agents">
+
+      <div class="box accent-lime">
+        <div class="box-head">
+          <div class="box-icon">🏗️</div>
+          <div>
+            <div class="box-title">Requirement Architect</div>
+            <div class="box-sub">NLP → GAMP 5 URS</div>
+          </div>
+        </div>
+        <div class="box-sub">Generates URS from natural language. Queries Pinecone for GAMP 5 regulatory context. Classifies criticality (H/M/L). Transforms URS → UR/FR with risk matrix.</div>
+        <div class="box-tags">
+          <span class="tag tag-lime">OpenAI Embeddings</span>
+          <span class="tag tag-blue">Pinecone</span>
+          <span class="tag tag-lime">URS-6.x</span>
+        </div>
+      </div>
+
+      <div class="box accent-lime">
+        <div class="box-head">
+          <div class="box-icon">🔎</div>
+          <div>
+            <div class="box-title">Verification Agent</div>
+            <div class="box-sub">GAMP 5 compliance check</div>
+          </div>
+        </div>
+        <div class="box-sub">3-check pipeline: criticality alignment, rationale relevance (≥0.45), contradiction scan. APPROVED/REJECTED verdict. Logs Compliance Exceptions.</div>
+        <div class="box-tags">
+          <span class="tag tag-red">URS-12.x</span>
+          <span class="tag tag-lime">3-point check</span>
+        </div>
+      </div>
+
+      <div class="box accent-lime">
+        <div class="box-head">
+          <div class="box-icon">🧠</div>
+          <div>
+            <div class="box-title">SMART Engine</div>
+            <div class="box-sub">Requirement refinement</div>
+          </div>
+        </div>
+        <div class="box-sub">Rewrites vague requirements to SMART format. Detects FDA/EMA 2026 AI triggers. Generates negative test scenarios for HIGH risk. LLM + deterministic modes.</div>
+        <div class="box-tags">
+          <span class="tag tag-lime">URS-21.x</span>
+          <span class="tag tag-amber">FDA/EMA 2026</span>
+        </div>
+      </div>
+
+      <div class="box accent-lime">
+        <div class="box-head">
+          <div class="box-icon">⚡</div>
+          <div>
+            <div class="box-title">Delta Agent</div>
+            <div class="box-sub">CSA test script generation</div>
+          </div>
+        </div>
+        <div class="box-sub">Generates Informal/OQ/UAT test scripts from UR/FR. Setup + positive/negative/edge steps. Unscripted charters for low risk. 100% deterministic — no LLM.</div>
+        <div class="box-tags">
+          <span class="tag tag-lime">URS-17.x</span>
+          <span class="tag tag-blue">Deterministic</span>
+        </div>
+      </div>
+
+      <div class="box accent-lime">
+        <div class="box-head">
+          <div class="box-icon">⚠️</div>
+          <div>
+            <div class="box-title">Risk Strategist</div>
+            <div class="box-sub">GAMP 5 risk assessment</div>
+          </div>
+        </div>
+        <div class="box-sub">RPN = Severity × Occurrence × Detectability. Patient safety override. CSA testing strategy mapping. ServiceNow field mapping (criticality → severity).</div>
+        <div class="box-tags">
+          <span class="tag tag-amber">RPN 1–27</span>
+          <span class="tag tag-red">Patient Safety</span>
+        </div>
+      </div>
+
+      <div class="box accent-lime">
+        <div class="box-head">
+          <div class="box-icon">🔒</div>
+          <div>
+            <div class="box-title">Integrity Manager</div>
+            <div class="box-sub">21 CFR Part 11 audit trail</div>
+          </div>
+        </div>
+        <div class="box-sub">Append-only CSV audit trail. SHA-256 tamper-evident hash per row. Logic Archive JSON files (AI reasoning transparency). Thread-safe write lock.</div>
+        <div class="box-tags">
+          <span class="tag tag-lime">21 CFR §11.10</span>
+          <span class="tag tag-lime">SHA-256</span>
+          <span class="tag tag-amber">URS-13.x</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="connector">
+    <div class="connector-pill">Pinecone vector search · OpenAI text-embedding-3-small</div>
+  </div>
+
+  <!-- Tier 4: Storage -->
+  <div class="tier">
+    <div class="tier-label">◈ Data Tier — Storage &amp; Knowledge</div>
+    <div class="tier-row tier-storage">
+
+      <div class="box accent-amber">
+        <div class="box-head">
+          <div class="box-icon">🗄️</div>
+          <div>
+            <div class="box-title">Pinecone Vector DB</div>
+            <div class="box-sub">csv-knowledge-base index</div>
+          </div>
+        </div>
+        <div class="box-sub">GAMP 5 + CSA regulatory documents chunked and embedded. Similarity search for URS generation and verification. Reg version metadata per chunk.</div>
+        <div class="box-tags">
+          <span class="tag tag-amber">GAMP 5 Guide</span>
+          <span class="tag tag-amber">CSA Guidance</span>
+          <span class="tag tag-blue">1536-dim vectors</span>
+        </div>
+      </div>
+
+      <div class="box accent-amber">
+        <div class="box-head">
+          <div class="box-icon">📄</div>
+          <div>
+            <div class="box-title">Audit Trail CSV</div>
+            <div class="box-sub">output/audit_trail.csv</div>
+          </div>
+        </div>
+        <div class="box-sub">Immutable append-only log. Fields: timestamp, agent, action, user_id, decision_logic, compliance_impact, SHA-256 hash. 21 CFR Part 11 §11.10 compliant.</div>
+        <div class="box-tags">
+          <span class="tag tag-lime">Immutable</span>
+          <span class="tag tag-amber">All agents</span>
+          <span class="tag tag-lime">§11.10</span>
+        </div>
+      </div>
+
+      <div class="box accent-amber">
+        <div class="box-head">
+          <div class="box-icon">🧩</div>
+          <div>
+            <div class="box-title">Logic Archives</div>
+            <div class="box-sub">output/logic_archives/*.json</div>
+          </div>
+        </div>
+        <div class="box-sub">Hidden JSON files with full AI reasoning chain (inputs→steps→outputs). Cross-referenced to CSV audit row via hash. Integrity hash per archive.</div>
+        <div class="box-tags">
+          <span class="tag tag-amber">Reasoning transparency</span>
+          <span class="tag tag-lime">Cross-ref hash</span>
+        </div>
+      </div>
+
+      <div class="box accent-amber">
+        <div class="box-head">
+          <div class="box-icon">💾</div>
+          <div>
+            <div class="box-title">localStorage</div>
+            <div class="box-sub">evolv-platform key</div>
+          </div>
+        </div>
+        <div class="box-sub">Zustand persist middleware. Partial state: theme, phaseCompletion, planData, riskData, testScripts, testRuns, activeRunId, releaseData.</div>
+        <div class="box-tags">
+          <span class="tag tag-blue">Zustand persist</span>
+          <span class="tag tag-blue">Session durable</span>
+        </div>
+      </div>
+
+      <div class="box accent-amber">
+        <div class="box-head">
+          <div class="box-icon">📑</div>
+          <div>
+            <div class="box-title">Generated Outputs</div>
+            <div class="box-sub">output/urs/ · output/pdfs/</div>
+          </div>
+        </div>
+        <div class="box-sub">URS Markdown files, Validation Report PDFs (5-page: cover + UR/FR + test script + rationale + MoS), URS PDFs with 21 CFR §11.50 signature page.</div>
+        <div class="box-tags">
+          <span class="tag tag-amber">fpdf2</span>
+          <span class="tag tag-lime">§11.50 MoS</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="connector">
+    <div class="connector-pill">Docker Compose · Kubernetes · GitHub Actions CI/CD</div>
+  </div>
+
+  <!-- Tier 5: Infrastructure -->
+  <div class="tier">
+    <div class="tier-label">◈ Infrastructure Tier — Deployment &amp; DevOps</div>
+    <div class="tier-row tier-infra">
+
+      <div class="box accent-cyan">
+        <div class="box-head">
+          <div class="box-icon">🐳</div>
+          <div>
+            <div class="box-title">Docker Compose</div>
+            <div class="box-sub">3-service orchestration</div>
+          </div>
+        </div>
+        <div class="box-sub">react (nginx SPA), fastapi (uvicorn), streamlit services. Shared ./output volume. .env config injection. nginx proxy /api/ → FastAPI.</div>
+        <div class="box-tags">
+          <span class="tag tag-cyan">Multi-stage builds</span>
+          <span class="tag tag-cyan">nginx:alpine</span>
+        </div>
+      </div>
+
+      <div class="box accent-cyan">
+        <div class="box-head">
+          <div class="box-icon">☸️</div>
+          <div>
+            <div class="box-title">Kubernetes</div>
+            <div class="box-sub">k8s/ manifests</div>
+          </div>
+        </div>
+        <div class="box-sub">Deployment, Service, Ingress manifests. Horizontal scaling. Secret management for API keys. Production-grade orchestration.</div>
+        <div class="box-tags">
+          <span class="tag tag-cyan">Ingress</span>
+          <span class="tag tag-cyan">Secrets</span>
+          <span class="tag tag-cyan">HPA</span>
+        </div>
+      </div>
+
+      <div class="box accent-cyan">
+        <div class="box-head">
+          <div class="box-icon">⚙️</div>
+          <div>
+            <div class="box-title">GitHub Actions CI/CD</div>
+            <div class="box-sub">.github/workflows/</div>
+          </div>
+        </div>
+        <div class="box-sub">3-job compliance gate: URS tags, audit protection, error codes, type hints, branding, hook scripts. PEP 8 lint. React build check. Blocks merge on failure.</div>
+        <div class="box-tags">
+          <span class="tag tag-cyan">Compliance gate</span>
+          <span class="tag tag-lime">PEP 8</span>
+          <span class="tag tag-cyan">React build</span>
+        </div>
+      </div>
+
+      <div class="box accent-cyan">
+        <div class="box-head">
+          <div class="box-icon">🪝</div>
+          <div>
+            <div class="box-title">Claude Code Hooks</div>
+            <div class="box-sub">.claude/settings.json</div>
+          </div>
+        </div>
+        <div class="box-sub">PreToolUse: protect_audit_trail.py (blocks edits to audit log). PostToolUse: log_dev_change.py + validate_urs_tag.py (warns on missing URS tags).</div>
+        <div class="box-tags">
+          <span class="tag tag-blue">PreToolUse</span>
+          <span class="tag tag-blue">PostToolUse</span>
+        </div>
+      </div>
+
+      <div class="box accent-cyan">
+        <div class="box-head">
+          <div class="box-icon">🔌</div>
+          <div>
+            <div class="box-title">MCP Server</div>
+            <div class="box-sub">mcp_server/evolv_mcp.py</div>
+          </div>
+        </div>
+        <div class="box-sub">FastMCP server exposes 7 EVOLV agents as native Claude tools: generate_urs, verify_urs, transform_ur_fr, generate_csa_test, assess_risk, refine_smart, query_knowledge_base.</div>
+        <div class="box-tags">
+          <span class="tag tag-blue">FastMCP</span>
+          <span class="tag tag-blue">7 tools</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /diagram -->
+
+<!-- ── Data Flow Sequences ── -->
+<div class="flow-section">
+  <h2>Key Data Flow Sequences</h2>
+  <div class="flow-grid">
+
+    <div class="flow-card">
+      <div class="flow-card-title">
+        <span style="color:var(--blue)">①</span> Requirement → Test Script (Full Pipeline)
+      </div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>User enters</strong> plain-English requirement in Streamlit Validation Factory</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>SMART Engine</strong> refines to SMART format, detects FDA/EMA flags</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Requirement Architect</strong> generates URS with GAMP 5 rationale from Pinecone</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Verification Agent</strong> runs 3-point GAMP 5 check → APPROVED / REJECTED</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>Architect</strong> transforms URS → UR/FR with risk matrix (GxP × Impl → Risk Level)</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>Delta Agent</strong> generates CSA test script (Informal / OQ / UAT)</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">7</div><div class="flow-text"><strong>PDF Generator</strong> creates 5-page Validation Report with MoS signature page</div></div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-title">
+        <span style="color:var(--lime)">②</span> Risk Assessment → E-Signature Sign-off
+      </div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Risk page</strong> — user assigns Impact × Implementation per UR/FR; risk matrix auto-calculates HIGH/MEDIUM/LOW</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>⚡ Generate Test Script</strong> — React calls POST /verify/generate-script with risk rows</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Delta Agent</strong> builds UR/FR + test steps; stored in Zustand testScripts + testRuns</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Verify page</strong> — tester executes steps: Pass / Fail / Blocked / N/A per step, actual result, file evidence</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>Sign &amp; Lock</strong> — POST /verify/sign-off with signer name + meaning → SHA-256 reasoning_hash returned</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>Integrity Manager</strong> appends TEST_RUN_SIGNED_OFF to audit CSV + logic archive</div></div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-title">
+        <span style="color:var(--amber)">③</span> Release Authorization Chain
+      </div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Release page</strong> — 5-point go-live checklist auto-populated from Zustand lifecycle state</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>Approver 1–3</strong> each submit name + role + meaning → POST /release/approve</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Each approval</strong> logged: RELEASE_APPROVAL_SIGNED + chain-of-custody hash</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>🚀 Approve for Release</strong> — POST /release/go-live (requires ≥1 approval)</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>RELEASE_APPROVED</strong> event logged; setReleased() updates Zustand; Release badge turns green</div></div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-title">
+        <span style="color:var(--purple)">④</span> ServiceNow Change Request Flow
+      </div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>ServiceNow</strong> POSTs change request to POST /webhook/sn-change</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>CHANGE_REQUEST_RECEIVED</strong> logged to audit trail immediately</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Risk Strategist</strong> maps criticality → Severity, change_type → Occurrence</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>RPN</strong> calculated (1–27); patient safety override if Severity = HIGH</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>CSA testing strategy</strong> assigned: Unscripted / Hybrid / Rigorous Scripted</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>RISK_ASSESSMENT_COMPLETED</strong> logged + full response returned to ServiceNow</div></div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-title">
+        <span style="color:var(--cyan)">⑤</span> Audit Trail &amp; Monitor
+      </div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Every agent action</strong> calls log_audit_event() — all 35+ action types mapped to compliance_impact</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>SHA-256 hash</strong> computed over timestamp + agent + action + user_id + decision_logic</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>CSV row</strong> appended atomically (thread-safe write lock) to output/audit_trail.csv</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Monitor tab</strong> polls GET /audit-trail every 5s (auto-refresh toggle); filter by action type</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>Deviations</strong> logged inline (Deviation / CAPA / Change Control / Incident) with severity tracking</div></div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-title">
+        <span style="color:var(--red)">⑥</span> Claude Code Developer Flow
+      </div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Developer edits</strong> Agents/ or API/ file → PostToolUse hook fires</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>validate_urs_tag.py</strong> warns if public function lacks :requirement: URS-X.Y docstring tag</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>log_dev_change.py</strong> appends change event to development audit log</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Pre-commit</strong> — developer uses /generate-urs or /full-lifecycle custom skills in Claude Code</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>GitHub Actions</strong> compliance gate runs: URS tags + audit protection + PEP 8 + React build</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>PR blocked</strong> if any compliance check fails — enforces traceability before merge</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Compliance Coverage ── -->
+<div class="compliance-grid">
+
+  <div class="compliance-card">
+    <div class="compliance-card-head" style="color:var(--lime)">
+      <span>✅</span> 21 CFR Part 11 Coverage
+    </div>
+    <div class="compliance-item">§11.10(a) — Validation: GAMP 5 V-model lifecycle enforced</div>
+    <div class="compliance-item">§11.10(b) — Accurate copies: PDF generation with fpdf2</div>
+    <div class="compliance-item">§11.10(c) — Record protection: Append-only audit trail with write lock</div>
+    <div class="compliance-item">§11.10(d) — Access control: API key scoping, CORS restriction</div>
+    <div class="compliance-item">§11.10(e) — Audit trail: SHA-256 hashed, tamper-evident CSV</div>
+    <div class="compliance-item">§11.10(k) — Training: Training module and Academy phase</div>
+    <div class="compliance-item">§11.50 — Sig manifestation: signer name, role, meaning, timestamp</div>
+    <div class="compliance-item">§11.70 — Sig / record linking: reasoning_hash cross-references</div>
+  </div>
+
+  <div class="compliance-card">
+    <div class="compliance-card-head" style="color:var(--blue)">
+      <span>📋</span> GAMP 5 Coverage
+    </div>
+    <div class="compliance-item">Category 4/5 software support: risk matrix per GxP impact × implementation method</div>
+    <div class="compliance-item">V-model lifecycle: 8 phases from Plan to Retire</div>
+    <div class="compliance-item">Risk-based testing: HIGH→Scripted, MEDIUM→Hybrid, LOW→Unscripted</div>
+    <div class="compliance-item">URS → UR → FR traceability chain: end-to-end document lineage</div>
+    <div class="compliance-item">Regulatory context from Pinecone: GAMP 5 Guide + CSA Guidance embedded</div>
+    <div class="compliance-item">Verification before approval: 3-point URS compliance check</div>
+    <div class="compliance-item">RPN calculation: Severity × Occurrence × Detectability (1–27)</div>
+    <div class="compliance-item">Contradiction detection: 4 domain contradiction pair scan</div>
+  </div>
+
+  <div class="compliance-card">
+    <div class="compliance-card-head" style="color:var(--amber)">
+      <span>🔐</span> Security Architecture
+    </div>
+    <div class="compliance-item">CORS allowlist: only :5173 and :8501 origins accepted</div>
+    <div class="compliance-item">Audit trail write protection: PreToolUse hook blocks direct edits</div>
+    <div class="compliance-item">SHA-256 hash per audit row: tamper detection on every record</div>
+    <div class="compliance-item">E-signature meaning allowlist: fixed set prevents injection</div>
+    <div class="compliance-item">Typed Pydantic models: all API inputs validated at boundary</div>
+    <div class="compliance-item">Error code taxonomy: CSV-001 to CSV-012, no silent failures</div>
+    <div class="compliance-item">Logic archive integrity hash: archive file self-verifying</div>
+    <div class="compliance-item">MCP tool sandboxing: lazy imports, no env var exposure</div>
+  </div>
+
+</div>
+
+<!-- ── Legend ── -->
+<div class="legend">
+  <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">Legend:</span>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(0,127,255,0.4)"></div>React / UI layer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(168,85,247,0.4)"></div>FastAPI / Router layer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(50,205,50,0.4)"></div>AI Agent layer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(245,158,11,0.4)"></div>Storage / Data layer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(6,182,212,0.4)"></div>Infrastructure layer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.4)"></div>Compliance / Security control</div>
+</div>
+
+<!-- ── Footer ── -->
+<div class="footer">
+  EVOLV | The Validation Factory &nbsp;·&nbsp; WingstarTech Inc. &nbsp;·&nbsp; GAMP 5 / CSA / 21 CFR Part 11 Compliant Platform
+</div>
+
+</body>
+</html>

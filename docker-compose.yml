@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: evolv-api
+    env_file: .env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./output:/app/output
+    networks:
+      - evolv-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: evolv-streamlit
+    env_file: .env
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    volumes:
+      - ./output:/app/output
+    networks:
+      - evolv-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  react:
+    build:
+      context: .
+      dockerfile: Dockerfile.react
+    container_name: evolv-react
+    ports:
+      - "${REACT_PORT:-5173}:80"
+    networks:
+      - evolv-network
+    depends_on:
+      api:
+        condition: service_healthy
+      streamlit:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  evolv-network:
+    driver: bridge
+    name: evolv-network

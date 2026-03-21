@@ -1,0 +1,90 @@
+name: EVOLV Compliance Gate
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  compliance:
+    name: GAMP 5 / 21 CFR Part 11 Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimal dependencies
+        run: |
+          pip install --quiet fastapi pydantic
+
+      - name: Run EVOLV compliance checks
+        run: |
+          chmod +x scripts/compliance_check.sh
+          bash scripts/compliance_check.sh
+
+      - name: Upload compliance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-report-${{ github.run_number }}
+          path: |
+            output/dev_audit_trail.csv
+          if-no-files-found: ignore
+          retention-days: 90
+
+  python-lint:
+    name: PEP 8 / Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linting tools
+        run: pip install --quiet flake8
+
+      - name: Run flake8 (Agents/, API/, utils/)
+        run: |
+          flake8 Agents/ API/ utils/ \
+            --max-line-length=79 \
+            --extend-ignore=E203,W503,E501 \
+            --count \
+            --statistics \
+            || true  # warn only — do not block on style
+
+  react-build:
+    name: React Platform Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: react-platform/package-lock.json
+
+      - name: Install dependencies
+        working-directory: react-platform
+        run: npm ci
+
+      - name: Build React Platform
+        working-directory: react-platform
+        run: npm run build
+        env:
+          CI: false  # treat warnings as warnings, not errors
