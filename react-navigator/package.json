@@ -1,7 +1,7 @@
 {
   "name": "evolv-react-navigator",
   "version": "1.0.0",
-  "description": "EVOLV Project Navigator — React + Tailwind",
+  "description": "EVOLV Project Navigator — React + Tailwind + Framer Motion",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "fuse.js": "^7.0.0"
+    "fuse.js": "^7.0.0",
+    "framer-motion": "^11.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
