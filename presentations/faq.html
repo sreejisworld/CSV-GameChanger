@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EVOLV — FAQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#007FFF;--lime:#32CD32;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7;
+  --dark:#07070f;--card:#0f0f1a;--surface:#13131f;--border:rgba(255,255,255,.08);
+  --muted:#64748b;--text:#e2e8f0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--dark);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+
+/* Sticky header */
+.sticky-header{position:sticky;top:0;z-index:100;background:rgba(7,7,15,.95);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+  padding:16px 60px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-size:20px;font-weight:900;color:var(--blue);}
+.logo span{color:var(--muted);font-weight:400;font-size:13px;margin-left:8px;}
+.search-wrap{position:relative;}
+.search-wrap input{background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:8px 14px 8px 36px;color:var(--text);
+  font-family:inherit;font-size:13px;width:260px;outline:none;transition:border-color .2s;}
+.search-wrap input:focus{border-color:var(--blue);}
+.search-wrap::before{content:'🔍';position:absolute;left:10px;top:50%;
+  transform:translateY(-50%);font-size:13px;}
+
+main{max-width:860px;margin:0 auto;padding:48px 40px 80px;}
+h1{font-size:38px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px;}
+.hero-sub{font-size:15px;color:var(--muted);margin-bottom:40px;line-height:1.6;}
+
+/* Sections */
+.section{margin-bottom:40px;}
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;
+  padding-bottom:12px;border-bottom:2px solid;}
+.section-header.amber{border-color:rgba(245,158,11,.3);}
+.section-header.blue{border-color:rgba(0,127,255,.3);}
+.section-header.red{border-color:rgba(239,68,68,.3);}
+.section-header.lime{border-color:rgba(50,205,50,.3);}
+.section-header.purple{border-color:rgba(168,85,247,.3);}
+.section-title{font-size:16px;font-weight:700;}
+.q-count{font-size:11px;padding:2px 8px;border-radius:50px;font-weight:600;}
+.q-count.amber{background:rgba(245,158,11,.15);color:var(--amber);}
+.q-count.blue{background:rgba(0,127,255,.15);color:var(--blue);}
+.q-count.red{background:rgba(239,68,68,.15);color:var(--red);}
+.q-count.lime{background:rgba(50,205,50,.15);color:var(--lime);}
+.q-count.purple{background:rgba(168,85,247,.15);color:var(--purple);}
+
+/* Accordion */
+.faq-item{background:var(--card);border:1px solid var(--border);
+  border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .2s;}
+.faq-item.open{border-color:rgba(0,127,255,.25);}
+.faq-q{display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px;cursor:pointer;user-select:none;gap:12px;}
+.faq-q:hover{background:rgba(255,255,255,.02);}
+.faq-q-text{font-size:14px;font-weight:600;line-height:1.4;flex:1;}
+.faq-chevron{color:var(--muted);font-size:16px;transition:transform .25s;flex-shrink:0;}
+.faq-item.open .faq-chevron{transform:rotate(180deg);color:var(--blue);}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;}
+.faq-item.open .faq-a{max-height:400px;}
+.faq-a-inner{padding:0 20px 18px;font-size:13px;color:rgba(226,232,240,.8);
+  line-height:1.75;border-top:1px solid var(--border);}
+.faq-a-inner strong{color:var(--text);}
+.highlight{background:rgba(0,127,255,.08);border:1px solid rgba(0,127,255,.15);
+  border-left:3px solid var(--blue);border-radius:6px;padding:10px 14px;
+  margin-top:10px;font-size:12px;font-style:italic;color:rgba(226,232,240,.75);}
+
+/* Hidden by search */
+.faq-item.hidden{display:none;}
+
+/* No results */
+#no-results{display:none;text-align:center;padding:40px;color:var(--muted);font-size:14px;}
+
+footer{text-align:center;padding:32px;font-size:11px;color:rgba(100,116,139,.4);
+  border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<div class="sticky-header">
+  <div>
+    <span class="logo">EVOLV<span>| The Validation Factory</span></span>
+  </div>
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="Search questions…" oninput="filterFAQ()"/>
+  </div>
+</div>
+
+<main>
+  <h1>Frequently Asked Questions</h1>
+  <p class="hero-sub">Everything a CTO, QA Head, or CSV Lead will ask. Answered.<br/>
+  Hover any question and click to expand.</p>
+
+  <!-- Section 1: Compliance -->
+  <div class="section" data-section="compliance">
+    <div class="section-header amber">
+      <span class="section-title">📋 Compliance &amp; Regulatory</span>
+      <span class="q-count amber">6 questions</span>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Is EVOLV itself a validated system under GAMP 5?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        EVOLV is developed following GAMP 5 principles. Every function in the codebase is tagged with a <strong>:requirement: URS-X.Y</strong> docstring linking it to a User Requirements Specification. The repository contains a complete URS Traceability Index mapping every requirement to its implementation — covering 80+ URS items across 15 agents and 9 API routers.
+        <div class="highlight">"We validate ourselves. EVOLV's own URS traceability index is the starting point for any IQ/OQ/UAT package we provide to customers."</div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Does EVOLV produce 21 CFR Part 11 compliant records?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        Yes. Every audit record includes: <strong>timestamp (UTC), user ID, action, decision logic, compliance impact, and a SHA-256 tamper-evident reasoning hash</strong>. The audit trail is append-only — no record can be modified or deleted. PDF exports include a Manifestation of Signature page with signer name, timestamp, and meaning of signature, as required by <strong>21 CFR Part 11 § 11.50 and § 11.70</strong>. The AI Governance Hub Override Ledger is separately SHA-256 hashed and immutable.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">What GAMP 5 software categories does EVOLV support?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        EVOLV supports <strong>Categories 1, 3, 4, and 5</strong>. The Plan phase captures your system's GAMP category and adjusts the risk matrix, testing strategy, and required documentation accordingly. Category 4 (configured) and Category 5 (custom/bespoke) systems trigger the full OQ/UAT testing workflow. Category 3 (non-configured) can use supplier-provided documentation with informal testing.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">How does EVOLV handle the FDA's 2022 CSA guidance?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        The DeltaAgent implements all three CSA testing strategies: <strong>Unscripted</strong> (low risk — exploratory charters), <strong>Hybrid</strong> (medium risk — scripted + unscripted), and <strong>Rigorous Scripted</strong> (high risk — formal OQ and UAT). Test type selection (Informal, Formal OQ, Formal UAT) is determined automatically from the risk matrix output — not manual judgment — and logged to the audit trail with the rationale.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Can EVOLV outputs be submitted directly to regulators?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        EVOLV generates structured, formatted, inspection-ready documentation — URS PDFs, Validation Reports, Transparency Reports — designed to support regulatory submissions. However, your <strong>qualified person / CSV lead remains responsible for final review and submission</strong>. EVOLV accelerates and governs the process; it does not replace professional regulatory judgment. Think of it as a governed AI assistant, not an autonomous regulatory agent.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">How does EVOLV track regulatory version changes (e.g. new GAMP 5 edition)?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        Each Pinecone knowledge base chunk is tagged with a <strong>reg_version</strong> derived from the source PDF filename (e.g. GAMP5_Rev2, 21CFR11_Rev1). When a new regulatory document is ingested via the Ingestor Agent, a new version tag is created and flagged. Every URS document cites the exact regulatory version used in its rationale — creating a complete traceability chain from requirement to regulatory source to document version.
+      </div></div>
+    </div>
+  </div>
+
+  <!-- Section 2: AI Governance -->
+  <div class="section" data-section="governance">
+    <div class="section-header blue">
+      <span class="section-title">🛡️ AI Governance &amp; Human-in-the-Loop</span>
+      <span class="q-count blue">5 questions</span>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">What happens if the AI makes a wrong decision?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        That's exactly what the <strong>AI Governance Hub</strong> is for. Every AI decision — URS generation, risk classification, test script generation — is queued for human review before it advances. The reviewer can <strong>Approve</strong>, <strong>Override</strong> (with documented reason and new value), or <strong>Reject</strong>. If overridden, the change is permanently recorded in the Override Ledger with the reviewer's name, role, timestamp, reason, and a SHA-256 hash. The AI cannot self-approve any output.
+        <div class="highlight">"The AI proposes. The human decides. The system records everything."</div>
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Is the AI making binding decisions or just suggestions?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        <strong>Suggestions only.</strong> EVOLV uses a strict "propose and review" model. The AI generates a draft; a human approves it. Architecturally, every pending decision requires an explicit human action (approve / override / reject) to change its status. There is no auto-approval pathway. If a decision is not reviewed, it remains in "pending" status and blocks downstream workflow advancement.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">How do I prove to an FDA inspector that a human reviewed the AI output?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        The <strong>Override Ledger</strong> and <strong>Audit Timeline</strong> provide exactly this evidence. For any AI decision, you can show: who reviewed it, their role, when they reviewed it (UTC timestamp), what they approved or changed, and why. The <strong>Transparency Report</strong> generates a per-requirement PDF of this complete chain in under 5 seconds — formatted for inspector review with a 21 CFR Part 11 compliance statement at the bottom.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">What AI models does EVOLV use?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        <strong>OpenAI GPT-4o</strong> for reasoning-heavy tasks (URS generation, SMART requirement refinement, intelligence analysis). <strong>text-embedding-3-small</strong> for semantic search against the regulatory knowledge base (Pinecone). The Pinecone index stores 10,000+ chunks from GAMP 5, CSA guidance, 21 CFR Part 11, and ICH Q9 — all with page-level citations and regulatory version tags.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Can EVOLV's AI reasoning be audited?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        Yes — through two mechanisms. First, every AI output includes the <strong>AI Reasoning</strong> and the specific <strong>GAMP 5 page citation</strong> used to generate it (visible in the Governance Hub). Second, the IntegrityManager writes a <strong>Logic Archive</strong> (JSON) for every significant AI action — a tamper-evident file containing the full inputs, intermediate reasoning steps, and outputs, cross-referenced to the CSV audit trail row via SHA-256 hash.
+      </div></div>
+    </div>
+  </div>
+
+  <!-- Section 3: Data & Security -->
+  <div class="section" data-section="security">
+    <div class="section-header red">
+      <span class="section-title">🔒 Data &amp; Security</span>
+      <span class="q-count red">3 questions</span>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Where is our validation data stored?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        Currently, EVOLV runs <strong>on-premise</strong> (locally or on your cloud VM). Validation data is stored in your file system (output/ directory). <strong>No validation data is stored on WingstarTech servers.</strong> The only external calls are: OpenAI API (requirement text for embedding/generation) and Pinecone (embeddings for similarity search — no raw text stored externally). A cloud-hosted multi-tenant version with full data isolation is on the roadmap for Q3 2026.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">What data is sent to OpenAI?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        <strong>Requirement text</strong> submitted by the user is sent to OpenAI for embedding and generation. No patient data, clinical data, or proprietary system configuration should be entered as requirements — EVOLV is for <strong>validation documentation generation</strong>, not clinical data processing. We recommend your internal data classification policy be reviewed before submitting any text to AI processing, consistent with your OpenAI data processing agreement.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Can EVOLV run in an air-gapped environment?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        <strong>Partially today, fully on roadmap.</strong> The core risk assessment (RiskStrategist), test script generation (DeltaAgent), and SMART refinement (deterministic mode) work <strong>without internet access</strong>. URS generation requires Pinecone + OpenAI. A fully air-gapped mode with a local LLM (Ollama) and local vector store is on the roadmap for Q4 2026.
+      </div></div>
+    </div>
+  </div>
+
+  <!-- Section 4: Integration -->
+  <div class="section" data-section="integration">
+    <div class="section-header lime">
+      <span class="section-title">🔌 Integration &amp; Implementation</span>
+      <span class="q-count lime">4 questions</span>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">How long does it take to implement EVOLV?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        <strong>Day 1:</strong> run <code style="background:rgba(255,255,255,.05);padding:1px 6px;border-radius:4px;">docker-compose up</code>. The platform starts across three ports (React: 5173, Streamlit: 8501, FastAPI: 8000). For a proof-of-concept with your own requirements, you need: API keys (OpenAI, Pinecone) and your regulatory PDFs for ingestion. <strong>First URS generation: typically within 2 hours of setup.</strong> Full production deployment with your own regulatory document library: 1–2 days.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Does EVOLV integrate with our LIMS / ERP / ServiceNow?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        The FastAPI backend has a <strong>ServiceNow webhook endpoint</strong> (POST /webhook/sn-change) that accepts Change Requests and triggers automated risk assessment. LIMS/ERP integration is via REST API — EVOLV exposes a full <strong>OpenAPI 3.0</strong> specification (documented at /docs and /redoc). Custom integrations can be built against these endpoints. An MCP server also exposes EVOLV agents as native Claude tools for AI-to-AI workflows.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">Can we use our own regulatory documents and SOPs?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        Yes. The <strong>Ingestor Agent</strong> accepts PDF uploads and ingests them into the Pinecone knowledge base with metadata tagging (source document, page number, regulatory version). Once ingested, your SOPs, site-specific guidance, and internal standards become part of the knowledge base that AI agents query when generating URS and verification rationale — alongside the built-in GAMP 5 and CSA content.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">We need to validate EVOLV itself before using it. How does that work?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        Correct — EVOLV is <strong>GAMP 5 Category 4 configured software</strong> in your environment. We provide a complete <strong>IQ/OQ/UAT package</strong> as part of onboarding: Installation Qualification protocol, Operational Qualification test scripts (generated by EVOLV itself), and UAT acceptance criteria. Our own URS Traceability Index is the starting point. Validation of EVOLV is typically completed in 2–5 days depending on your internal review process.
+        <div class="highlight">"EVOLV validates your systems. We also validate EVOLV. We use our own platform to do it."</div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- Section 5: Demo & Next Steps -->
+  <div class="section" data-section="demo">
+    <div class="section-header purple">
+      <span class="section-title">🎯 Demo &amp; Next Steps</span>
+      <span class="q-count purple">2 questions</span>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">What does a demo involve?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        A <strong>30-minute live session</strong>. You bring a real requirement from your current validation project. We generate a GAMP 5 URS, classify risk, override a decision in the Governance Hub (showing the full audit trail), generate a CSA test script, and produce a Validation Report PDF. You leave with a working example based on your actual system — not a canned demo.
+      </div></div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <span class="faq-q-text">What do we need to prepare?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a"><div class="faq-a-inner">
+        <strong>Nothing mandatory.</strong> Optionally: one plain-English requirement from a current validation project (e.g. "The LIMS shall track sample chain of custody from receipt to disposal") and your GAMP 5 system category if known (1/3/4/5). We handle everything else. The demo runs on your requirement — live, not pre-loaded.
+      </div></div>
+    </div>
+  </div>
+
+  <div id="no-results">No questions match your search. Try different keywords.</div>
+
+</main>
+
+<footer>
+  EVOLV | The Validation Factory · A WingstarTech Inc. Product · © 2026 All Rights Reserved
+</footer>
+
+<script>
+function toggle(btn){
+  const item = btn.parentElement;
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  if(!isOpen) item.classList.add('open');
+}
+
+function filterFAQ(){
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const items = document.querySelectorAll('.faq-item');
+  let visible = 0;
+  items.forEach(item => {
+    const text = item.textContent.toLowerCase();
+    if(!q || text.includes(q)){
+      item.classList.remove('hidden');
+      visible++;
+    } else {
+      item.classList.add('hidden');
+      item.classList.remove('open');
+    }
+  });
+  document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+}
+</script>
+</body>
+</html>

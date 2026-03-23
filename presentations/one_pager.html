@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EVOLV — One Pager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#007FFF;--lime:#32CD32;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7;
+  --dark:#07070f;--card:#0f0f1a;--surface:#13131f;--border:rgba(255,255,255,.08);
+  --muted:#64748b;--text:#e2e8f0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{
+  background:var(--dark);color:var(--text);
+  font-family:'Inter',system-ui,sans-serif;
+  height:100%;
+}
+body{
+  display:flex;flex-direction:column;
+  min-height:100vh;
+  padding:0;
+}
+
+/* ── Top header ──────────────────────────────────────────────── */
+.top-header{
+  padding:22px 48px;
+  background:linear-gradient(135deg,#07070f 0%,#0d0d20 50%,#070f07 100%);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  animation:hdr-shift 8s ease-in-out infinite alternate;
+}
+@keyframes hdr-shift{
+  0%{background-position:0% 50%;}
+  100%{background-position:100% 50%;}
+}
+.logo-block{display:flex;align-items:baseline;gap:10px;}
+.logo-ev{font-size:32px;font-weight:900;color:var(--blue);letter-spacing:-.02em;}
+.logo-pipe{color:var(--muted);font-size:20px;}
+.logo-vf{font-size:18px;font-weight:500;color:var(--text);}
+.logo-right{text-align:right;font-size:11px;color:var(--muted);line-height:1.7;}
+
+/* ── Hero line ───────────────────────────────────────────────── */
+.hero{
+  text-align:center;padding:22px 48px 18px;
+  background:rgba(0,127,255,.03);border-bottom:1px solid var(--border);
+}
+.hero h1{
+  font-size:22px;font-weight:800;letter-spacing:-.01em;
+  background:linear-gradient(90deg,var(--blue),var(--lime));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+
+/* ── 3-col problem/solution/result ──────────────────────────── */
+.three-cols{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:1px;background:var(--border);
+  border-bottom:1px solid var(--border);
+}
+.col{padding:20px 24px;background:var(--dark);}
+.col-head{
+  font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  margin-bottom:8px;display:flex;align-items:center;gap:8px;
+}
+.col-head::before{content:'';display:block;width:3px;height:14px;border-radius:2px;}
+.col.problem .col-head::before{background:var(--red);}
+.col.solution .col-head::before{background:var(--blue);}
+.col.result .col-head::before{background:var(--lime);}
+.col.problem .col-head{color:var(--red);}
+.col.solution .col-head{color:var(--blue);}
+.col.result .col-head{color:var(--lime);}
+.col p{font-size:12px;color:rgba(226,232,240,.75);line-height:1.65;}
+
+/* ── Feature tiles ───────────────────────────────────────────── */
+.tiles{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--border);
+  border-bottom:1px solid var(--border);
+}
+.tile{padding:16px 20px;background:var(--dark);}
+.tile-icon{font-size:20px;margin-bottom:6px;}
+.tile-title{font-size:12px;font-weight:700;margin-bottom:4px;}
+.tile-desc{font-size:11px;color:var(--muted);line-height:1.5;}
+
+/* ── Compliance badges ───────────────────────────────────────── */
+.badges{
+  display:flex;align-items:center;justify-content:center;
+  gap:12px;padding:14px 48px;
+  border-bottom:1px solid var(--border);
+  background:rgba(0,127,255,.02);
+  flex-wrap:wrap;
+}
+.badge{
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 12px;border-radius:50px;
+  background:rgba(0,127,255,.1);border:1px solid rgba(0,127,255,.25);color:var(--blue);
+}
+
+/* ── Quote ───────────────────────────────────────────────────── */
+.quote-block{
+  padding:18px 48px;
+  background:rgba(0,127,255,.03);border-bottom:1px solid var(--border);
+  text-align:center;
+}
+.quote-block blockquote{
+  font-size:13px;font-style:italic;color:rgba(226,232,240,.8);
+  line-height:1.7;max-width:700px;margin:0 auto;
+  border-left:3px solid var(--blue);padding-left:16px;text-align:left;
+}
+
+/* ── CTA strip ───────────────────────────────────────────────── */
+.cta-strip{
+  padding:20px 48px;
+  background:linear-gradient(135deg,rgba(0,127,255,.12),rgba(50,205,50,.06));
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+}
+.cta-left{font-size:20px;font-weight:800;color:var(--text);}
+.cta-mid{
+  text-align:center;font-size:12px;color:var(--muted);line-height:1.6;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:10px;padding:10px 20px;flex:1;max-width:320px;
+}
+.cta-mid strong{color:var(--text);}
+.cta-btn{
+  display:inline-block;padding:12px 28px;border-radius:50px;
+  background:linear-gradient(135deg,var(--blue),#0055cc);
+  color:#fff;font-weight:700;font-size:13px;
+  box-shadow:0 0 24px rgba(0,127,255,.3);
+  text-decoration:none;cursor:pointer;border:none;font-family:inherit;
+  white-space:nowrap;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+footer{
+  margin-top:auto;padding:10px 48px;
+  text-align:center;font-size:10px;color:rgba(100,116,139,.4);
+  border-top:1px solid var(--border);
+}
+
+/* ── PRINT ───────────────────────────────────────────────────── */
+@media print{
+  body,html{background:#fff;color:#1a1a2e;height:auto;}
+  .top-header{background:#f0f4ff;border-bottom:2px solid #007FFF;animation:none;}
+  .logo-ev{color:#007FFF;-webkit-text-fill-color:#007FFF;}
+  .logo-vf,.logo-right{color:#444;}
+  .hero{background:#f8f9ff;border-bottom:1px solid #ddd;}
+  .hero h1{-webkit-text-fill-color:#007FFF;background:none;color:#007FFF;}
+  .three-cols,.tiles{background:#eee;}
+  .col,.tile{background:#fff;}
+  .col p,.tile-desc{color:#555;}
+  .tile-title,.col-head{color:#1a1a2e !important;}
+  .col.problem .col-head{color:#dc2626 !important;}
+  .col.solution .col-head{color:#007FFF !important;}
+  .col.result .col-head{color:#16a34a !important;}
+  .badges{background:#f0f4ff;}
+  .badge{background:#e0edff;border-color:#007FFF;color:#007FFF;}
+  .quote-block{background:#f8f9ff;}
+  .quote-block blockquote{color:#333;}
+  .cta-strip{background:#e8f5e9;border-bottom:1px solid #ddd;}
+  .cta-left{color:#1a1a2e;}
+  .cta-mid{background:#fff;border-color:#ddd;color:#555;}
+  .cta-mid strong{color:#1a1a2e;}
+  .cta-btn{background:#007FFF;box-shadow:none;}
+  footer{color:#999;}
+  @page{size:A4;margin:10mm;}
+}
+</style>
+</head>
+<body>
+
+<!-- Top header -->
+<div class="top-header">
+  <div class="logo-block">
+    <span class="logo-ev">EVOLV</span>
+    <span class="logo-pipe">|</span>
+    <span class="logo-vf">The Validation Factory</span>
+  </div>
+  <div class="logo-right">
+    WingstarTech Inc.<br/>
+    © 2026 All Rights Reserved
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>AI-Powered Computer System Validation. Governed. Traceable. Inspector-Ready.</h1>
+</div>
+
+<!-- 3-col: Problem / Solution / Result -->
+<div class="three-cols">
+  <div class="col problem">
+    <div class="col-head">The Problem</div>
+    <p>Manual CSV takes 6–18 months. Ungoverned AI creates regulatory risk. Teams are buried in spreadsheets while FDA scrutiny of AI adoption increases. Every CSV conference is asking the same question: how do we govern this?</p>
+  </div>
+  <div class="col solution">
+    <div class="col-head">The Solution</div>
+    <p>EVOLV automates the full GAMP 5 validation lifecycle — from URS generation to test execution to release sign-off — with AI Governance built in. Every AI decision requires human review. Every override is permanently recorded. Every citation points to a specific regulatory page.</p>
+  </div>
+  <div class="col result">
+    <div class="col-head">The Result</div>
+    <p>Months become days. Audit prep becomes one click. Your FDA inspector asks who changed a risk classification and why? You open the Override Ledger. Name. Role. Timestamp. Reason. Hash. Case closed.</p>
+  </div>
+</div>
+
+<!-- Feature tiles (2 rows × 3) -->
+<div class="tiles">
+  <div class="tile">
+    <div class="tile-icon">🛡️</div>
+    <div class="tile-title">AI Governance Hub</div>
+    <div class="tile-desc">Decision queue, override ledger, audit timeline. Human-in-the-loop on every AI output. SHA-256 hashed. Immutable.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-icon">📄</div>
+    <div class="tile-title">URS Generation</div>
+    <div class="tile-desc">GAMP 5-compliant requirements from plain English in 30 seconds. Cites specific regulatory pages — no hallucination.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-icon">⚖️</div>
+    <div class="tile-title">Risk Matrix</div>
+    <div class="tile-desc">RPN scoring per ICH Q9. Severity × Occurrence × Detectability. Auto-calculates CSA testing strategy.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-icon">🧪</div>
+    <div class="tile-title">CSA Test Scripts</div>
+    <div class="tile-desc">Informal, Formal OQ, and UAT scripts from UR/FR documents. Setup, positive, negative, edge-case steps — automatically.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-icon">🔄</div>
+    <div class="tile-title">Full V-Model Lifecycle</div>
+    <div class="tile-desc">Plan → Requirements → Risk → Design → Verify → Release → Monitor → Retire. One platform, end to end.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-icon">📜</div>
+    <div class="tile-title">21 CFR Part 11</div>
+    <div class="tile-desc">Append-only audit trail, SHA-256 hashing, Manifestation of Signature on every PDF. Inspector-ready in one click.</div>
+  </div>
+</div>
+
+<!-- Compliance badges -->
+<div class="badges">
+  <span class="badge">GAMP 5 (5th Ed.)</span>
+  <span class="badge">FDA CSA 2022</span>
+  <span class="badge">21 CFR Part 11</span>
+  <span class="badge">ICH Q9</span>
+  <span class="badge">OpenAPI 3.0</span>
+  <span class="badge">Docker Ready</span>
+</div>
+
+<!-- Quote -->
+<div class="quote-block">
+  <blockquote>
+    "Your FDA inspector asks: 'Who changed this risk classification and why?'<br/>
+    You open the Override Ledger. You show the name, role, timestamp, reason, and hash.<br/>
+    That's EVOLV."
+  </blockquote>
+</div>
+
+<!-- CTA strip -->
+<div class="cta-strip">
+  <div class="cta-left">Ready to see it live?</div>
+  <div class="cta-mid">
+    <strong>30-minute demo</strong><br/>
+    We run it on your requirements — live,<br/>not a canned walkthrough.
+  </div>
+  <button class="cta-btn">Connect on LinkedIn →</button>
+</div>
+
+<footer>
+  EVOLV | The Validation Factory · A WingstarTech Inc. Product · All Rights Reserved © 2026 · Powered by EVOLV
+</footer>
+
+</body>
+</html>
