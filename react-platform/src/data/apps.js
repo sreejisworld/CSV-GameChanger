@@ -154,6 +154,19 @@ export const APPS = [
 
   // ── Intelligence ──────────────────────────────────────────
   {
+    id:          'governance',
+    label:       'AI Governance',
+    icon:        '🛡️',
+    emoji:       '🛡️',
+    accentColor: '#007FFF',
+    accentClass: 'blue',
+    description: 'Human-in-the-Loop oversight — AI decision queue, '
+               + 'override ledger, audit timeline, and transparency reports.',
+    closeable:   true,
+    category:    'intelligence',
+    badge:       'HITL',
+  },
+  {
     id:          'navigator',
     label:       'Project Navigator',
     icon:        '🗺️',
@@ -246,7 +259,7 @@ export const NAV_GROUPS = [
   },
   {
     label: 'Intelligence',
-    items: ['navigator', 'impact-analytics'],
+    items: ['governance', 'navigator', 'impact-analytics'],
   },
   {
     label: 'Tools',

@@ -23,6 +23,7 @@ const INITIAL_BADGES = {
   'release':      null,
   'monitor':      null,
   'retire':       null,
+  'governance':   { type: 'warning', label: '3 pending' },
   'navigator':    null,
   'dev-portal':   null,
   'config':       null,
@@ -64,9 +65,9 @@ const FRESH_PROJECT = {
   statusBadges: {
     'home': null, 'plan': null, 'requirements': null, 'risk': null,
     'design': null, 'verify': null, 'release': null, 'monitor': null,
-    'retire': null, 'navigator': null, 'dev-portal': null,
-    'config': null, 'academy': null, 'impact-analytics': null,
-    'docs': null,
+    'retire': null, 'governance': null, 'navigator': null,
+    'dev-portal': null, 'config': null, 'academy': null,
+    'impact-analytics': null, 'docs': null,
   },
 }
 

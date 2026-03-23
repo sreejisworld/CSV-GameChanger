@@ -61,6 +61,7 @@ from API.routers.requirements     import router as requirements_router
 from API.routers.exports          import router as exports_router
 from API.routers.plan             import router as plan_router
 from API.routers.audit            import router as audit_router
+from API.routers.governance       import router as governance_router
 
 
 # -----------------------------------------------------------------
@@ -136,6 +137,7 @@ app.include_router(requirements_router)
 app.include_router(exports_router)
 app.include_router(plan_router)
 app.include_router(audit_router)
+app.include_router(governance_router)
 
 # CORSMiddleware — allow React (port 5173), legacy React
 # (port 3000), and Streamlit (port 8501).
