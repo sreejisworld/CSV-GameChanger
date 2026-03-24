@@ -154,6 +154,19 @@ export const APPS = [
 
   // ── Intelligence ──────────────────────────────────────────
   {
+    id:          'portfolio',
+    label:       'Portfolio',
+    icon:        '🏢',
+    emoji:       '🏢',
+    accentColor: '#007FFF',
+    accentClass: 'blue',
+    description: 'Enterprise system registry — RAG status across all '
+               + 'GxP and non-GxP systems, sites, and lifecycle stages.',
+    closeable:   true,
+    category:    'intelligence',
+    badge:       'New',
+  },
+  {
     id:          'governance',
     label:       'AI Governance',
     icon:        '🛡️',
@@ -259,7 +272,7 @@ export const NAV_GROUPS = [
   },
   {
     label: 'Intelligence',
-    items: ['governance', 'navigator', 'impact-analytics'],
+    items: ['portfolio', 'governance', 'navigator', 'impact-analytics'],
   },
   {
     label: 'Tools',
