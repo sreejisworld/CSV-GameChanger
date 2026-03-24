@@ -74,6 +74,69 @@ st.set_page_config(
 load_theme(PROJECT_ROOT)
 
 # -------------------------------------------------------------------
+# Demo password gate
+#   Enabled only when DEMO_PASSWORD is set in Streamlit secrets
+#   (or as an environment variable).  Skipped entirely when running
+#   embedded inside the React Platform shell (?embedded=true).
+# -------------------------------------------------------------------
+if not _embedded:
+    import os as _os_pw
+    _demo_pwd = (
+        st.secrets.get("DEMO_PASSWORD", "")
+        if hasattr(st, "secrets")
+        else _os_pw.getenv("DEMO_PASSWORD", "")
+    )
+    if _demo_pwd:
+        _entered = st.session_state.get("_pw_ok", False)
+        if not _entered:
+            st.markdown(
+                """
+                <style>
+                .pw-wrap {
+                    max-width: 380px;
+                    margin: 12vh auto 0;
+                    padding: 2.5rem;
+                    background: #0d1b2a;
+                    border: 1px solid #1e3a5f;
+                    border-radius: 12px;
+                }
+                .pw-logo {
+                    font-size: 1.6rem;
+                    font-weight: 800;
+                    letter-spacing: .08em;
+                    color: #007FFF;
+                    margin-bottom: .25rem;
+                }
+                .pw-sub {
+                    font-size: .75rem;
+                    color: #64748b;
+                    margin-bottom: 1.75rem;
+                    text-transform: uppercase;
+                    letter-spacing: .1em;
+                }
+                </style>
+                <div class="pw-wrap">
+                  <div class="pw-logo">EVOLV</div>
+                  <div class="pw-sub">The Validation Factory — Private Demo</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            _pw_input = st.text_input(
+                "Demo password",
+                type="password",
+                placeholder="Enter password to continue…",
+                label_visibility="collapsed",
+            )
+            if _pw_input:
+                if _pw_input == _demo_pwd:
+                    st.session_state["_pw_ok"] = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect password.", icon="🔒")
+            st.stop()
+
+# -------------------------------------------------------------------
 # Embedded chrome — hide Streamlit UI when inside React Platform
 # -------------------------------------------------------------------
 if _embedded:
@@ -8987,11 +9050,13 @@ elif page.startswith("15"):
 
 # ===================================================================
 # Page 16 — Project Navigator (React)
-#   Served from FastAPI at http://localhost:8000/navigator.
+#   Served from FastAPI. URL is read from the EVOLV_API_URL
+#   environment variable (default: http://localhost:8000).
 #   Full 7-level GAMP 5 tree, HITL badges, Impact Search,
 #   Heatmap, Shadow Links — all live-wired to the EVOLV API.
 # ===================================================================
 elif page.startswith("16"):
+    import os as _os16
     import streamlit.components.v1 as _st_comp16
 
     page_header(
@@ -9001,18 +9066,30 @@ elif page.startswith("16"):
         "Search, and Shadow Links.",
     )
 
-    _NAV_URL = "http://localhost:8000/navigator"
+    _EVOLV_API_BASE = _os16.getenv(
+        "EVOLV_API_URL", "http://localhost:8000"
+    ).rstrip("/")
+    _NAV_URL = f"{_EVOLV_API_BASE}/navigator"
+    _api_available = _EVOLV_API_BASE != "http://localhost:8000" or (
+        _os16.getenv("EVOLV_API_URL") is not None
+    )
 
     # ── Controls row ──────────────────────────────────────
     _p16c1, _p16c2, _p16c3 = st.columns([3, 1, 1])
     with _p16c1:
-        st.info(
-            "The Project Navigator is a React application "
-            "served by FastAPI. Ensure the API server is "
-            "running on **port 8000** before using this "
-            "page.",
-            icon="ℹ️",
-        )
+        if not _api_available:
+            st.info(
+                "The Project Navigator requires a running "
+                "EVOLV API server. Set the **EVOLV_API_URL** "
+                "environment variable to enable this page "
+                "(e.g. `https://your-api.example.com`).",
+                icon="ℹ️",
+            )
+        else:
+            st.success(
+                f"Connected to EVOLV API at `{_EVOLV_API_BASE}`",
+                icon="✅",
+            )
     with _p16c2:
         if st.button(
             "🔄 Reload",
@@ -9030,11 +9107,19 @@ elif page.startswith("16"):
     st.markdown("---")
 
     # ── Embedded React Navigator ───────────────────────────
-    _st_comp16.iframe(
-        src=_NAV_URL,
-        height=860,
-        scrolling=False,
-    )
+    if _api_available:
+        _st_comp16.iframe(
+            src=_NAV_URL,
+            height=860,
+            scrolling=False,
+        )
+    else:
+        st.warning(
+            "Navigator is unavailable in this environment. "
+            "Run the full EVOLV stack locally or set "
+            "**EVOLV_API_URL** to your deployed API URL.",
+            icon="⚠️",
+        )
 
     # ── Feature legend ─────────────────────────────────────
     st.markdown("---")

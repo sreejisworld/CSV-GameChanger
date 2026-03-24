@@ -17,6 +17,9 @@ env/
 .env
 .env.*
 
+# Streamlit secrets (never commit real keys)
+.streamlit/secrets.toml
+
 # IDE
 .vscode/
 .idea/

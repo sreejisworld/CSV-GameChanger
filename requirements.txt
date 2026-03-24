@@ -1,4 +1,4 @@
-﻿fastapi
+fastapi
 fastapi-cli
 uvicorn
 boto3
@@ -10,3 +10,8 @@ pdfplumber
 pandas
 openpyxl
 Pillow
+fpdf2
+openai
+pinecone
+pydantic
+requests
