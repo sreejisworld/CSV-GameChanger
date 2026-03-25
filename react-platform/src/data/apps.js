@@ -154,6 +154,20 @@ export const APPS = [
 
   // ── Intelligence ──────────────────────────────────────────
   {
+    id:          'system-journey',
+    label:       'System Journey',
+    icon:        '🗺️',
+    emoji:       '🗺️',
+    accentColor: '#32CD32',
+    accentClass: 'lime',
+    description: 'Full lifecycle flow — GAMP 5 classification through '
+               + 'every validation phase to retirement, with artifacts '
+               + 'and regulatory trail at each stage.',
+    closeable:   true,
+    category:    'intelligence',
+    badge:       'New',
+  },
+  {
     id:          'portfolio',
     label:       'Portfolio',
     icon:        '🏢',
@@ -272,7 +286,7 @@ export const NAV_GROUPS = [
   },
   {
     label: 'Intelligence',
-    items: ['portfolio', 'governance', 'navigator', 'impact-analytics'],
+    items: ['system-journey', 'portfolio', 'governance', 'navigator', 'impact-analytics'],
   },
   {
     label: 'Tools',

@@ -36,6 +36,7 @@ const RENDERERS = {
   'monitor':            lazy(() => import('./apps/Monitor.jsx')),
   'retire':             lazy(() => import('./apps/Retire.jsx')),
   // Intelligence
+  'system-journey':     lazy(() => import('./apps/SystemJourney.jsx')),
   'portfolio':          lazy(() => import('./apps/Portfolio.jsx')),
   'governance':         lazy(() => import('./apps/Governance.jsx')),
   'navigator':          lazy(() => import('./apps/Navigator.jsx')),
