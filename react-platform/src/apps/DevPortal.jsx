@@ -2,16 +2,20 @@
  * DevPortal — Developer Portal.
  *
  * Internal tabs:
- *  1. API Keys  — Production & Sandbox key types, copy-once reveal,
+ *  1. ServiceNow Demo — live CR submission, real-time risk assessment display.
+ *  2. API Keys  — Production & Sandbox key types, copy-once reveal,
  *                 stored in localStorage (raw key never persisted).
- *  2. EVOLV Connect — Pre-built integration cards for SAP, Salesforce, Veeva.
- *  3. API Docs (Swagger) — embedded FastAPI /docs iframe.
- *  4. ReDoc    — alternative reference docs.
- *  5. Webhooks — register event endpoints with HMAC secret.
+ *  3. EVOLV Connect — Pre-built integration cards for SAP, Salesforce, Veeva.
+ *  4. API Docs (Swagger) — embedded FastAPI /docs iframe.
+ *  5. ReDoc    — alternative reference docs.
+ *  6. Webhooks — register event endpoints with HMAC secret.
  */
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { API_BASE as _EVOLV_API_BASE } from '../config.js'
 
 const API_BASE = '/api'
+const EVOLV_API = _EVOLV_API_BASE
 
 // ── EVOLV Connect integration cards ───────────────────────────
 
@@ -556,12 +560,520 @@ function WebhooksPanel() {
   )
 }
 
+// ── ServiceNow Demo Panel ──────────────────────────────────────
+
+const SN_SCENARIOS = [
+  {
+    id:          'emergency',
+    label:       '🚨 Emergency Patch',
+    color:       '#ef4444',
+    cr_id:       'CR-2024-0891',
+    description: 'Critical security patch — production LIMS system '
+                 + 'requires immediate hotfix to address data integrity flaw.',
+    system_criticality: 'critical',
+    change_type: 'emergency',
+    expected:    'HIGH Risk · Rigorous Scripted',
+  },
+  {
+    id:          'normal',
+    label:       '🔄 Normal Upgrade',
+    color:       '#f59e0b',
+    cr_id:       'CR-2024-0892',
+    description: 'ServiceNow v8.2 platform upgrade — scheduled quarterly '
+                 + 'version update affecting change management workflows.',
+    system_criticality: 'high',
+    change_type: 'normal',
+    expected:    'HIGH Risk · Rigorous Scripted',
+  },
+  {
+    id:          'config',
+    label:       '⚙️ Config Change',
+    color:       '#007FFF',
+    cr_id:       'CR-2024-0893',
+    description: 'Update change approval workflow routing rules — '
+                 + 'approval threshold raised from 1 to 2 sign-offs.',
+    system_criticality: 'medium',
+    change_type: 'standard',
+    expected:    'LOW Risk · Unscripted',
+  },
+  {
+    id:          'routine',
+    label:       '🔁 Routine Maintenance',
+    color:       '#32CD32',
+    cr_id:       'CR-2024-0894',
+    description: 'Quarterly password rotation for shared service accounts '
+                 + 'per IT security policy SOP-IT-004.',
+    system_criticality: 'low',
+    change_type: 'routine',
+    expected:    'LOW Risk · Unscripted',
+  },
+]
+
+const RISK_COLOR = { High: '#ef4444', Medium: '#f59e0b', Low: '#32CD32' }
+
+function RiskBadge({ level }) {
+  const color = RISK_COLOR[level] ?? '#007FFF'
+  return (
+    <div
+      className="flex flex-col items-center justify-center rounded-2xl p-6"
+      style={{
+        background:  color + '18',
+        border:      `2px solid ${color}40`,
+        boxShadow:   `0 0 32px ${color}30`,
+      }}
+    >
+      <span className="text-5xl font-black tracking-tight"
+            style={{ color }}>
+        {level?.toUpperCase()}
+      </span>
+      <span className="text-[11px] mt-1" style={{ color: color + 'cc' }}>
+        RISK LEVEL
+      </span>
+    </div>
+  )
+}
+
+function AuditEvent({ idx, action, timestamp }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: idx * 0.18 }}
+      className="flex items-start gap-3 py-2.5 border-b border-border-base/40
+                 last:border-0"
+    >
+      <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-lime-dim
+                       border border-lime-DEFAULT/30 flex items-center
+                       justify-center text-lime-DEFAULT text-[9px]">
+        ✓
+      </span>
+      <div className="min-w-0">
+        <p className="text-white text-[11px] font-mono">{action}</p>
+        <p className="text-text-muted text-[10px] mt-0.5">
+          {timestamp}
+        </p>
+      </div>
+      <span className="ml-auto shrink-0 text-[9px] text-lime-DEFAULT border
+                       border-lime-DEFAULT/30 bg-lime-dim rounded px-1.5 py-0.5">
+        21 CFR §11
+      </span>
+    </motion.div>
+  )
+}
+
+function ServiceNowDemoPanel() {
+  const [form, setForm] = useState({
+    cr_id:               'CR-2024-0891',
+    description:         'Critical security patch — production LIMS system '
+                         + 'requires immediate hotfix to address data integrity flaw.',
+    system_criticality:  'critical',
+    change_type:         'emergency',
+  })
+  const [loading,    setLoading]    = useState(false)
+  const [result,     setResult]     = useState(null)
+  const [apiError,   setApiError]   = useState(null)
+  const [auditEvents, setAuditEvents] = useState([])
+
+  const loadScenario = useCallback(scenario => {
+    setForm({
+      cr_id:              scenario.cr_id,
+      description:        scenario.description,
+      system_criticality: scenario.system_criticality,
+      change_type:        scenario.change_type,
+    })
+    setResult(null)
+    setApiError(null)
+    setAuditEvents([])
+  }, [])
+
+  const submit = useCallback(async () => {
+    setLoading(true)
+    setResult(null)
+    setApiError(null)
+    setAuditEvents([])
+    try {
+      const res = await fetch(
+        `${_EVOLV_API_BASE}/webhook/sn-change`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(form),
+        }
+      )
+      if (!res.ok) {
+        const txt = await res.text()
+        throw new Error(`API ${res.status}: ${txt}`)
+      }
+      const data = await res.json()
+      setResult(data)
+      // Simulate the two audit events that the API logs
+      const ts = data.timestamp ?? new Date().toISOString()
+      setAuditEvents([
+        { action: 'CHANGE_REQUEST_RECEIVED',    timestamp: ts },
+        { action: 'RISK_ASSESSMENT_COMPLETED',  timestamp: ts },
+      ])
+    } catch (err) {
+      const msg = err.message ?? String(err)
+      if (msg.includes('fetch') || msg.includes('Failed to fetch')
+          || msg.includes('NetworkError') || msg.includes('ERR_CONNECTION')) {
+        setApiError('api-offline')
+      } else {
+        setApiError(msg)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [form])
+
+  const ra = result?.risk_assessment
+
+  return (
+    <div className="space-y-5">
+
+      {/* Header */}
+      <div>
+        <h2 className="text-white font-semibold text-sm flex items-center gap-2">
+          🛠️ ServiceNow Integration Demo
+          <span className="text-[9px] text-lime-DEFAULT border border-lime-DEFAULT/30
+                           bg-lime-dim rounded px-1.5 py-0.5 animate-pulse-lime">
+            ● Native Webhook
+          </span>
+        </h2>
+        <p className="text-text-secondary text-xs mt-1">
+          Submit a mock Change Request → EVOLV assesses GAMP 5 risk in real time
+          and logs a 21 CFR Part 11 audit trail.
+        </p>
+      </div>
+
+      {/* Scenario quick-select */}
+      <div>
+        <p className="text-[10px] text-text-muted mb-2">Quick scenarios</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {SN_SCENARIOS.map(s => (
+            <button
+              key={s.id}
+              onClick={() => loadScenario(s)}
+              className="text-left p-3 rounded-xl border border-border-base
+                         hover:border-blue-DEFAULT/40 bg-bg-hover transition-all
+                         group"
+            >
+              <p className="text-[11px] font-semibold text-white
+                            group-hover:text-blue-DEFAULT transition-colors">
+                {s.label}
+              </p>
+              <p className="text-[9px] text-text-muted mt-0.5 leading-relaxed">
+                {s.cr_id}
+              </p>
+              <p className="text-[9px] mt-1" style={{ color: s.color }}>
+                → {s.expected}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Form + Response side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+
+        {/* Form */}
+        <div className="glass rounded-xl p-4 space-y-3">
+          <p className="text-[10px] text-text-muted font-semibold uppercase
+                        tracking-wider">
+            Change Request Payload
+          </p>
+
+          <div>
+            <label className="text-[10px] text-text-muted block mb-1">
+              CR ID
+            </label>
+            <input
+              value={form.cr_id}
+              onChange={e => setForm(p => ({ ...p, cr_id: e.target.value }))}
+              className="w-full bg-bg-base border border-border-base rounded-lg
+                         px-3 py-2 text-xs font-mono text-text-primary outline-none
+                         focus:border-border-blue transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] text-text-muted block mb-1">
+              Description
+            </label>
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={e =>
+                setForm(p => ({ ...p, description: e.target.value }))
+              }
+              className="w-full bg-bg-base border border-border-base rounded-lg
+                         px-3 py-2 text-xs text-text-primary outline-none
+                         focus:border-border-blue transition-colors resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-text-muted block mb-1">
+                System Criticality
+              </label>
+              <select
+                value={form.system_criticality}
+                onChange={e =>
+                  setForm(p => ({ ...p, system_criticality: e.target.value }))
+                }
+                className="w-full bg-bg-base border border-border-base rounded-lg
+                           px-3 py-2 text-xs text-text-primary outline-none
+                           focus:border-border-blue transition-colors"
+              >
+                {['critical', 'high', 'medium', 'low', 'minor'].map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] text-text-muted block mb-1">
+                Change Type
+              </label>
+              <select
+                value={form.change_type}
+                onChange={e =>
+                  setForm(p => ({ ...p, change_type: e.target.value }))
+                }
+                className="w-full bg-bg-base border border-border-base rounded-lg
+                           px-3 py-2 text-xs text-text-primary outline-none
+                           focus:border-border-blue transition-colors"
+              >
+                {['emergency', 'normal', 'standard', 'routine'].map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            onClick={submit}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-2.5
+                       rounded-lg bg-blue-DEFAULT text-white text-xs font-bold
+                       hover:brightness-110 disabled:opacity-50 transition-all
+                       shadow-[0_0_20px_rgba(0,127,255,0.35)]"
+          >
+            {loading
+              ? <><span className="animate-spin">⏳</span> Assessing…</>
+              : '⚡ Submit to EVOLV'}
+          </button>
+
+          {/* JSON preview */}
+          <details className="text-[10px]">
+            <summary className="text-text-muted cursor-pointer hover:text-text-secondary
+                                select-none">
+              View raw payload
+            </summary>
+            <pre className="mt-2 bg-bg-base border border-border-base rounded-lg
+                            p-3 text-text-secondary overflow-x-auto">
+              {JSON.stringify(form, null, 2)}
+            </pre>
+          </details>
+        </div>
+
+        {/* Response */}
+        <div className="space-y-4">
+          <AnimatePresence mode="wait">
+
+            {/* Idle state */}
+            {!result && !apiError && !loading && (
+              <motion.div
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="glass rounded-xl p-6 flex flex-col items-center
+                           justify-center gap-3 min-h-[200px]"
+              >
+                <span className="text-4xl opacity-30">🛠️</span>
+                <p className="text-text-muted text-xs text-center">
+                  Select a scenario and click Submit to EVOLV.<br />
+                  The risk assessment result appears here.
+                </p>
+              </motion.div>
+            )}
+
+            {/* Loading */}
+            {loading && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="glass rounded-xl p-6 flex flex-col items-center
+                           justify-center gap-3 min-h-[200px]"
+              >
+                <div className="w-8 h-8 border-2 border-blue-DEFAULT/30
+                                border-t-blue-DEFAULT rounded-full animate-spin" />
+                <p className="text-text-muted text-xs">
+                  EVOLV assessing GAMP 5 risk…
+                </p>
+              </motion.div>
+            )}
+
+            {/* API offline */}
+            {apiError === 'api-offline' && (
+              <motion.div
+                key="offline"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="glass rounded-xl p-5 border border-amber-400/20
+                           space-y-2"
+              >
+                <p className="text-amber-400 text-xs font-semibold">
+                  ⚠ API server not reachable
+                </p>
+                <p className="text-text-muted text-[11px] leading-relaxed">
+                  Start the FastAPI server to run a live demo:
+                </p>
+                <pre className="bg-bg-base border border-border-base rounded-lg
+                                p-3 text-lime-DEFAULT text-[11px] font-mono">
+                  uvicorn API.main:app --reload --port 8000
+                </pre>
+                <p className="text-text-muted text-[10px]">
+                  The webhook endpoint is{' '}
+                  <code className="text-blue-DEFAULT">
+                    POST /webhook/sn-change
+                  </code>
+                </p>
+              </motion.div>
+            )}
+
+            {/* Other error */}
+            {apiError && apiError !== 'api-offline' && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="glass rounded-xl p-5 border border-red-400/20"
+              >
+                <p className="text-red-400 text-xs font-semibold mb-1">
+                  ✗ Request failed
+                </p>
+                <p className="text-text-muted text-[11px] font-mono break-all">
+                  {apiError}
+                </p>
+              </motion.div>
+            )}
+
+            {/* Result */}
+            {result && ra && (
+              <motion.div
+                key="result"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                {/* Risk badge */}
+                <RiskBadge level={ra.risk_level} />
+
+                {/* Metrics grid */}
+                <div className="glass rounded-xl p-4 grid grid-cols-3 gap-3
+                                text-center">
+                  {[
+                    { label: 'RPN',          value: ra.rpn,           sub: '/ 27' },
+                    { label: 'Severity',     value: ra.severity,      sub: '' },
+                    { label: 'Occurrence',   value: ra.occurrence,    sub: '' },
+                  ].map(({ label, value, sub }) => (
+                    <div key={label}>
+                      <p className="text-white text-lg font-bold">
+                        {value}
+                        {sub && (
+                          <span className="text-text-muted text-[11px]">
+                            {sub}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-text-muted text-[10px] mt-0.5">
+                        {label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Strategy + flags */}
+                <div className="glass rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-text-muted">
+                      CSA Strategy
+                    </span>
+                    <span className="text-xs text-white font-semibold">
+                      {ra.testing_strategy}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-text-muted">
+                      Detectability
+                    </span>
+                    <span className="text-xs text-white">{ra.detectability}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-text-muted">
+                      Patient Safety Override
+                    </span>
+                    <span className={`text-xs font-semibold ${
+                      ra.patient_safety_override
+                        ? 'text-red-400' : 'text-lime-DEFAULT'
+                    }`}>
+                      {ra.patient_safety_override ? '⚠ YES' : '✓ No'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1
+                                  border-t border-border-base/50">
+                    <span className="text-[10px] text-text-muted">
+                      Reasoning hash
+                    </span>
+                    <code className="text-[9px] text-blue-DEFAULT font-mono">
+                      {result.message?.slice(0, 32) ?? result.cr_id}…
+                    </code>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Audit trail feed */}
+          {auditEvents.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-xl p-4"
+            >
+              <p className="text-[10px] text-text-muted font-semibold uppercase
+                            tracking-wider mb-3">
+                21 CFR Part 11 Audit Events
+              </p>
+              {auditEvents.map((ev, i) => (
+                <AuditEvent
+                  key={ev.action}
+                  idx={i}
+                  action={ev.action}
+                  timestamp={ev.timestamp}
+                />
+              ))}
+            </motion.div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main DevPortal component ───────────────────────────────────
 
 export default function DevPortal() {
-  const [activeTab, setActiveTab] = useState('keys')
+  const [activeTab, setActiveTab] = useState('sn-demo')
 
   const tabs = [
+    { id: 'sn-demo', label: '🛠️ ServiceNow Demo' },
     { id: 'keys',    label: '🔑 API Keys' },
     { id: 'connect', label: '🔗 EVOLV Connect' },
     { id: 'swagger', label: '📖 API Docs' },
@@ -605,6 +1117,7 @@ export default function DevPortal() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
+        {activeTab === 'sn-demo'  && <ServiceNowDemoPanel />}
         {activeTab === 'keys'    && <ApiKeyManager />}
         {activeTab === 'webhooks' && <WebhooksPanel />}
 

@@ -21,13 +21,13 @@ const INITIAL_BADGES = {
   'design':       null,
   'verify':       null,
   'release':      null,
-  'monitor':      null,
+  'monitor':      { type: 'warning', label: '1 CR pending' },
   'retire':       null,
   'system-journey': { type: 'info',  label: 'New' },
   'portfolio':    { type: 'info',    label: 'New' },
   'governance':   { type: 'warning', label: '3 pending' },
   'navigator':    null,
-  'dev-portal':   null,
+  'dev-portal':   { type: 'success', label: 'Live' },
   'config':       null,
   'academy':      null,
   'impact-analytics': null,
@@ -352,6 +352,42 @@ persist(
     },
   })),
 
+  // ── AI Governance queue (local, for AI model change decisions) ─
+  // Items added by AIModelsTab when HIGH/MEDIUM risk changes are submitted.
+  // Read by Governance.jsx and merged with API decisions.
+  aiGovernanceQueue: [],
+  addAIGovernanceItem: item => set(state => ({
+    aiGovernanceQueue: [item, ...state.aiGovernanceQueue],
+  })),
+  updateAIGovernanceItem: (id, updates) => set(state => ({
+    aiGovernanceQueue: state.aiGovernanceQueue.map(i =>
+      i.id === id ? { ...i, ...updates } : i
+    ),
+  })),
+
+  // ── Custom (user-classified) systems ──────────────────────────
+  // Systems added via the GxP Classification Questionnaire in Dev Portal.
+  // Merged with the built-in SYSTEMS registry for Portfolio and CR lookup.
+  customSystems: [],
+  addCustomSystem: system => set(state => ({
+    customSystems: [
+      ...state.customSystems.filter(s => s.id !== system.id),
+      system,
+    ],
+  })),
+
+  // ── Custom regulations (user-added via Regulatory Watch) ──────
+  customRegulations: [],
+  addCustomRegulation: reg => set(state => ({
+    customRegulations: [
+      ...state.customRegulations.filter(r => r.id !== reg.id),
+      reg,
+    ],
+  })),
+  deleteCustomRegulation: id => set(state => ({
+    customRegulations: state.customRegulations.filter(r => r.id !== id),
+  })),
+
   // ── Data bridge metadata ───────────────────────────────────────
   // Updated by useDataBridge whenever FastAPI returns fresh data.
   bridgeMeta: { reqCount: 0, reqSyncAt: null },
@@ -473,6 +509,9 @@ persist(
     userProfile:     state.userProfile,
     projects:        state.projects,
     activeProjectId: state.activeProjectId,
+    customSystems:        state.customSystems,
+    customRegulations:    state.customRegulations,
+    aiGovernanceQueue:    state.aiGovernanceQueue,
   }),
 }
 ))

@@ -6,118 +6,254 @@
  * All data is self-contained sample data — no API calls needed.
  */
 import { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { SYSTEMS } from '../data/systems.js'
+import { useAppStore } from '../store/useAppStore.js'
 
-// ── Sample system registry ────────────────────────────────────────
-const SYSTEMS = [
-  {
-    id: 'SYS-001', name: 'ServiceNow ITSM',
-    gampCategory: 4, gxpStatus: 'GxP Indirect',
-    site: 'Basel, CH', phase: 'Monitor', risk: 'Low',
-    owner: 'A. Müller', lastAction: '2026-03-01',
-    dueDate: null,
-    regulations: ['21 CFR Part 11', 'GMP Annex 11'],
-    notes: 'Periodic review due Q3 2026.',
-  },
-  {
-    id: 'SYS-002', name: 'SAP S/4HANA ERP',
-    gampCategory: 4, gxpStatus: 'GxP Direct',
-    site: 'Basel, CH', phase: 'Risk', risk: 'High',
-    owner: 'R. Keller', lastAction: '2026-03-10',
-    dueDate: '2026-04-15',
-    regulations: ['21 CFR Part 11', 'GMP Annex 11', 'EU GMP'],
-    notes: 'Risk assessment in progress — 3 open items.',
-  },
-  {
-    id: 'SYS-003', name: 'LabVantage LIMS',
-    gampCategory: 5, gxpStatus: 'GxP Direct',
-    site: 'Frankfurt, DE', phase: 'Verify', risk: 'High',
-    owner: 'S. Fischer', lastAction: '2026-03-18',
-    dueDate: '2026-04-30',
-    regulations: ['21 CFR Part 11', 'GLP', 'ISO 17025'],
-    notes: 'OQ execution in progress — 12 of 34 scripts run.',
-  },
-  {
-    id: 'SYS-004', name: 'Veeva Vault QMS',
-    gampCategory: 4, gxpStatus: 'GxP Direct',
-    site: 'Basel, CH', phase: 'Released', risk: 'Low',
-    owner: 'M. Dubois', lastAction: '2026-01-20',
-    dueDate: null,
-    regulations: ['21 CFR Part 11', 'ISO 13485', 'GMP Annex 11'],
-    notes: 'Validated. Next periodic review 2027-01.',
-  },
-  {
-    id: 'SYS-005', name: 'Oracle HCM Cloud',
-    gampCategory: 4, gxpStatus: 'Non-GxP',
-    site: 'Amsterdam, NL', phase: 'Released', risk: 'Low',
-    owner: 'J. de Vries', lastAction: '2025-11-05',
-    dueDate: null,
-    regulations: ['GDPR'],
-    notes: 'No GxP impact. GDPR data mapping complete.',
-  },
-  {
-    id: 'SYS-006', name: 'Trackwise Digital',
-    gampCategory: 4, gxpStatus: 'GxP Indirect',
-    site: 'Frankfurt, DE', phase: 'Requirements', risk: 'High',
-    owner: 'K. Schneider', lastAction: '2026-03-20',
-    dueDate: '2026-05-30',
-    regulations: ['21 CFR Part 11', 'GMP Annex 11'],
-    notes: 'URS generation in progress — 8 requirements drafted.',
-  },
-  {
-    id: 'SYS-007', name: 'Custom Batch Release',
-    gampCategory: 5, gxpStatus: 'GxP Direct',
-    site: 'Basel, CH', phase: 'Plan', risk: 'High',
-    owner: 'A. Müller', lastAction: '2026-03-22',
-    dueDate: '2026-06-15',
-    regulations: ['21 CFR Part 11', 'GMP Annex 11', 'EU GMP'],
-    notes: 'VMP creation started — kick-off meeting scheduled.',
-  },
-  {
-    id: 'SYS-008', name: 'SharePoint DMS',
-    gampCategory: 3, gxpStatus: 'GxP Indirect',
-    site: 'All Sites', phase: 'Released', risk: 'Low',
-    owner: 'IT Operations', lastAction: '2025-09-14',
-    dueDate: null,
-    regulations: ['21 CFR Part 11', 'GMP Annex 11'],
-    notes: 'Validated. Covers all 25 sites.',
-  },
-  {
-    id: 'SYS-009', name: 'Empower Chromatography',
-    gampCategory: 5, gxpStatus: 'GxP Direct',
-    site: 'Dublin, IE', phase: 'Design', risk: 'High',
-    owner: "C. O'Brien", lastAction: '2026-03-15',
-    dueDate: '2026-07-01',
-    regulations: ['21 CFR Part 11', 'GLP', 'ISO 17025'],
-    notes: 'Design spec review with vendor — 2 open clarifications.',
-  },
-  {
-    id: 'SYS-010', name: 'Salesforce CRM',
-    gampCategory: 4, gxpStatus: 'Non-GxP',
-    site: 'Amsterdam, NL', phase: 'Released', risk: 'Low',
-    owner: 'P. Hansen', lastAction: '2025-10-30',
-    dueDate: null,
-    regulations: ['GDPR'],
-    notes: 'No GxP impact. Commercial use only.',
-  },
-  {
-    id: 'SYS-011', name: 'LIMS Data Archiver',
-    gampCategory: 5, gxpStatus: 'GxP Direct',
-    site: 'Frankfurt, DE', phase: 'Released', risk: 'Medium',
-    owner: 'S. Fischer', lastAction: '2026-02-10',
-    dueDate: null,
-    regulations: ['21 CFR Part 11', 'GLP'],
-    notes: 'Periodic review overdue by 14 days.',
-  },
-  {
-    id: 'SYS-012', name: 'MES (Manufacturing)',
-    gampCategory: 5, gxpStatus: 'GxP Direct',
-    site: 'Dublin, IE', phase: 'Requirements', risk: 'High',
-    owner: "C. O'Brien", lastAction: '2026-03-21',
-    dueDate: '2026-08-01',
-    regulations: ['21 CFR Part 11', 'EU GMP', 'GMP Annex 11'],
-    notes: 'Phase 1 of 3 — requirements gathering in progress.',
-  },
+// ── Register System Modal ──────────────────────────────────────────
+const GAMP_OPTIONS = [1, 3, 4, 5]
+const GXP_OPTIONS  = ['GxP Direct', 'GxP Indirect', 'Non-GxP']
+const PHASE_OPTIONS = [
+  'Plan', 'Requirements', 'Risk', 'Design',
+  'Verify', 'Released', 'Monitor', 'Retire',
 ]
+const RISK_OPTIONS = ['High', 'Medium', 'Low']
+const REG_OPTIONS  = [
+  '21 CFR Part 11',
+  '21 CFR Part 820 (QMSR)',
+  'GMP Annex 11',
+  'EU GMP',
+  'GLP',
+  'ISO 17025',
+  'ISO 13485',
+  'GDPR',
+  'FDA PCCP Guidance Aug 2025',
+]
+
+const EMPTY_FORM = {
+  name: '', gampCategory: 4, gxpStatus: 'GxP Direct',
+  phase: 'Plan', risk: 'High', site: '', owner: '',
+  regulations: [], notes: '', dueDate: '',
+}
+
+function RegisterSystemModal({ onClose, onSave }) {
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [error, setError] = useState('')
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  const toggleReg = reg => setForm(f => ({
+    ...f,
+    regulations: f.regulations.includes(reg)
+      ? f.regulations.filter(r => r !== reg)
+      : [...f.regulations, reg],
+  }))
+
+  const submit = () => {
+    if (!form.name.trim()) { setError('System name is required.'); return }
+    if (!form.site.trim()) { setError('Site is required.'); return }
+    if (!form.owner.trim()) { setError('Owner is required.'); return }
+    const today = new Date().toISOString().slice(0, 10)
+    onSave({
+      ...form,
+      id: `CUST-${Date.now()}`,
+      lastAction: today,
+      dueDate: form.dueDate || null,
+      _registered: true,
+    })
+    onClose()
+  }
+
+  const field = 'bg-bg-base border border-border-base rounded-lg px-3 py-2 ' +
+    'text-xs text-text-primary placeholder:text-text-muted w-full ' +
+    'focus:outline-none focus:border-blue-DEFAULT/60'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center
+                    bg-black/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        transition={{ duration: 0.18 }}
+        className="bg-bg-card border border-border-base rounded-2xl
+                   shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4
+                        border-b border-border-base">
+          <div>
+            <h2 className="text-sm font-bold text-text-primary">
+              Register System
+            </h2>
+            <p className="text-[11px] text-text-muted mt-0.5">
+              Add a system to your EVOLV Portfolio
+            </p>
+          </div>
+          <button onClick={onClose}
+            className="text-text-muted hover:text-text-primary text-lg
+                       leading-none transition-colors">
+            ✕
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="px-5 py-4 space-y-4">
+
+          {/* Name */}
+          <div>
+            <label className="text-[11px] text-text-muted uppercase
+                              tracking-wider block mb-1">
+              System Name <span className="text-red-400">*</span>
+            </label>
+            <input className={field} placeholder="e.g. LabVantage LIMS"
+              value={form.name} onChange={e => set('name', e.target.value)} />
+          </div>
+
+          {/* Row: GAMP + GxP */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] text-text-muted uppercase
+                                tracking-wider block mb-1">
+                GAMP Category
+              </label>
+              <select className={field} value={form.gampCategory}
+                onChange={e => set('gampCategory', Number(e.target.value))}>
+                {GAMP_OPTIONS.map(c => (
+                  <option key={c} value={c}>Category {c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-text-muted uppercase
+                                tracking-wider block mb-1">
+                GxP Status
+              </label>
+              <select className={field} value={form.gxpStatus}
+                onChange={e => set('gxpStatus', e.target.value)}>
+                {GXP_OPTIONS.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Row: Phase + Risk */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] text-text-muted uppercase
+                                tracking-wider block mb-1">
+                Current Phase
+              </label>
+              <select className={field} value={form.phase}
+                onChange={e => set('phase', e.target.value)}>
+                {PHASE_OPTIONS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-text-muted uppercase
+                                tracking-wider block mb-1">
+                Risk Level
+              </label>
+              <select className={field} value={form.risk}
+                onChange={e => set('risk', e.target.value)}>
+                {RISK_OPTIONS.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Row: Site + Owner */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] text-text-muted uppercase
+                                tracking-wider block mb-1">
+                Site <span className="text-red-400">*</span>
+              </label>
+              <input className={field} placeholder="e.g. Basel, CH"
+                value={form.site} onChange={e => set('site', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-[11px] text-text-muted uppercase
+                                tracking-wider block mb-1">
+                Owner <span className="text-red-400">*</span>
+              </label>
+              <input className={field} placeholder="e.g. J. Smith"
+                value={form.owner} onChange={e => set('owner', e.target.value)} />
+            </div>
+          </div>
+
+          {/* Due Date */}
+          <div>
+            <label className="text-[11px] text-text-muted uppercase
+                              tracking-wider block mb-1">
+              Due Date (optional)
+            </label>
+            <input type="date" className={field}
+              value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
+          </div>
+
+          {/* Regulations */}
+          <div>
+            <label className="text-[11px] text-text-muted uppercase
+                              tracking-wider block mb-2">
+              Applicable Regulations
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {REG_OPTIONS.map(reg => {
+                const on = form.regulations.includes(reg)
+                return (
+                  <button key={reg} onClick={() => toggleReg(reg)}
+                    className={`text-[10px] px-2 py-1 rounded-lg border
+                      transition-all ${on
+                        ? 'bg-blue-DEFAULT/20 border-blue-DEFAULT/50 text-blue-DEFAULT'
+                        : 'border-border-base text-text-muted hover:border-blue-DEFAULT/30'
+                      }`}>
+                    {reg}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-[11px] text-text-muted uppercase
+                              tracking-wider block mb-1">
+              Notes
+            </label>
+            <textarea className={field + ' resize-none'} rows={2}
+              placeholder="Validation scope, context, open items…"
+              value={form.notes} onChange={e => set('notes', e.target.value)} />
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-400">{error}</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-4
+                        border-t border-border-base">
+          <button onClick={onClose}
+            className="px-4 py-1.5 text-xs text-text-muted rounded-lg
+                       hover:text-text-primary transition-colors">
+            Cancel
+          </button>
+          <button onClick={submit}
+            className="px-4 py-1.5 text-xs font-semibold rounded-lg
+                       bg-blue-DEFAULT text-white hover:bg-blue-DEFAULT/90
+                       transition-colors">
+            Register System
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
 
 // ── RAG logic ─────────────────────────────────────────────────────
 const ACTIVE_PHASES = ['Plan', 'Requirements', 'Risk', 'Design', 'Verify']
@@ -629,11 +765,18 @@ function CTOView({ systems }) {
 
 // ── Main component ────────────────────────────────────────────────
 export default function Portfolio() {
-  const [view, setView] = useState('qa') // 'qa' | 'cto'
+  const customSystems  = useAppStore(s => s.customSystems)
+  const addCustomSystem = useAppStore(s => s.addCustomSystem)
+  const allSystems     = useMemo(
+    () => [...SYSTEMS, ...customSystems],
+    [customSystems],
+  )
+  const [view,         setView]         = useState('qa')
+  const [showRegister, setShowRegister] = useState(false)
 
   const systems = useMemo(() =>
-    SYSTEMS.map(s => ({ ...s, rag: getRAG(s) })),
-    [],
+    allSystems.map(s => ({ ...s, rag: getRAG(s) })),
+    [allSystems],
   )
 
   const red   = systems.filter(s => s.rag === 'red').length
@@ -641,6 +784,15 @@ export default function Portfolio() {
   const green = systems.filter(s => s.rag === 'green').length
 
   return (
+    <>
+    <AnimatePresence>
+      {showRegister && (
+        <RegisterSystemModal
+          onClose={() => setShowRegister(false)}
+          onSave={system => { addCustomSystem(system); setShowRegister(false) }}
+        />
+      )}
+    </AnimatePresence>
     <div className="h-full overflow-y-auto bg-bg-base">
       <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-5 min-h-full">
 
@@ -658,26 +810,39 @@ export default function Portfolio() {
               </span>
             </div>
 
-            {/* View toggle */}
-            <div className="flex items-center gap-1 p-0.5 rounded-lg
-                            bg-bg-card border border-border-base">
-              {[
-                { id: 'qa',  label: 'QA Head View' },
-                { id: 'cto', label: 'CTO View' },
-              ].map(v => (
-                <button
-                  key={v.id}
-                  onClick={() => setView(v.id)}
-                  className={`
-                    px-3 py-1.5 rounded text-xs font-semibold transition-colors
-                    ${view === v.id
-                      ? 'bg-blue-DEFAULT text-white'
-                      : 'text-text-muted hover:text-text-secondary'}
-                  `}
-                >
-                  {v.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              {/* Register System button */}
+              <button
+                onClick={() => setShowRegister(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                           text-xs font-semibold border border-blue-DEFAULT/40
+                           text-blue-DEFAULT bg-blue-DEFAULT/10
+                           hover:bg-blue-DEFAULT/20 transition-colors"
+              >
+                + Register System
+              </button>
+
+              {/* View toggle */}
+              <div className="flex items-center gap-1 p-0.5 rounded-lg
+                              bg-bg-card border border-border-base">
+                {[
+                  { id: 'qa',  label: 'QA Head View' },
+                  { id: 'cto', label: 'CTO View' },
+                ].map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => setView(v.id)}
+                    className={`
+                      px-3 py-1.5 rounded text-xs font-semibold transition-colors
+                      ${view === v.id
+                        ? 'bg-blue-DEFAULT text-white'
+                        : 'text-text-muted hover:text-text-secondary'}
+                    `}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <p className="text-text-muted text-xs">
@@ -709,7 +874,10 @@ export default function Portfolio() {
             <span className="text-xs text-text-muted">Compliant</span>
           </div>
           <span className="ml-auto text-[10px] text-text-muted">
-            Showing 12 of 150 systems (demo dataset)
+            {customSystems.length > 0
+              ? `${allSystems.length} systems · ${customSystems.length} registered`
+              : `Showing ${SYSTEMS.length} sample systems`
+            }
           </span>
         </div>
 
@@ -726,5 +894,6 @@ export default function Portfolio() {
         </p>
       </div>
     </div>
+    </>
   )
 }

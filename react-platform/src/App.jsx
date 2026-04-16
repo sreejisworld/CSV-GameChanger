@@ -40,6 +40,7 @@ const RENDERERS = {
   'portfolio':          lazy(() => import('./apps/Portfolio.jsx')),
   'governance':         lazy(() => import('./apps/Governance.jsx')),
   'navigator':          lazy(() => import('./apps/Navigator.jsx')),
+  'regulatory-watch':   lazy(() => import('./apps/RegulatoryWatch.jsx')),
   'impact-analytics':   lazy(() => import('./apps/ImpactAnalytics.jsx')),
   // Tools
   'dev-portal':         lazy(() => import('./apps/DevPortal.jsx')),

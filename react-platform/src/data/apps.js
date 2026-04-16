@@ -207,6 +207,20 @@ export const APPS = [
     iframeUrl:   'http://localhost:8000/navigator',
   },
   {
+    id:          'regulatory-watch',
+    label:       'Regulatory Watch',
+    icon:        '📡',
+    emoji:       '📡',
+    accentColor: '#f59e0b',
+    accentClass: 'amber',
+    description: 'Regulatory change impact analyzer — select an '
+               + 'updated regulation and instantly see which systems '
+               + 'in your portfolio require review or revalidation.',
+    closeable:   true,
+    category:    'intelligence',
+    badge:       'New',
+  },
+  {
     id:          'impact-analytics',
     label:       'Impact Analytics',
     icon:        '📊',
@@ -286,7 +300,7 @@ export const NAV_GROUPS = [
   },
   {
     label: 'Intelligence',
-    items: ['system-journey', 'portfolio', 'governance', 'navigator', 'impact-analytics'],
+    items: ['system-journey', 'portfolio', 'governance', 'navigator', 'regulatory-watch', 'impact-analytics'],
   },
   {
     label: 'Tools',

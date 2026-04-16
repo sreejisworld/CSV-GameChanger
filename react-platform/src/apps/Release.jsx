@@ -9,6 +9,7 @@
  */
 import { useState, useCallback } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
+import { API_BASE } from '../config.js'
 
 function downloadCSV(filename, headers, rows) {
   const escape = v =>
@@ -41,7 +42,7 @@ async function downloadPDF(url, body, filename) {
   URL.revokeObjectURL(burl)
 }
 
-const API = 'http://localhost:8000'
+const API = API_BASE
 
 const ROLES = [
   'System Owner',
@@ -282,7 +283,7 @@ export default function Release() {
     setPkgError('')
     try {
       await downloadPDF(
-        'http://localhost:8000/exports/release-package',
+        `${API_BASE}/exports/release-package`,
         {
           project_name:     planData.projectName || 'Untitled Project',
           gamp_category:    planData.gampCategory || '',

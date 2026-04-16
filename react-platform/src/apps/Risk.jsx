@@ -19,6 +19,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
+import { API_BASE } from '../config.js'
 
 function downloadCSV(filename, headers, rows) {
   const escape = v =>
@@ -162,7 +163,7 @@ export default function Risk() {
     syncRef.current = true
     setSyncState('syncing')
     try {
-      const res = await fetch('http://localhost:8000/requirements')
+      const res = await fetch(`${API_BASE}/requirements`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if ((data.requirements ?? []).length > 0) {
@@ -257,7 +258,7 @@ export default function Risk() {
           riskLevel:     calcRisk(row.impact, row.implMethod) ?? null,
         }
       })
-      const res = await fetch('http://localhost:8000/verify/generate-script', {
+      const res = await fetch(`${API_BASE}/verify/generate-script`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

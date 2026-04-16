@@ -9,8 +9,9 @@
  * answer Karunakar's request: "show entire flow — project →
  * system → validation plan → start to retire."
  */
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAppStore } from '../store/useAppStore.js'
 
 // ── GAMP 5 category descriptions ─────────────────────────────────
 const GAMP_CATEGORIES = {
@@ -677,12 +678,57 @@ function PhaseDetail({ phase, phaseData }) {
   )
 }
 
+// ── Convert registered Portfolio system → Journey format ──────────
+const PHASE_ORDER = [
+  'plan','requirements','risk','design','verify','released','monitor','retire',
+]
+const PHASE_NAME_MAP = {
+  Plan: 'plan', Requirements: 'requirements', Risk: 'risk',
+  Design: 'design', Verify: 'verify', Released: 'released',
+  Monitor: 'monitor', Retire: 'retire',
+}
+
+function adaptRegisteredSystem(sys) {
+  const currentKey = PHASE_NAME_MAP[sys.phase] ?? 'plan'
+  const currentIdx = PHASE_ORDER.indexOf(currentKey)
+  const phases = {}
+  PHASE_ORDER.forEach((key, i) => {
+    if (i < currentIdx)
+      phases[key] = { status: 'complete', date: sys.lastAction ?? '',
+        summary: 'Phase completed.', stats: [], artifacts: [], findings: [] }
+    else if (i === currentIdx)
+      phases[key] = { status: 'in_progress', date: sys.lastAction ?? '',
+        summary: sys.notes || 'Phase in progress — use EVOLV to build your validation package.',
+        stats: [], artifacts: [], findings: [] }
+    else
+      phases[key] = { status: 'locked', date: null,
+        summary: '', stats: [], artifacts: [], findings: [] }
+  })
+  return {
+    ...sys,
+    version: `Phase: ${sys.phase}`,
+    projectStart: sys.lastAction ?? '',
+    targetRelease: sys.dueDate ?? '',
+    classificationRationale:
+      `GAMP Category ${sys.gampCategory} · ${sys.gxpStatus}. ` +
+      (sys.notes || 'Registered via EVOLV Portfolio.'),
+    phases,
+    _registered: true,
+  }
+}
+
 // ── Main component ────────────────────────────────────────────────
 export default function SystemJourney() {
+  const customSystems = useAppStore(s => s.customSystems)
+  const allSystems    = useMemo(() => [
+    ...DEMO_SYSTEMS,
+    ...customSystems.map(adaptRegisteredSystem),
+  ], [customSystems])
+
   const [systemIdx,  setSystemIdx]  = useState(0)
   const [activePhase, setActivePhase] = useState('verify')
 
-  const sys       = DEMO_SYSTEMS[systemIdx]
+  const sys       = allSystems[systemIdx] ?? allSystems[0]
   const gamp      = GAMP_CATEGORIES[sys.gampCategory]
   const progress  = getProgress(sys.phases)
   const phaseData = sys.phases[activePhase]
@@ -713,17 +759,15 @@ export default function SystemJourney() {
 
         {/* ── System selector ─────────────────────────────── */}
         <div className="flex gap-2 flex-wrap">
-          {DEMO_SYSTEMS.map((s, i) => {
+          {allSystems.map((s, i) => {
             const p = getProgress(s.phases)
             return (
               <button
                 key={s.id}
                 onClick={() => {
                   setSystemIdx(i)
-                  // Select the first non-locked phase
                   const first = PHASES.find(ph =>
-                    s.phases[ph.id]?.status !== 'locked'
-                    && s.phases[ph.id]?.status === 'in_progress'
+                    s.phases[ph.id]?.status === 'in_progress'
                   ) ?? PHASES.find(ph =>
                     s.phases[ph.id]?.status === 'complete'
                   )
@@ -743,6 +787,13 @@ export default function SystemJourney() {
                       ? 'text-blue-DEFAULT' : 'text-text-secondary'
                   }`}>
                     {s.name}
+                    {s._registered && (
+                      <span className="ml-1.5 text-[9px] px-1.5 py-0.5
+                        rounded bg-lime-DEFAULT/15 text-lime-DEFAULT
+                        font-semibold border border-lime-DEFAULT/30">
+                        REGISTERED
+                      </span>
+                    )}
                   </p>
                   <p className="text-[10px] text-text-muted">
                     {s.version} · Cat {s.gampCategory} · {p.done}/{p.total} phases

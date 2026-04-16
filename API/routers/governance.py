@@ -20,8 +20,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from API.key_store import require_api_key
 
 router = APIRouter(tags=["Governance"])
 
@@ -402,6 +404,7 @@ def get_decisions(status: Optional[str] = None):
 @router.post(
     "/governance/review/{decision_id}",
     summary="Human reviewer approves, overrides, or rejects a decision",
+    dependencies=[Depends(require_api_key)],
 )
 def review_decision(decision_id: str, body: ReviewRequest):
     """

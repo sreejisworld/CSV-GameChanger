@@ -15,11 +15,12 @@
  * :requirement: URS-27.3 – Render audit event timeline.
  * :requirement: URS-27.4 – Capture reviewer name, role, reason.
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
+import { API_BASE } from '../config.js'
 
-const API = 'http://localhost:8000'
+const API = API_BASE
 
 // ── Colour helpers ────────────────────────────────────────────────
 const STATUS_COLOR = {
@@ -379,7 +380,192 @@ function DecisionCard({ decision, onReview }) {
   )
 }
 
-function QueueTab({ decisions, onReview }) {
+// ── AI Model Change Card (Zustand queue) ─────────────────────────
+const AI_RISK_COLORS = {
+  HIGH:   '#ef4444',
+  MEDIUM: '#f59e0b',
+  LOW:    '#32CD32',
+}
+
+function AIModelCard({ item, onApprove, onReject }) {
+  const [expanded, setExpanded] = useState(false)
+  const [reviewer, setReviewer] = useState('')
+  const [reason,   setReason]   = useState('')
+  const [actioning, setActioning] = useState(false)
+  const userProfile = useAppStore(s => s.userProfile)
+
+  useEffect(() => {
+    if (userProfile.name) setReviewer(userProfile.name)
+  }, [userProfile])
+
+  const rColor = AI_RISK_COLORS[item.risk_level] ?? '#888'
+  const isPending = item.status === 'pending'
+
+  const act = (fn) => async () => {
+    if (!reviewer) { alert('Please enter your name.'); return }
+    if (!reason) { alert('Please enter a reason.'); return }
+    setActioning(true)
+    await fn(item.id, reviewer, reason)
+    setActioning(false)
+  }
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className='rounded-xl border border-purple-500/30 bg-purple-500/5 p-4
+        space-y-3'
+    >
+      <div className='flex items-start justify-between gap-3'>
+        <div className='flex items-center gap-2 flex-wrap'>
+          <span className='text-lg'>🤖</span>
+          <span className='font-semibold text-[var(--text-primary)]'>
+            {item.model_name}
+          </span>
+          <span className='text-xs px-2 py-0.5 rounded bg-white/5
+            text-[var(--text-muted)] border border-white/10'>
+            AI Model Change
+          </span>
+          <span
+            className='text-xs px-2 py-0.5 rounded font-semibold'
+            style={{ color: rColor,
+              background: rColor + '20', border: `1px solid ${rColor}40` }}
+          >
+            {item.risk_level}
+          </span>
+          {isPending && (
+            <span className='inline-flex items-center gap-1.5 px-2 py-0.5
+              rounded-full text-xs font-medium text-amber-400
+              bg-amber-500/10 border border-amber-500/40'>
+              <span className='w-1.5 h-1.5 rounded-full bg-amber-400' />
+              Pending
+            </span>
+          )}
+          {item.status === 'approved' && (
+            <span className='inline-flex items-center gap-1.5 px-2 py-0.5
+              rounded-full text-xs font-medium text-lime-400
+              bg-lime-500/10 border border-lime-500/40'>
+              <span className='w-1.5 h-1.5 rounded-full bg-lime-400' />
+              Approved
+            </span>
+          )}
+          {item.status === 'rejected' && (
+            <span className='inline-flex items-center gap-1.5 px-2 py-0.5
+              rounded-full text-xs font-medium text-red-400
+              bg-red-500/10 border border-red-500/40'>
+              <span className='w-1.5 h-1.5 rounded-full bg-red-400' />
+              Rejected
+            </span>
+          )}
+        </div>
+        <span className='text-xs text-[var(--text-muted)] whitespace-nowrap'>
+          {new Date(item.created_at).toLocaleString('en-GB', {
+            day: '2-digit', month: 'short',
+            hour: '2-digit', minute: '2-digit',
+          })}
+        </span>
+      </div>
+
+      <div className='text-sm text-[var(--text-secondary)] space-y-1'>
+        {[
+          ['Change type',    item.change_type],
+          ['New version',    item.new_version],
+          ['PCCP category',  item.pccp_category],
+          ['Description',    item.description],
+          ['FDA reference',  item.fda_ref],
+        ].map(([k, v]) => v && (
+          <div key={k} className='flex gap-2'>
+            <span className='text-[var(--text-muted)] min-w-[120px]'>{k}</span>
+            <span className='font-mono text-[var(--text-primary)]'>{v}</span>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className='flex items-center gap-1.5 text-xs text-[var(--text-muted)]
+          hover:text-[var(--text-primary)] transition-colors'
+      >
+        <span className={`transition-transform ${expanded ? 'rotate-90' : ''}`}>
+          ▶
+        </span>
+        Required Evidence Checklist
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className='overflow-hidden'
+          >
+            <div className='rounded-lg bg-black/20 border border-white/5
+              p-3 space-y-1.5 text-xs'>
+              {(item.required_evidence ?? []).map((ev, i) => (
+                <div key={i} className='flex items-start gap-2'>
+                  <span className='mt-0.5' style={{ color: rColor }}>☐</span>
+                  <span className='text-[var(--text-secondary)]'>{ev}</span>
+                </div>
+              ))}
+              <p className='text-[var(--text-muted)] pt-1 border-t
+                border-white/5 font-mono'>
+                Hash: {item.reasoning_hash}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isPending && (
+        <div className='space-y-2 pt-1'>
+          <div className='flex gap-2'>
+            <input
+              placeholder='Your name'
+              value={reviewer}
+              onChange={e => setReviewer(e.target.value)}
+              className='flex-1 bg-white/5 border border-white/10 rounded-lg
+                px-3 py-1.5 text-xs text-[var(--text-primary)]
+                placeholder:text-[var(--text-muted)]'
+            />
+            <input
+              placeholder='Reason / notes'
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              className='flex-[2] bg-white/5 border border-white/10 rounded-lg
+                px-3 py-1.5 text-xs text-[var(--text-primary)]
+                placeholder:text-[var(--text-muted)]'
+            />
+          </div>
+          <div className='flex gap-2'>
+            <button
+              onClick={act(onApprove)}
+              disabled={actioning}
+              className='flex-1 py-1.5 rounded-lg text-xs font-semibold
+                bg-lime-500/15 text-lime-400 border border-lime-500/30
+                hover:bg-lime-500/25 transition-all disabled:opacity-50'
+            >
+              ✓ Approve
+            </button>
+            <button
+              onClick={act(onReject)}
+              disabled={actioning}
+              className='flex-1 py-1.5 rounded-lg text-xs font-semibold
+                bg-red-500/10 text-red-400 border border-red-500/30
+                hover:bg-red-500/20 transition-all disabled:opacity-50'
+            >
+              ✕ Reject
+            </button>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+function QueueTab({ decisions, aiQueue, onReview, onAIApprove, onAIReject }) {
   const [filter, setFilter] = useState('all')
   const filters = ['all', 'pending', 'approved', 'overridden', 'rejected']
 
@@ -389,8 +575,44 @@ function QueueTab({ decisions, onReview }) {
 
   const pendingCount = decisions.filter(d => d.status === 'pending').length
 
+  const aiPending = (aiQueue ?? []).filter(i => i.status === 'pending').length
+
   return (
-    <div className='space-y-4'>
+    <div className='space-y-6'>
+
+      {/* ── AI Model Change Queue (Zustand) ───────────────────── */}
+      {(aiQueue ?? []).length > 0 && (
+        <div className='space-y-3'>
+          <div className='flex items-center gap-2'>
+            <span className='text-xs font-semibold text-purple-400
+              uppercase tracking-wider'>
+              🤖 AI Model Changes
+            </span>
+            {aiPending > 0 && (
+              <span className='px-1.5 py-0.5 rounded-full text-xs font-bold
+                bg-amber-500 text-black leading-none'>
+                {aiPending}
+              </span>
+            )}
+            <span className='text-xs text-[var(--text-muted)]'>
+              — FDA PCCP Guidance Aug 18, 2025 · 21 U.S.C. 360e-4
+            </span>
+          </div>
+          <AnimatePresence mode='popLayout'>
+            {(aiQueue).map(item => (
+              <AIModelCard
+                key={item.id}
+                item={item}
+                onApprove={onAIApprove}
+                onReject={onAIReject}
+              />
+            ))}
+          </AnimatePresence>
+          <div className='border-t border-white/8' />
+        </div>
+      )}
+
+      {/* ── Standard AI Decision Queue (API) ─────────────────── */}
       {/* Filter pills */}
       <div className='flex gap-2 flex-wrap'>
         {filters.map(f => {
@@ -405,7 +627,8 @@ function QueueTab({ decisions, onReview }) {
                 transition-all border
                 ${filter === f
                   ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                  : 'text-[var(--text-muted)] border-white/10 hover:border-white/20'
+                  : 'text-[var(--text-muted)] border-white/10'
+                    + ' hover:border-white/20'
                 }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)} ({count})
@@ -413,8 +636,10 @@ function QueueTab({ decisions, onReview }) {
           )
         })}
         {pendingCount > 0 && (
-          <span className='ml-auto text-xs text-amber-400 flex items-center gap-1'>
-            <span className='w-2 h-2 rounded-full bg-amber-400 animate-pulse' />
+          <span className='ml-auto text-xs text-amber-400
+            flex items-center gap-1'>
+            <span className='w-2 h-2 rounded-full bg-amber-400
+              animate-pulse' />
             {pendingCount} awaiting your review
           </span>
         )}
@@ -920,6 +1145,9 @@ export default function Governance() {
   const [loading,   setLoading]     = useState(true)
   const [error,     setError]       = useState(null)
 
+  const aiGovernanceQueue    = useAppStore(s => s.aiGovernanceQueue)
+  const updateAIGovernanceItem = useAppStore(s => s.updateAIGovernanceItem)
+
   const fetchAll = useCallback(async () => {
     try {
       const [dRes, oRes, tRes, sRes] = await Promise.all([
@@ -968,9 +1196,34 @@ export default function Governance() {
     await fetchAll()   // refresh all data
   }
 
+  const handleAIApprove = useCallback((id, reviewer, reason) => {
+    updateAIGovernanceItem(id, {
+      status: 'approved',
+      reviewed_by: reviewer,
+      review_reason: reason,
+      reviewed_at: new Date().toISOString(),
+    })
+  }, [updateAIGovernanceItem])
+
+  const handleAIReject = useCallback((id, reviewer, reason) => {
+    updateAIGovernanceItem(id, {
+      status: 'rejected',
+      reviewed_by: reviewer,
+      review_reason: reason,
+      reviewed_at: new Date().toISOString(),
+    })
+  }, [updateAIGovernanceItem])
+
+  const aiPendingCount = useMemo(
+    () => (aiGovernanceQueue ?? []).filter(i => i.status === 'pending').length,
+    [aiGovernanceQueue]
+  )
+
   const TABS = [
     { id: 'queue',    label: 'Decision Queue',
-      badge: stats?.pending ? String(stats.pending) : null },
+      badge: (stats?.pending ?? 0) + aiPendingCount > 0
+        ? String((stats?.pending ?? 0) + aiPendingCount)
+        : null },
     { id: 'ledger',   label: 'Override Ledger',
       badge: overrides.length ? String(overrides.length) : null },
     { id: 'timeline', label: 'Audit Timeline' },
@@ -1065,7 +1318,13 @@ export default function Governance() {
               transition={{ duration: 0.15 }}
             >
               {activeTab === 'queue' && (
-                <QueueTab decisions={decisions} onReview={handleReview} />
+                <QueueTab
+                  decisions={decisions}
+                  aiQueue={aiGovernanceQueue}
+                  onReview={handleReview}
+                  onAIApprove={handleAIApprove}
+                  onAIReject={handleAIReject}
+                />
               )}
               {activeTab === 'ledger' && (
                 <LedgerTab overrides={overrides} />

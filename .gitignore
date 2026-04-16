@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 *.pyd
 *.so
 *.egg-info/
@@ -13,11 +14,19 @@ venv/
 .venv/
 env/
 
-# Environment variables
+# Environment variables — never commit secrets
 .env
+.env.local
+.env.production
+.env*.local
+react-platform/.env
+react-platform/.env.production
+react-platform/.env.local
 .env.*
 
-# Streamlit secrets (never commit real keys)
+# API keys and secrets
+output/api_keys.json
+output/webhook_registrations.json
 .streamlit/secrets.toml
 
 # IDE

@@ -10,6 +10,7 @@
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useAppStore }       from '../store/useAppStore.js'
+import { API_BASE } from '../config.js'
 
 // ── Client-side helpers ───────────────────────────────────────────
 function downloadCSV(filename, headers, rows) {
@@ -629,7 +630,7 @@ export default function Verify() {
         }
       })
       await downloadPDF(
-        'http://localhost:8000/exports/verify-report',
+        `${API_BASE}/exports/verify-report`,
         {
           script_id:       activeScript.script_id,
           urs_id:          activeScript.urs_id,
@@ -704,7 +705,7 @@ export default function Verify() {
     setApiLoading(true)
     setApiError('')
     try {
-      const res = await fetch('http://localhost:8000/verify/sign-off', {
+      const res = await fetch(`${API_BASE}/verify/sign-off`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

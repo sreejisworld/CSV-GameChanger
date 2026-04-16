@@ -13,8 +13,9 @@
  */
 import { useEffect, useRef } from 'react'
 import { useAppStore }       from '../store/useAppStore.js'
+import { API_BASE } from '../config.js'
 
-const API     = 'http://localhost:8000'
+const API     = API_BASE
 const POLL_MS = 10_000   // 10 seconds
 
 export function useDataBridge() {

@@ -9,10 +9,14 @@ Interactive documentation available at /docs (Swagger UI) and
               docs at /docs with title, version, and description.
 """
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from fastapi import (
     BackgroundTasks,
@@ -37,6 +41,7 @@ from API.key_store import (
     KeyStore,
     get_current_key,
     enforce_audit_only_scope,
+    require_api_key,
 )
 from API.webhook_registry import (
     WebhookRegistry,
@@ -64,10 +69,39 @@ from API.routers.audit            import router as audit_router
 from API.routers.governance       import router as governance_router
 
 
+def _validate_env() -> None:
+    """Crash loudly at startup if required env vars are missing."""
+    required = {
+        "OPENAI_API_KEY":  (
+            "OpenAI API key (for URS generation and embeddings)"
+        ),
+        "PINECONE_API_KEY": (
+            "Pinecone API key (for GAMP 5 knowledge base)"
+        ),
+    }
+    missing = [
+        f"  {k}: {desc}"
+        for k, desc in required.items()
+        if not os.getenv(k)
+    ]
+    if missing:
+        raise RuntimeError(
+            "EVOLV startup failed — missing required "
+            "environment variables:\n"
+            + "\n".join(missing)
+            + "\n\nSet these in your .env file or environment "
+            "before starting."
+        )
+
+
+_validate_env()
+
+
 # -----------------------------------------------------------------
 # FastAPI application (Task 1 — OpenAPI 3.0 metadata)
 # -----------------------------------------------------------------
 
+_env = os.getenv("EVOLV_ENV", "development")
 app = FastAPI(
     title="EVOLV API",
     version="1.0.0",
@@ -122,6 +156,11 @@ app = FastAPI(
             ),
         },
     ],
+    docs_url="/docs" if _env != "production" else None,
+    redoc_url="/redoc" if _env != "production" else None,
+    openapi_url=(
+        "/openapi.json" if _env != "production" else None
+    ),
 )
 
 # TenantDictionaryMiddleware — rewrites JSON response labels
@@ -152,8 +191,8 @@ app.add_middleware(
         "http://127.0.0.1:8501",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization", "Accept"],
 )
 
 
@@ -495,7 +534,9 @@ def _get_sentinel() -> SentinelImpactAgent:
     response_description=(
         "Risk assessment for the submitted change request."
     ),
-    dependencies=[Depends(enforce_audit_only_scope)],
+    # Webhook receivers are authenticated by the caller (ServiceNow
+    # uses HMAC / IP-allowlist in production).  No API key required
+    # here so the EVOLV demo panel and Streamlit can call this freely.
 )
 async def receive_servicenow_change(
     change_request: ServiceNowChangeRequest,
@@ -634,7 +675,6 @@ async def receive_servicenow_change(
     response_description=(
         "Full blast-radius report with Red/Yellow/Green items."
     ),
-    dependencies=[Depends(enforce_audit_only_scope)],
 )
 async def trigger_sentinel_scan(
     scan_request: SentinelScanRequest,
@@ -793,7 +833,6 @@ async def trigger_sentinel_scan(
     response_description=(
         "202 Accepted with a job_id to poll for status."
     ),
-    dependencies=[Depends(enforce_audit_only_scope)],
 )
 async def bulk_validate(
     payload: BulkValidateRequest,
@@ -994,6 +1033,7 @@ async def deregister_webhook(webhook_id: str) -> None:
     status_code=201,
     tags=["Admin"],
     summary="Create a scoped API key",
+    dependencies=[Depends(require_api_key)],
 )
 async def create_api_key(
     payload: ScopedAPIKeyIn,

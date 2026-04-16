@@ -267,6 +267,30 @@ async def get_current_key(
     return record
 
 
+async def require_api_key(
+    current_key: Optional[ScopedAPIKey] = Depends(
+        get_current_key
+    ),
+) -> ScopedAPIKey:
+    """
+    FastAPI dependency: require a valid API key.
+
+    Raises ``HTTP 401`` when no ``X-API-Key`` header is present
+    or the provided key is invalid.
+
+    :param current_key: Resolved from X-API-Key header.
+    :return: ScopedAPIKey when authenticated.
+    :raises HTTPException 401: When key is missing or invalid.
+    :requirement: URS-29.2
+    """
+    if current_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid API key.",
+        )
+    return current_key
+
+
 async def enforce_audit_only_scope(
     request: Request,
     current_key: Optional[ScopedAPIKey] = Depends(

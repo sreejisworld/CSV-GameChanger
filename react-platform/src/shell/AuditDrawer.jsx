@@ -9,8 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-
-const API_BASE = 'http://localhost:8000'
+import { API_BASE } from '../config.js'
 const POLL_MS  = 5000
 
 // Severity → Tailwind/CSS-var colour tokens
