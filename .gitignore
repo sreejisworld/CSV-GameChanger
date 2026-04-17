@@ -46,3 +46,10 @@ Thumbs.db
 # Output (generated at runtime)
 output/
 audit_trail.log
+
+# Debug / session patch artifacts (never commit these)
+patch*.json
+selector*.json
+*_port_fix.json
+*_final.json
+port_patch.json

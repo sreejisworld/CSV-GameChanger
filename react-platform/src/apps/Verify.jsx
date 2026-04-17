@@ -44,100 +44,6 @@ async function downloadPDF(url, body, filename) {
   URL.revokeObjectURL(burl)
 }
 
-// ── Demo test script (Sprint 1 seed — real data via API in Sprint 2) ──
-const DEMO_SCRIPT = {
-  script_id:    'TS-URS-7.1',
-  urs_id:       'URS-7.1',
-  ur_id:        'UR-1',
-  test_type:    'Informal',
-  risk_level:   'High',
-  test_strategy:'OQ and/or UAT',
-  generated_at: new Date().toISOString(),
-  steps: [
-    {
-      step_type: 'Setup', step_number: 1,
-      step_title: 'Login as System Owner',
-      step_instruction:
-        'Navigate to the application URL and login with System Owner ' +
-        'credentials. Confirm role is displayed in the top-right header.',
-      expected_result: '',
-      test_case_type: '',
-      requirement_reference: '',
-    },
-    {
-      step_type: 'Setup', step_number: 2,
-      step_title: 'Navigate to Sample Registration',
-      step_instruction:
-        'From the home screen, navigate to Laboratory > Sample Registration ' +
-        'and confirm the module loads without errors.',
-      expected_result: '',
-      test_case_type: '',
-      requirement_reference: '',
-    },
-    {
-      step_type: 'Execution', step_number: 1,
-      step_title: 'Register Sample — Positive',
-      step_instruction:
-        'Enter a valid sample ID, collection date, and submitting user. ' +
-        'Click "Register". Verify the sample appears in the chain-of-custody ' +
-        'list with a unique COC number.',
-      expected_result:
-        'Sample is registered. Unique COC number is generated. ' +
-        'Timestamp and user are captured in the audit trail.',
-      test_case_type: 'Positive',
-      requirement_reference: 'UR-1 / FR-1',
-    },
-    {
-      step_type: 'Execution', step_number: 2,
-      step_title: 'Register Sample — Negative (duplicate ID)',
-      step_instruction:
-        'Attempt to register a sample using an ID that already exists in ' +
-        'the system. Click "Register".',
-      expected_result:
-        'System rejects the duplicate. An error message is displayed: ' +
-        '"Sample ID already registered." No COC record is created.',
-      test_case_type: 'Negative',
-      requirement_reference: 'UR-1 / FR-2',
-    },
-    {
-      step_type: 'Execution', step_number: 3,
-      step_title: 'Register Sample — Edge Case (max length ID)',
-      step_instruction:
-        'Enter a sample ID at the maximum allowed character length (255 chars). ' +
-        'Complete registration.',
-      expected_result:
-        'System accepts the max-length ID without truncation. ' +
-        'COC record stores full ID.',
-      test_case_type: 'Edge Case',
-      requirement_reference: 'UR-1 / FR-1',
-    },
-    {
-      step_type: 'Execution', step_number: 4,
-      step_title: 'Electronic Signature — Positive',
-      step_instruction:
-        'Navigate to a sample result awaiting approval. Enter valid ' +
-        'credentials and meaning "Approval". Click "Sign".',
-      expected_result:
-        'Signature is accepted. Result status changes to "Approved". ' +
-        'Audit trail records signer name, timestamp, and meaning.',
-      test_case_type: 'Positive',
-      requirement_reference: 'UR-3 / FR-4',
-    },
-    {
-      step_type: 'Execution', step_number: 5,
-      step_title: 'Audit Trail — Immutability Check',
-      step_instruction:
-        'Attempt to edit a previously signed audit trail entry directly ' +
-        'via the UI or by navigating to the audit trail record.',
-      expected_result:
-        'No edit control is available. All fields are read-only. ' +
-        'Audit trail is append-only per 21 CFR Part 11.',
-      test_case_type: 'Negative',
-      requirement_reference: 'UR-3 / FR-5',
-    },
-  ],
-}
-
 // ── Colours ───────────────────────────────────────────────────────
 const VERDICT_CONFIG = {
   pass:    { label: 'Pass',    bg: 'rgba(50,205,50,0.15)',   border: 'rgba(50,205,50,0.4)',   text: '#32CD32' },
@@ -539,27 +445,59 @@ function SignOffPanel({ run, locked, onSign, apiLoading }) {
   )
 }
 
+// ── Empty state shown when no test scripts exist yet ─────────────
+function NoScriptsState() {
+  return (
+    <div className="flex flex-col h-full bg-bg-base items-center
+                    justify-center gap-4 px-8">
+      <span className="text-5xl opacity-20">🏭</span>
+      <div className="text-center max-w-sm">
+        <p className="text-text-secondary text-sm font-semibold mb-2">
+          No test scripts loaded
+        </p>
+        <p className="text-text-muted text-xs leading-relaxed">
+          Generate a test script from the{' '}
+          <span className="text-blue-DEFAULT font-medium">
+            Validation Factory
+          </span>
+          . Complete the UR/FR transformation and CSA test generation
+          steps — your script will appear here automatically.
+        </p>
+        <p className="text-text-muted text-[10px] mt-3 opacity-60">
+          Path: Validation Factory → Generate Reqs → UR/FR →
+          Generate Test Script
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Verify page ──────────────────────────────────────────────
 export default function Verify() {
   const {
-    testScripts, setTestScript,
+    testScripts,
     testRuns, activeRunId, initTestRun,
     setStepResult, setRunMeta, lockTestRun,
     setPhaseComplete, setStatusBadge,
   } = useAppStore()
 
-  const [activeTab,  setActiveTab]  = useState('execute')
-  const [apiLoading, setApiLoading] = useState(false)
-  const [apiError,   setApiError]   = useState('')
-  const [pdfLoading, setPdfLoading] = useState(false)
-  const [pdfError,   setPdfError]   = useState('')
+  const [activeTab,        setActiveTab]        = useState('execute')
+  const [apiLoading,       setApiLoading]       = useState(false)
+  const [apiError,         setApiError]         = useState('')
+  const [pdfLoading,       setPdfLoading]       = useState(false)
+  const [pdfError,         setPdfError]         = useState('')
+  const [selectedScriptId, setSelectedScriptId] = useState(null)
 
-  // ── Derived state (must be declared before useCallback hooks) ──
-  const activeScript = testScripts['TS-URS-7.1'] ?? DEMO_SCRIPT
-  const run          = activeRunId ? testRuns[activeRunId] : null
-  const stepResults  = run?.stepResults ?? {}
-  const locked       = run?.status === 'locked'
-  const steps        = activeScript.steps ?? []
+  // ── Script selection ───────────────────────────────────────────
+  const scriptIds      = Object.keys(testScripts)
+  const activeScriptId = selectedScriptId ?? scriptIds[0] ?? null
+  const activeScript   = activeScriptId ? testScripts[activeScriptId] : null
+
+  // ── Derived state ──────────────────────────────────────────────
+  const run         = activeRunId ? testRuns[activeRunId] : null
+  const stepResults = run?.stepResults ?? {}
+  const locked      = run?.status === 'locked'
+  const steps       = activeScript?.steps ?? []
   const pass     = Object.values(stepResults).filter(r => r.verdict === 'pass').length
   const fail     = Object.values(stepResults).filter(r => r.verdict === 'fail').length
   const blocked  = Object.values(stepResults).filter(r => r.verdict === 'blocked').length
@@ -571,16 +509,13 @@ export default function Verify() {
     : allDone     ? 'PASS'
     : 'IN_PROGRESS'
 
-  // Seed demo script once on mount
+  // Init a run whenever the active script changes and no run exists
   useEffect(() => {
-    const existing = testScripts['TS-URS-7.1'] ?? null
-    if (!existing) {
-      setTestScript('TS-URS-7.1', DEMO_SCRIPT)
-      initTestRun(DEMO_SCRIPT)
-    } else if (!activeRunId) {
-      initTestRun(existing)
+    if (activeScript && !activeRunId) {
+      initTestRun(activeScript)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeScriptId])
 
   const handleExportCSV = useCallback(() => {
     const headers = [
@@ -748,7 +683,9 @@ export default function Verify() {
     Medium: { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b' },
     Low:    { bg: 'rgba(50,205,50,0.12)',  text: '#32CD32' },
   }
-  const riskCfg = RISK_COLORS[activeScript.risk_level] ?? RISK_COLORS.Low
+  const riskCfg = RISK_COLORS[activeScript?.risk_level] ?? RISK_COLORS.Low
+
+  if (!activeScript) return <NoScriptsState />
 
   return (
     <div className="flex flex-col h-full bg-bg-base overflow-hidden">
@@ -759,9 +696,26 @@ export default function Verify() {
         <span className="text-xs font-semibold text-lime-DEFAULT">
           Verify
         </span>
-        <span className="text-text-muted text-xs">
-          {activeScript.script_id} · {activeScript.urs_id}
-        </span>
+
+        {/* Script selector — dropdown when multiple scripts exist */}
+        {scriptIds.length > 1 ? (
+          <select
+            value={activeScriptId ?? ''}
+            onChange={e => setSelectedScriptId(e.target.value)}
+            className="bg-bg-base border border-border-base rounded px-2 py-1
+                       text-xs text-text-secondary outline-none
+                       focus:border-border-blue transition-colors"
+          >
+            {scriptIds.map(id => (
+              <option key={id} value={id}>{id}</option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-text-muted text-xs">
+            {activeScript.script_id} · {activeScript.urs_id}
+          </span>
+        )}
+
         {/* Risk badge */}
         <span
           className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
