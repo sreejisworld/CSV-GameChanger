@@ -10,8 +10,8 @@
   --bg-hover:   #17172e;
 
   --text-primary:   #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-muted:     #475569;
+  --text-secondary: #b0bec8;
+  --text-muted:     #7a8fa3;
 
   --border-base:   #1c1c38;
   --border-bright: #28284a;
@@ -308,3 +308,10 @@ body {
 [data-theme="light"] .bg-blue-dim .text-text-primary {
   color: var(--text-primary);
 }
+
+/* ── Font size zoom ────────────────────────────────────────
+ * Applied to the app root div so everything scales
+ * proportionally — including fixed-px Tailwind classes.
+ * ─────────────────────────────────────────────────────── */
+[data-font-size="large"] { zoom: 1.15; }
+[data-font-size="xl"]    { zoom: 1.30; }

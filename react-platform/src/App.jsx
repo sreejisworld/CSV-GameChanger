@@ -76,7 +76,7 @@ const LIFECYCLE_IDS = new Set([
 
 export default function App() {
   const {
-    tabs, activeTabId, openTab, closeTab, switchTab, theme,
+    tabs, activeTabId, openTab, closeTab, switchTab, theme, fontSize,
     phaseCompletion, setStatusBadge, statusBadges,
   } = useAppStore()
 
@@ -117,6 +117,7 @@ export default function App() {
   return (
     <div
       data-theme={theme}
+      data-font-size={fontSize}
       className="flex h-screen overflow-hidden bg-bg-base text-text-primary"
     >
 

@@ -195,6 +195,16 @@ persist(
     theme: state.theme === 'dark' ? 'light' : 'dark',
   })),
 
+  // ── Font size ──────────────────────────────────────────────
+  // 'normal' | 'large' | 'xl'  — applied as zoom on app root
+  fontSize: 'normal',
+  cycleFontSize: () => set(state => ({
+    fontSize:
+      state.fontSize === 'normal' ? 'large'
+      : state.fontSize === 'large' ? 'xl'
+      : 'normal',
+  })),
+
   // ── Plan data ──────────────────────────────────────────────
   planData: {
     projectName:      '',
@@ -614,6 +624,7 @@ persist(
   // Tabs and activeTabId intentionally reset on reload.
   partialize: state => ({
     theme:           state.theme,
+    fontSize:        state.fontSize,
     phaseCompletion: state.phaseCompletion,
     planData:        state.planData,
     riskData:        state.riskData,

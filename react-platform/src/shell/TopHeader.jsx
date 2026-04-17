@@ -37,7 +37,7 @@ const fuse = new Fuse(APPS, {
 
 export default function TopHeader() {
   const {
-    openTab, theme, toggleTheme,
+    openTab, theme, toggleTheme, fontSize, cycleFontSize,
     userProfile, setUserProfile,
     projects, activeProjectId,
     tabs, activeTabId, switchTab, closeTab,
@@ -249,6 +249,25 @@ export default function TopHeader() {
           <span className="ai-badge hidden md:inline animate-pulse-lime shrink-0">
             EVOLV AI
           </span>
+
+          {/* Font size toggle */}
+          <button
+            onClick={cycleFontSize}
+            title={`Font size: ${fontSize} — click to cycle (Normal → Large → XL)`}
+            className={`
+              h-7 px-2 rounded-full border flex items-center justify-center
+              shrink-0 transition-colors focus-blue font-semibold
+              ${fontSize !== 'normal'
+                ? 'border-blue-DEFAULT/50 bg-blue-dim text-blue-DEFAULT'
+                : 'border-border-base bg-bg-card text-text-muted hover:border-blue-DEFAULT/40'}
+            `}
+          >
+            <span className={`leading-none ${
+              fontSize === 'xl' ? 'text-sm' : 'text-xs'
+            }`}>
+              {fontSize === 'normal' ? 'A' : fontSize === 'large' ? 'A+' : 'A++'}
+            </span>
+          </button>
 
           {/* Theme toggle */}
           <button
