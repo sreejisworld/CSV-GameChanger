@@ -52,9 +52,12 @@ const FRESH_PROJECT = {
   },
   riskData:    {},
   requirements: [],
-  testScripts:  {},
-  testRuns:     {},
-  activeRunId:  null,
+  testScripts:         {},
+  testRuns:            {},
+  activeRunId:         null,
+  briefingAcknowledged:{},
+  defects:             {},
+  unscriptedSessions:  {},
   releaseData:  { approvals: [], released: false, releasedAt: null },
   designData: {
     architectureNotes: '', hldNotes: '', lldNotes: '',
@@ -77,16 +80,19 @@ const FRESH_PROJECT = {
 // Snapshot all phase-specific data from the flat store state
 function extractProjectData(state) {
   return {
-    planData:        state.planData,
-    riskData:        state.riskData,
-    requirements:    state.requirements,
-    testScripts:     state.testScripts,
-    testRuns:        state.testRuns,
-    activeRunId:     state.activeRunId,
-    releaseData:     state.releaseData,
-    designData:      state.designData,
-    phaseCompletion: state.phaseCompletion,
-    statusBadges:    state.statusBadges,
+    planData:             state.planData,
+    riskData:             state.riskData,
+    requirements:         state.requirements,
+    testScripts:          state.testScripts,
+    testRuns:             state.testRuns,
+    activeRunId:          state.activeRunId,
+    briefingAcknowledged: state.briefingAcknowledged,
+    defects:              state.defects,
+    unscriptedSessions:   state.unscriptedSessions,
+    releaseData:          state.releaseData,
+    designData:           state.designData,
+    phaseCompletion:      state.phaseCompletion,
+    statusBadges:         state.statusBadges,
   }
 }
 
@@ -317,6 +323,117 @@ persist(
     }
   }),
 
+  // ── Briefing config ────────────────────────────────────────────
+  // risk-level defaults + per-script overrides set by test leads
+  briefingConfig: {
+    defaults: {
+      High: [
+        'I have read and understood the test script and all acceptance criteria.',
+        'The test environment matches the validated configuration baseline.',
+        'All required test data, accounts, and prerequisites are confirmed.',
+        'I am authorised to execute this test per the Validation Master Plan.',
+        'I understand this is a HIGH RISK test — all steps require recorded actual results.',
+      ],
+      Medium: [
+        'I confirm the test environment is ready and I am prepared to execute this exploratory charter session.',
+      ],
+      Low: null,
+    },
+    overrides: {},
+  },
+
+  setBriefingOverride: (scriptId, items) => set(state => ({
+    briefingConfig: {
+      ...state.briefingConfig,
+      overrides: {
+        ...state.briefingConfig.overrides,
+        [scriptId]: { items, editedAt: new Date().toISOString() },
+      },
+    },
+  })),
+
+  // ── Briefing acknowledgement (per run) ─────────────────────────
+  briefingAcknowledged: {},
+  setBriefingAcknowledged: (runId, data) => set(state => ({
+    briefingAcknowledged: {
+      ...state.briefingAcknowledged,
+      [runId]: data,
+    },
+  })),
+
+  // ── Defects (per run) ──────────────────────────────────────────
+  // [{ id, stepKey, severity, description, assignee,
+  //    fixDate, frRef, screenshotName, createdAt }]
+  defects: {},
+  addDefect: (runId, defect) => set(state => ({
+    defects: {
+      ...state.defects,
+      [runId]: [...(state.defects[runId] ?? []), defect],
+    },
+  })),
+  updateDefect: (runId, defectId, updates) => set(state => ({
+    defects: {
+      ...state.defects,
+      [runId]: (state.defects[runId] ?? []).map(d =>
+        d.id === defectId ? { ...d, ...updates } : d
+      ),
+    },
+  })),
+
+  // ── Unscripted charter sessions (per run) ─────────────────────
+  // { startedAt, notes:[{timestamp,text}], findings:[...], verdict }
+  unscriptedSessions: {},
+  initUnscriptedSession: runId => set(state => {
+    if (state.unscriptedSessions[runId]) return {}
+    return {
+      unscriptedSessions: {
+        ...state.unscriptedSessions,
+        [runId]: {
+          startedAt: new Date().toISOString(),
+          notes:     [],
+          findings:  [],
+          verdict:   null,
+        },
+      },
+    }
+  }),
+  addSessionNote: (runId, text) => set(state => {
+    const s = state.unscriptedSessions[runId]
+    if (!s) return {}
+    return {
+      unscriptedSessions: {
+        ...state.unscriptedSessions,
+        [runId]: {
+          ...s,
+          notes: [
+            ...s.notes,
+            { timestamp: new Date().toISOString(), text },
+          ],
+        },
+      },
+    }
+  }),
+  addSessionFinding: (runId, finding) => set(state => {
+    const s = state.unscriptedSessions[runId]
+    if (!s) return {}
+    return {
+      unscriptedSessions: {
+        ...state.unscriptedSessions,
+        [runId]: { ...s, findings: [...s.findings, finding] },
+      },
+    }
+  }),
+  setSessionVerdict: (runId, verdict) => set(state => {
+    const s = state.unscriptedSessions[runId]
+    if (!s) return {}
+    return {
+      unscriptedSessions: {
+        ...state.unscriptedSessions,
+        [runId]: { ...s, verdict },
+      },
+    }
+  }),
+
   // ── User profile ───────────────────────────────────────────────
   userProfile: {
     name: '',
@@ -500,15 +617,19 @@ persist(
     phaseCompletion: state.phaseCompletion,
     planData:        state.planData,
     riskData:        state.riskData,
-    testScripts:     state.testScripts,
-    testRuns:        state.testRuns,
-    activeRunId:     state.activeRunId,
-    releaseData:     state.releaseData,
-    requirements:    state.requirements,
-    designData:      state.designData,
-    userProfile:     state.userProfile,
-    projects:        state.projects,
-    activeProjectId: state.activeProjectId,
+    testScripts:          state.testScripts,
+    testRuns:             state.testRuns,
+    activeRunId:          state.activeRunId,
+    briefingConfig:       state.briefingConfig,
+    briefingAcknowledged: state.briefingAcknowledged,
+    defects:              state.defects,
+    unscriptedSessions:   state.unscriptedSessions,
+    releaseData:          state.releaseData,
+    requirements:         state.requirements,
+    designData:           state.designData,
+    userProfile:          state.userProfile,
+    projects:             state.projects,
+    activeProjectId:      state.activeProjectId,
     customSystems:        state.customSystems,
     customRegulations:    state.customRegulations,
     aiGovernanceQueue:    state.aiGovernanceQueue,
