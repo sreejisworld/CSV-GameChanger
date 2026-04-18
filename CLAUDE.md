@@ -987,6 +987,21 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-21.13 | Display SMART Requirements Engine UI on Page 12 | `frontend/app.py` (Page 12) |
 | URS-21.14 | Provide section tabs with SMART guidance help text | `frontend/app.py` (Page 12, `SMART_HELP_TEXT`) |
 | URS-21.15 | Export SMART requirements to Generate Reqs page | `frontend/app.py` (Page 12, `sre_export_to_p2`) |
+| URS-22.1 | Provide regulatory citations per test archetype | `Agents/regulatory_citations.py:CITATION_MAP` |
+| URS-22.2 | Map archetype → citation list | `Agents/regulatory_citations.py:citations_for()` |
+| URS-22.3 | Map risk level → bundle-level citations | `Agents/regulatory_citations.py:citations_for_risk_level()` |
+| URS-22.4 | Generate risk-adaptive test bundles from risk-ranked requirements | `Agents/test_authoring_engine.py:TestAuthoringEngine.generate_bundle()` |
+| URS-22.5 | Compute test depth from risk level (FULL/STANDARD/MEDIUM/CHARTER) | `Agents/test_authoring_engine.py:TestDepth` |
+| URS-22.6 | Build setup + execution + UAT + charter step blocks | `Agents/test_authoring_engine.py:_build_setup_block()`, `_build_execution_block()`, `_build_uat_block()`, `_build_charter()` |
+| URS-22.7 | Optionally enrich steps with LLM (hybrid mode, silent fallback) | `Agents/test_authoring_engine.py:_enrich_with_llm()` |
+| URS-22.8 | Support batch test bundle generation | `Agents/test_authoring_engine.py:generate_batch()` |
+| URS-22.9 | Persist test bundles atomically as JSON | `Agents/test_authoring_engine.py:_persist()` |
+| URS-22.10 | Expose POST /test-authoring/generate endpoint | `API/routers/test_authoring.py:generate_bundle()` |
+| URS-22.11 | Expose POST /test-authoring/generate-batch endpoint | `API/routers/test_authoring.py:generate_batch()` |
+| URS-22.12 | Expose GET /test-authoring/bundles + GET /test-authoring/bundle/{id} | `API/routers/test_authoring.py:list_bundles()`, `get_bundle()` |
+| URS-22.13 | Render risk-adaptive Test Authoring UI as Design tab #2 | `react-platform/src/apps/design/TestAuthoring.jsx` |
+| URS-22.14 | Persist test bundles in Zustand and promote to Verify | `react-platform/src/store/useAppStore.js:promoteBundleToScript()` |
+| URS-22.15 | Surface authored bundles in Verify (pull + From Bundle pill) | `react-platform/src/apps/Verify.jsx` (header + NoScriptsState) |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

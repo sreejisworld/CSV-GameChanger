@@ -55,7 +55,8 @@ const FRESH_PROJECT = {
   testScripts:         {},
   testRuns:            {},
   activeRunId:         null,
-  briefingAcknowledged:{},
+  testBundles:         {},
+  briefingAcknowledged: {},
   defects:             {},
   unscriptedSessions:  {},
   releaseData:  { approvals: [], released: false, releasedAt: null },
@@ -86,6 +87,7 @@ function extractProjectData(state) {
     testScripts:          state.testScripts,
     testRuns:             state.testRuns,
     activeRunId:          state.activeRunId,
+    testBundles:          state.testBundles,
     briefingAcknowledged: state.briefingAcknowledged,
     defects:              state.defects,
     unscriptedSessions:   state.unscriptedSessions,
@@ -329,6 +331,55 @@ persist(
           lockedAt:      new Date().toISOString(),
           reasoningHash: reasoningHash ?? null,
         },
+      },
+    }
+  }),
+
+  // ── Test Bundles (Sprint 14 — Test Authoring) ──────────────────
+  // testBundles: keyed by requirement_id (e.g. 'UR-1')
+  // Shape per entry: full bundle dict from
+  // POST /test-authoring/generate (bundle_id, depth, mode,
+  // risk_level, steps[], bundle_citations[], quality_checklist).
+  testBundles: {},
+
+  setTestBundle: (reqId, bundle) => set(state => ({
+    testBundles: { ...state.testBundles, [reqId]: bundle },
+  })),
+
+  removeTestBundle: reqId => set(state => {
+    const { [reqId]: _, ...rest } = state.testBundles
+    return { testBundles: rest }
+  }),
+
+  clearTestBundles: () => set({ testBundles: {} }),
+
+  // Promote a bundle to a runnable testScript (so Verify can
+  // load it via the existing testScripts/initTestRun pipeline).
+  promoteBundleToScript: reqId => set(state => {
+    const bundle = state.testBundles[reqId]
+    if (!bundle) return {}
+    // Strip authoring-only fields, keep the executable shape.
+    const script = {
+      script_id:               bundle.bundle_id,
+      urs_id:                  bundle.requirement_id,
+      ur_id:                   bundle.requirement_id,
+      test_type:               bundle.test_type,
+      risk_level:              bundle.risk_level,
+      test_strategy:           bundle.depth,
+      regulatory_justification: (bundle.bundle_citations ?? [])
+        .map(c => `${c.regulation} ${c.section}: ${c.rationale}`)
+        .join('\n\n'),
+      generated_at:            bundle.generated_at,
+      steps:                   bundle.steps,
+      quality_checklist:       bundle.quality_checklist,
+      depth:                   bundle.depth,
+      mode:                    bundle.mode,
+      requirement_summary:     bundle.requirement_summary,
+    }
+    return {
+      testScripts: {
+        ...state.testScripts,
+        [script.script_id]: script,
       },
     }
   }),
@@ -631,6 +682,7 @@ persist(
     testScripts:          state.testScripts,
     testRuns:             state.testRuns,
     activeRunId:          state.activeRunId,
+    testBundles:          state.testBundles,
     briefingConfig:       state.briefingConfig,
     briefingAcknowledged: state.briefingAcknowledged,
     defects:              state.defects,
@@ -647,3 +699,7 @@ persist(
   }),
 }
 ))
+
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  window.useAppStore = useAppStore
+}

@@ -4,14 +4,16 @@
  * Unlocks when the Risk phase is complete (phaseCompletion.risk).
  * Before that, shows a gate screen with a prompt to complete Risk.
  *
- * Three tabs:
+ * Four tabs:
  *  1. Design Spec       — architecture notes, HLD/LLD, integrations,
  *                         diagram link; adapts to GAMP category
- *  2. Traceability      — auto-built URS → UR → FR → Test matrix
- *  3. Config Spec       — configured-item table (all categories)
+ *  2. Test Authoring    — risk-adaptive test bundles (Sprint 14)
+ *  3. Traceability      — auto-built URS → UR → FR → Test matrix
+ *  4. Config Spec       — configured-item table (all categories)
  */
 import { useState, useCallback } from 'react'
 import { useAppStore }           from '../store/useAppStore.js'
+import TestAuthoring             from './design/TestAuthoring.jsx'
 
 const GAMP_LABELS = {
   '1': 'Cat 1 — Infrastructure',
@@ -732,9 +734,10 @@ export default function Design({ openTab }) {
   }
 
   const tabs = [
-    { id: 'spec',    label: '🎨 Design Spec'       },
-    { id: 'trace',   label: '🔗 Traceability Matrix' },
-    { id: 'config',  label: '⚙️ Config Spec'        },
+    { id: 'spec',      label: '🎨 Design Spec'         },
+    { id: 'authoring', label: '⚡ Test Authoring'      },
+    { id: 'trace',     label: '🔗 Traceability Matrix' },
+    { id: 'config',    label: '⚙️ Config Spec'         },
   ]
 
   return (
@@ -798,6 +801,9 @@ export default function Design({ openTab }) {
             planData={planData}
             setPhaseComplete={setPhaseComplete}
           />
+        )}
+        {activeTab === 'authoring' && (
+          <TestAuthoring planData={planData} />
         )}
         {activeTab === 'trace' && (
           <TraceabilityTab

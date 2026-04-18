@@ -512,7 +512,7 @@ function SignOffPanel({ run, locked, onSign, apiLoading }) {
 }
 
 // ── Empty state ───────────────────────────────────────────────────
-function NoScriptsState() {
+function NoScriptsState({ bundleCount = 0, onPullBundles, openTab }) {
   return (
     <div className="flex flex-col h-full bg-bg-base items-center
                     justify-center gap-4 px-8">
@@ -521,15 +521,58 @@ function NoScriptsState() {
         <p className="text-text-secondary text-sm font-semibold mb-2">
           No test scripts loaded
         </p>
-        <p className="text-text-muted text-xs leading-relaxed">
-          Generate a test script from the{' '}
-          <span className="text-blue-DEFAULT font-medium">Validation Factory</span>.
-          Complete the UR/FR transformation and CSA test generation
-          steps — your script will appear here automatically.
-        </p>
-        <p className="text-text-muted text-[10px] mt-3 opacity-60">
-          Path: Validation Factory → Generate Reqs → UR/FR → Generate Test Script
-        </p>
+
+        {bundleCount > 0 ? (
+          <>
+            <p className="text-text-muted text-xs leading-relaxed">
+              You have{' '}
+              <span className="text-blue-DEFAULT font-semibold">
+                {bundleCount}
+              </span>{' '}
+              risk-adaptive test bundle{bundleCount === 1 ? '' : 's'}{' '}
+              authored in{' '}
+              <span className="text-purple-400 font-medium">
+                Design → Test Authoring
+              </span>
+              . Pull them into Verify to start execution.
+            </p>
+            <button
+              onClick={onPullBundles}
+              className="mt-3 px-3 py-1.5 rounded text-xs font-semibold
+                         bg-blue-dim border border-blue-DEFAULT/40
+                         text-blue-DEFAULT hover:opacity-90
+                         transition-opacity"
+            >
+              ⚡ Pull {bundleCount} bundle
+              {bundleCount === 1 ? '' : 's'} into Verify
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-text-muted text-xs leading-relaxed">
+              Author risk-adaptive test bundles in{' '}
+              <span className="text-purple-400 font-medium">
+                Design → Test Authoring
+              </span>
+              {' '}or generate scripts from the{' '}
+              <span className="text-blue-DEFAULT font-medium">
+                Validation Factory
+              </span>
+              . They will appear here automatically.
+            </p>
+            {openTab && (
+              <button
+                onClick={() => openTab('design')}
+                className="mt-3 px-3 py-1.5 rounded text-xs font-semibold
+                           bg-bg-card border border-border-base
+                           text-text-secondary hover:border-border-bright
+                           transition-colors"
+              >
+                → Go to Design
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
@@ -559,7 +602,7 @@ function KeyHintStrip() {
 }
 
 // ── Main Verify page ──────────────────────────────────────────────
-export default function Verify() {
+export default function Verify({ openTab }) {
   const {
     testScripts, testRuns, activeRunId, initTestRun,
     setStepResult, setRunMeta, lockTestRun,
@@ -567,6 +610,7 @@ export default function Verify() {
     briefingConfig, setBriefingAcknowledged, setBriefingOverride,
     briefingAcknowledged,
     defects, initUnscriptedSession, setSessionVerdict,
+    testBundles, promoteBundleToScript,
   } = useAppStore()
 
   const [activeTab,        setActiveTab]        = useState('execute')
@@ -849,7 +893,26 @@ export default function Verify() {
     ...(locked ? [{ id: 'alcoa', label: '🔍 ALCOA Report' }] : []),
   ]
 
-  if (!activeScript) return <NoScriptsState />
+  // ── Bundle integration ────────────────────────────────────────
+  const bundleEntries = Object.entries(testBundles ?? {})
+  const unpromotedBundleIds = bundleEntries
+    .filter(([, b]) => b && !testScripts[b.bundle_id])
+    .map(([reqId]) => reqId)
+
+  const pullAllBundles = () => {
+    unpromotedBundleIds.forEach(reqId => promoteBundleToScript(reqId))
+  }
+
+  const isFromBundle = activeScriptId
+    && /^TB-/.test(String(activeScriptId))
+
+  if (!activeScript) return (
+    <NoScriptsState
+      bundleCount={unpromotedBundleIds.length}
+      onPullBundles={pullAllBundles}
+      openTab={openTab}
+    />
+  )
 
   // Execution steps for keyboard nav
   const execSteps = steps.filter(s => s.step_type !== 'Setup')
@@ -890,6 +953,33 @@ export default function Verify() {
                          border border-border-base">
           {activeScript.test_type}
         </span>
+
+        {isFromBundle && (
+          <span
+            className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
+            style={{
+              background: 'rgba(168,85,247,0.15)',
+              color: '#a855f7',
+            }}
+            title="Promoted from Design → Test Authoring bundle"
+          >
+            ⚡ From Bundle
+          </span>
+        )}
+
+        {unpromotedBundleIds.length > 0 && (
+          <button
+            onClick={pullAllBundles}
+            className="text-[10px] px-2 py-0.5 rounded font-semibold
+                       bg-blue-dim border border-blue-DEFAULT/40
+                       text-blue-DEFAULT hover:opacity-90
+                       transition-opacity"
+            title="Pull authored bundles into Verify as test scripts"
+          >
+            ⚡ Pull {unpromotedBundleIds.length} bundle
+            {unpromotedBundleIds.length === 1 ? '' : 's'}
+          </button>
+        )}
 
         {/* Export buttons (only when not in briefing) */}
         {!showBriefing && (

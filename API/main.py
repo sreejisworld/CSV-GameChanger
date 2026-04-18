@@ -67,6 +67,7 @@ from API.routers.exports          import router as exports_router
 from API.routers.plan             import router as plan_router
 from API.routers.audit            import router as audit_router
 from API.routers.governance       import router as governance_router
+from API.routers.test_authoring   import router as test_authoring_router
 
 
 def _validate_env() -> None:
@@ -177,6 +178,7 @@ app.include_router(exports_router)
 app.include_router(plan_router)
 app.include_router(audit_router)
 app.include_router(governance_router)
+app.include_router(test_authoring_router, prefix="/test-authoring")
 
 # CORSMiddleware — allow React (port 5173), legacy React
 # (port 3000), and Streamlit (port 8501).
@@ -185,6 +187,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
         "http://localhost:3000",
         "http://localhost:8501",
         "http://127.0.0.1:3000",

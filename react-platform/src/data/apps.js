@@ -83,8 +83,10 @@ export const APPS = [
     emoji:       '🎨',
     accentColor: '#a855f7',
     accentClass: 'purple',
-    description: 'Design Specifications — SDS, HLD/LLD, traceability '
-               + 'matrix, and configuration specification.',
+    description: 'Design Specifications & Risk-Adaptive Test Authoring '
+               + '— SDS, HLD/LLD, traceability matrix, configuration '
+               + 'specification, and per-requirement test bundles with '
+               + 'regulatory citations.',
     closeable:   true,
     category:    'lifecycle',
     phase:       'design',
