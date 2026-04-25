@@ -17,6 +17,7 @@ import { API_BASE }          from '../config.js'
 import BriefingPanel         from './verify/BriefingPanel.jsx'
 import UnscriptedCharter     from './verify/UnscriptedCharter.jsx'
 import ALCOAReport           from './verify/ALCOAReport.jsx'
+import QAReviewPanel         from './verify/QAReviewPanel.jsx'
 
 // ── Client-side helpers ───────────────────────────────────────────
 function downloadCSV(filename, headers, rows) {
@@ -261,6 +262,154 @@ function DefectForm({ stepKey, stepTitle, runId, onDismiss }) {
   )
 }
 
+// ── InsertStepForm — inline form to author an adhoc execution step
+function InsertStepForm({
+  afterStepKey, afterStepTitle, scriptId, runId,
+  defaultTesterName, onDismiss,
+}) {
+  const { insertAdhocStep } = useAppStore()
+  const [title,    setTitle]    = useState('')
+  const [instr,    setInstr]    = useState('')
+  const [expected, setExpected] = useState('')
+  const [tcase,    setTcase]    = useState('Positive')
+  const [frRef,    setFrRef]    = useState('')
+  const [reason,   setReason]   = useState('')
+  const [tester,   setTester]   = useState(defaultTesterName ?? '')
+
+  const submit = () => {
+    if (!title.trim() || !instr.trim() || !expected.trim()
+        || !reason.trim()) {
+      return
+    }
+    insertAdhocStep(scriptId, runId, afterStepKey, {
+      stepTitle:      title.trim(),
+      instruction:    instr.trim(),
+      expectedResult: expected.trim(),
+      testCaseType:   tcase,
+      frRef:          frRef.trim(),
+      reason:         reason.trim(),
+      testerName:     tester.trim(),
+    })
+    onDismiss()
+  }
+
+  const ready = title.trim() && instr.trim()
+                && expected.trim() && reason.trim()
+
+  return (
+    <tr>
+      <td colSpan={11}
+        className="px-4 py-3 bg-purple-DEFAULT/5 border-b
+                   border-purple-DEFAULT/30">
+        <div className="flex items-start gap-2 mb-2">
+          <span className="text-[10px] font-semibold text-purple-300
+                           uppercase tracking-wide">
+            ➕ Insert Adhoc Step
+          </span>
+          <span className="text-[10px] text-text-muted">
+            after: {afterStepTitle}
+          </span>
+          <button
+            onClick={onDismiss}
+            className="ml-auto text-[10px] text-text-muted
+                       hover:text-text-secondary"
+          >
+            ✕ Cancel
+          </button>
+        </div>
+        <div className="grid grid-cols-12 gap-2">
+          <div className="col-span-4 flex flex-col gap-1">
+            <label className="text-[9px] text-text-muted">
+              Step Title *
+            </label>
+            <input value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. Verify password lockout after 5 failures"
+              className="evolv-input text-[11px] px-2 py-1" />
+          </div>
+          <div className="col-span-2 flex flex-col gap-1">
+            <label className="text-[9px] text-text-muted">Case</label>
+            <select value={tcase}
+              onChange={e => setTcase(e.target.value)}
+              className="evolv-input evolv-select text-[11px] px-1.5 py-1">
+              <option>Positive</option>
+              <option>Negative</option>
+              <option>Edge Case</option>
+            </select>
+          </div>
+          <div className="col-span-2 flex flex-col gap-1">
+            <label className="text-[9px] text-text-muted">FR Ref</label>
+            <input value={frRef}
+              onChange={e => setFrRef(e.target.value)}
+              placeholder="UR-1 / FR-2"
+              className="evolv-input text-[11px] px-2 py-1" />
+          </div>
+          <div className="col-span-2 flex flex-col gap-1">
+            <label className="text-[9px] text-text-muted">Tester</label>
+            <input value={tester}
+              onChange={e => setTester(e.target.value)}
+              placeholder="Name…"
+              className="evolv-input text-[11px] px-2 py-1" />
+          </div>
+          <div className="col-span-6 flex flex-col gap-1">
+            <label className="text-[9px] text-text-muted">
+              Instruction *
+            </label>
+            <textarea value={instr}
+              onChange={e => setInstr(e.target.value)}
+              rows={2}
+              placeholder="What does the tester do, step by step?"
+              className="evolv-input text-[11px] px-2 py-1
+                         resize-none" />
+          </div>
+          <div className="col-span-6 flex flex-col gap-1">
+            <label className="text-[9px] text-text-muted">
+              Expected Result *
+            </label>
+            <textarea value={expected}
+              onChange={e => setExpected(e.target.value)}
+              rows={2}
+              placeholder="Observable, measurable outcome."
+              className="evolv-input text-[11px] px-2 py-1
+                         resize-none" />
+          </div>
+          <div className="col-span-12 flex flex-col gap-1">
+            <label className="text-[9px] text-text-muted">
+              Reason for Adhoc Insert *
+              <span className="ml-2 opacity-70">
+                (audit trail — why was this step needed mid-run?)
+              </span>
+            </label>
+            <input value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="e.g. Discovered untested boundary while
+                executing FR-2 — covering before sign-off."
+              className="evolv-input text-[11px] px-2 py-1" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mt-3">
+          <button
+            onClick={submit}
+            disabled={!ready}
+            className="px-3 py-1.5 rounded text-[11px] font-semibold
+                       text-white hover:opacity-90 transition-opacity
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: 'rgba(168,85,247,0.85)' }}
+          >
+            Insert Step
+          </button>
+          <span className="text-[9px] text-text-muted">
+            Tagged{' '}
+            <span className="font-mono text-amber-DEFAULT">
+              source:tester-adhoc
+            </span>{' '}— surfaces in ALCOA report and PDF export.
+          </span>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 // ── StepRow ───────────────────────────────────────────────────────
 function StepRow({
   step, result, locked, isFocused,
@@ -268,6 +417,7 @@ function StepRow({
 }) {
   const stepKey   = `${step.step_number}_${step.step_type}`
   const isSetup   = step.step_type === 'Setup'
+  const isAdhoc   = step.source === 'tester-adhoc'
   const caseColor = CASE_COLORS[step.test_case_type]
   const fileRef   = useRef(null)
 
@@ -294,14 +444,33 @@ function StepRow({
     `}>
       {/* Type */}
       <td className="py-2.5 pr-3 whitespace-nowrap">
-        <span className={`
-          text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase
-          ${isSetup
-            ? 'bg-bg-card text-text-muted border border-border-base'
-            : 'bg-blue-dim text-blue-DEFAULT border border-blue-DEFAULT/30'}
-        `}>
-          {step.step_type}
-        </span>
+        <div className="flex flex-col gap-1 items-start">
+          <span className={`
+            text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase
+            ${isSetup
+              ? 'bg-bg-card text-text-muted border border-border-base'
+              : 'bg-blue-dim text-blue-DEFAULT border border-blue-DEFAULT/30'}
+          `}>
+            {step.step_type}
+          </span>
+          {isAdhoc && (
+            <span
+              className="text-[8px] px-1.5 py-0.5 rounded font-semibold
+                         uppercase tracking-wide"
+              style={{
+                background: 'rgba(168,85,247,0.15)',
+                color: '#a855f7',
+                border: '1px solid rgba(168,85,247,0.3)',
+              }}
+              title={`Adhoc step inserted ${step.inserted_at
+                ? new Date(step.inserted_at).toLocaleString() : ''}`
+                + (step.inserted_by ? ` by ${step.inserted_by}` : '')
+                + (step.adhoc_reason ? ` — ${step.adhoc_reason}` : '')}
+            >
+              ⚡ Adhoc
+            </span>
+          )}
+        </div>
       </td>
       {/* # */}
       <td className="py-2.5 pr-3 font-mono text-text-muted text-[11px]">
@@ -611,6 +780,7 @@ export default function Verify({ openTab }) {
     briefingAcknowledged,
     defects, initUnscriptedSession, setSessionVerdict,
     testBundles, promoteBundleToScript,
+    userProfile,
   } = useAppStore()
 
   const [activeTab,        setActiveTab]        = useState('execute')
@@ -622,6 +792,8 @@ export default function Verify({ openTab }) {
   const [focusedStepIdx,   setFocusedStepIdx]   = useState(0)
   // Set of stepKeys with open defect forms
   const [openDefects,      setOpenDefects]      = useState(new Set())
+  // stepKey of row currently showing the Insert Adhoc Step form
+  const [insertAfter,      setInsertAfter]      = useState(null)
 
   // ── Script selection ───────────────────────────────────────────
   const scriptIds      = Object.keys(testScripts)
@@ -887,9 +1059,12 @@ export default function Verify({ openTab }) {
   const riskCfg = RISK_COLORS[activeScript?.risk_level] ?? RISK_COLORS.Low
 
   // ── Tab definitions ───────────────────────────────────────────
+  // QA Review is available pre-lock so a QA lead can attest before
+  // the executor signs. It stays available post-lock as read-only.
   const TABS = [
     { id: 'execute', label: showBriefing ? '📋 Briefing' : '▶ Execute Test' },
     { id: 'review',  label: '📋 Script Review' },
+    ...(activeRunId ? [{ id: 'qa', label: '🛡 QA Review' }] : []),
     ...(locked ? [{ id: 'alcoa', label: '🔍 ALCOA Report' }] : []),
   ]
 
@@ -1018,7 +1193,9 @@ export default function Verify({ openTab }) {
                 ${activeTab === tab.id
                   ? tab.id === 'alcoa'
                     ? 'bg-blue-DEFAULT/20 text-blue-DEFAULT'
-                    : 'bg-lime-DEFAULT/20 text-lime-DEFAULT'
+                    : tab.id === 'qa'
+                      ? 'bg-purple-DEFAULT/20 text-purple-300'
+                      : 'bg-lime-DEFAULT/20 text-lime-DEFAULT'
                   : 'text-text-muted hover:text-text-secondary'}
               `}
             >
@@ -1125,6 +1302,44 @@ export default function Verify({ openTab }) {
                                              underline underline-offset-2"
                                 >
                                   + Log Defect for this step
+                                </button>
+                              </td>
+                            </tr>
+                          )}
+                          {/* Adhoc step insert form (active for this row) */}
+                          {insertAfter === key && !locked && (
+                            <InsertStepForm
+                              key={`ins-${key}`}
+                              afterStepKey={key}
+                              afterStepTitle={step.step_title}
+                              scriptId={activeScript.script_id}
+                              runId={activeRunId}
+                              defaultTesterName={
+                                userProfile?.name ?? ''
+                              }
+                              onDismiss={() => setInsertAfter(null)}
+                            />
+                          )}
+                          {/* + Insert Step divider — only after exec rows */}
+                          {!locked && step.step_type === 'Execution' &&
+                           insertAfter !== key && (
+                            <tr key={`ins-btn-${key}`}>
+                              <td colSpan={11}
+                                className="px-4 border-b
+                                           border-border-base">
+                                <button
+                                  onClick={() => setInsertAfter(key)}
+                                  className="w-full py-1 text-[9px]
+                                             text-text-muted
+                                             hover:text-purple-300
+                                             border border-dashed
+                                             border-transparent
+                                             hover:border-purple-DEFAULT/40
+                                             rounded transition-colors
+                                             my-0.5"
+                                  title="Insert a tester-authored adhoc step here"
+                                >
+                                  + Insert adhoc step here
                                 </button>
                               </td>
                             </tr>
@@ -1251,6 +1466,17 @@ export default function Verify({ openTab }) {
             </span></span>
           </div>
         </div>
+      )}
+
+      {/* ── QA Review tab (Sprint 15.4) ───────────────────── */}
+      {activeTab === 'qa' && (
+        <QAReviewPanel
+          run={run}
+          steps={steps}
+          stepResults={stepResults}
+          defects={runDefects}
+          locked={locked}
+        />
       )}
 
       {/* ── ALCOA Report tab ──────────────────────────────── */}

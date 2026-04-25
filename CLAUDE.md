@@ -1002,6 +1002,21 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-22.13 | Render risk-adaptive Test Authoring UI as Design tab #2 | `react-platform/src/apps/design/TestAuthoring.jsx` |
 | URS-22.14 | Persist test bundles in Zustand and promote to Verify | `react-platform/src/store/useAppStore.js:promoteBundleToScript()` |
 | URS-22.15 | Surface authored bundles in Verify (pull + From Bundle pill) | `react-platform/src/apps/Verify.jsx` (header + NoScriptsState) |
+| URS-23.1 | Author test bundles manually without AI generation | `react-platform/src/store/useAppStore.js:createManualBundle()` |
+| URS-23.2 | Add / update / remove individual steps in manual bundles | `react-platform/src/store/useAppStore.js:addBundleStep(), updateBundleStep(), removeBundleStep()` |
+| URS-23.3 | Recompute bundle quality checklist on every step edit | `react-platform/src/store/useAppStore.js:_recomputeQuality()` |
+| URS-23.4 | Render manual-mode authoring pane (per-row inline editor) | `react-platform/src/apps/design/TestAuthoring.jsx` (ManualStepRow + Author Manually toggle) |
+| URS-23.5 | Insert tester-authored adhoc steps mid-execution with hierarchical numbering | `react-platform/src/store/useAppStore.js:insertAdhocStep()` |
+| URS-23.6 | Tag adhoc steps with `source:'tester-adhoc'` for audit distinguishability | `react-platform/src/store/useAppStore.js:insertAdhocStep()` |
+| URS-23.7 | Surface ⚡ Adhoc badge with hover audit details (who/when/why) on adhoc steps | `react-platform/src/apps/Verify.jsx:StepRow` |
+| URS-23.8 | Provide inline Insert Adhoc Step form between execution rows | `react-platform/src/apps/Verify.jsx:InsertStepForm` |
+| URS-23.9 | Compute UR test-bundle coverage and identify uncovered URs | `react-platform/src/apps/design/CoverageMonitor.jsx:computeCoverage()` |
+| URS-23.10 | Surface coverage gap banner with deep-link "Generate now" CTA | `react-platform/src/apps/design/CoverageMonitor.jsx:CoverageMonitor` |
+| URS-23.11 | Hard-block Design phase completion when any GxP Direct UR is uncovered | `react-platform/src/apps/Design.jsx:DesignSpecTab` (Save gate) |
+| URS-23.12 | Surface coverage gate as Release readiness checklist entry | `react-platform/src/apps/Release.jsx` (checks list IIFE) |
+| URS-23.13 | Provide pre-lock QA Review screen filtering failed / blocked / adhoc steps | `react-platform/src/apps/verify/QAReviewPanel.jsx:QAReviewPanel` |
+| URS-23.14 | Auto-suggest QA review checklist values from observed run state | `react-platform/src/apps/verify/QAReviewPanel.jsx:autoSuggest()` |
+| URS-23.15 | Record reviewer attestation (4-point checklist + comments + signature timestamp) | `react-platform/src/store/useAppStore.js:setQaReview(), setQaReviewCheck(), markQaReviewSigned()` |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

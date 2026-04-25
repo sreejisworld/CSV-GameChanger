@@ -151,8 +151,10 @@ function ReqListPane({
 
 // ── Subcomponent: generator pane (middle) ─────────────────────────
 function GeneratorPane({
-  selectedReq, riskRow, frs, bundle, onGenerate, busy, lastError,
+  selectedReq, riskRow, frs, bundle, onGenerate, onCreateManual,
+  busy, lastError,
 }) {
+  const [authorMode, setAuthorMode] = useState('ai')  // 'ai' | 'manual'
   const [mode, setMode] = useState('hybrid')
   const [testType, setTestType] = useState('Informal')
 
@@ -186,7 +188,7 @@ function GeneratorPane({
   })()
 
   return (
-    <div className="h-full flex flex-col p-4 gap-4">
+    <div className="h-full flex flex-col p-4 gap-4 overflow-auto">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1.5">
@@ -210,6 +212,32 @@ function GeneratorPane({
         <p className="text-[11px] text-text-secondary leading-relaxed">
           {selectedReq.statement}
         </p>
+      </div>
+
+      {/* Authoring-mode toggle */}
+      <div className="flex gap-1 p-1 rounded-lg bg-bg-card border
+                      border-border-base">
+        {[
+          ['ai',     '⚡ AI Generate',
+            'Risk-adaptive bundle with citations'],
+          ['manual', '✍️ Author Manually',
+            'Build from scratch, step by step'],
+        ].map(([val, label, hint]) => (
+          <button
+            key={val}
+            onClick={() => setAuthorMode(val)}
+            title={hint}
+            className={`
+              flex-1 px-2 py-1.5 rounded text-[11px] font-semibold
+              transition-colors
+              ${authorMode === val
+                ? 'bg-purple-dim text-purple-300'
+                : 'text-text-muted hover:text-text-secondary'}
+            `}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Risk context (read-only) */}
@@ -258,6 +286,7 @@ function GeneratorPane({
         )}
       </div>
 
+      {authorMode === 'ai' && <>
       {/* Mode selector */}
       <div>
         <p className="text-[9px] uppercase tracking-wide text-text-muted
@@ -357,12 +386,196 @@ function GeneratorPane({
           {lastError}
         </p>
       )}
+      </>}
+
+      {authorMode === 'manual' && <>
+      {/* Test type (still needed for manual) */}
+      <div>
+        <p className="text-[9px] uppercase tracking-wide text-text-muted
+                      font-semibold mb-1.5">
+          Test Type
+        </p>
+        <select
+          value={testType}
+          onChange={e => setTestType(e.target.value)}
+          className="evolv-input evolv-select w-full text-[11px]
+                     px-2 py-1.5"
+        >
+          <option value="Informal">Informal (CSA — flexible)</option>
+          <option value="Formal OQ">Formal OQ (Operational Qualification)</option>
+          <option value="Formal UAT">Formal UAT (User Acceptance)</option>
+        </select>
+      </div>
+
+      {/* Manual-mode hint card */}
+      <div className="px-3 py-2 rounded bg-bg-card border
+                      border-border-base text-[10px] text-text-muted
+                      leading-relaxed">
+        <span className="font-semibold text-text-secondary block mb-1">
+          ✍️ Tester-authored mode
+        </span>
+        You'll build the bundle step by step. Each step you add
+        is flagged <span className="font-mono text-amber-DEFAULT">
+        source:manual</span> so auditors can distinguish tester-written
+        work from AI-generated. All five quality checks update live.
+      </div>
+
+      {/* Create empty bundle button */}
+      {!bundle && (
+        <button
+          disabled={!risk}
+          onClick={() => onCreateManual({
+            riskLevel: risk, testType,
+          })}
+          className={`
+            mt-auto px-4 py-2.5 rounded-lg text-[12px] font-semibold
+            transition-all
+            ${!risk
+              ? 'bg-bg-card text-text-muted cursor-not-allowed opacity-50'
+              : 'text-white hover:opacity-90'}
+          `}
+          style={risk
+            ? { background: 'rgba(168,85,247,0.85)' }
+            : {}}
+        >
+          ✍️ Start Manual Bundle
+        </button>
+      )}
+
+      {bundle && bundle.source === 'manual' && (
+        <div className="mt-auto px-3 py-2 rounded border
+                        border-lime-DEFAULT/40 bg-lime-DEFAULT/5
+                        text-[10px] text-lime-DEFAULT">
+          ✓ Manual bundle created. Add, edit, and delete steps in
+          the preview pane on the right.
+        </div>
+      )}
+
+      {bundle && bundle.source !== 'manual' && (
+        <div className="mt-auto px-3 py-2 rounded border
+                        border-amber-DEFAULT/40 bg-amber-dim
+                        text-[10px] text-amber-DEFAULT">
+          ⚠ An AI-generated bundle already exists for this UR. Delete
+          it from the preview pane to switch to manual authoring.
+        </div>
+      )}
+
+      {!risk && (
+        <p className="text-[10px] text-amber-DEFAULT">
+          ⚠ Complete impact + implementation method on the Risk
+          page before authoring.
+        </p>
+      )}
+      </>}
+    </div>
+  )
+}
+
+// ── Subcomponent: single-step editable row (manual mode) ──────────
+const MANUAL_ARCHETYPES = [
+  'setup', 'positive', 'negative', 'boundary',
+  'recovery', 'security', 'uat', 'charter', 'edge_case',
+]
+
+function ManualStepRow({
+  step, stepIdx, frs, onUpdateStep, onRemoveStep,
+}) {
+  const arch = ARCHETYPE_BADGE[step.archetype]
+    ?? { label: step.archetype, bg: '#1e293b', text: '#94a3b8' }
+  const upd = (field, value) =>
+    onUpdateStep(stepIdx, field, value)
+
+  return (
+    <div className="px-3 py-2.5 mb-1.5 rounded border
+                    border-purple-DEFAULT/30 bg-bg-card space-y-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-mono text-text-muted">
+          {step.step_type === 'Setup' ? 'S' : 'E'}
+          {step.step_number}
+        </span>
+        <select
+          value={step.archetype}
+          onChange={e => upd('archetype', e.target.value)}
+          className="text-[9px] font-semibold uppercase px-1.5 py-0.5
+                     rounded border-0 outline-none"
+          style={{ background: arch.bg, color: arch.text }}
+        >
+          {MANUAL_ARCHETYPES.map(a => (
+            <option key={a} value={a}
+                    style={{ background: '#1e293b',
+                             color: '#e2e8f0' }}>
+              {ARCHETYPE_BADGE[a]?.label ?? a}
+            </option>
+          ))}
+        </select>
+        {step.step_type === 'Execution' && (
+          <select
+            value={step.requirement_reference}
+            onChange={e =>
+              upd('requirement_reference', e.target.value)}
+            className="text-[9px] font-mono px-1.5 py-0.5 rounded
+                       bg-blue-dim text-blue-DEFAULT border-0 outline-none"
+          >
+            <option value="">Link FR…</option>
+            {frs.map(fr => (
+              <option key={fr.id} value={`UR / ${fr.id}`}>
+                UR / {fr.id}
+              </option>
+            ))}
+          </select>
+        )}
+        <span className="text-[9px] font-semibold px-1.5 py-0.5
+                         rounded uppercase"
+              style={{ background: 'rgba(245,158,11,0.12)',
+                       color: '#f59e0b' }}>
+          manual
+        </span>
+        <button
+          onClick={() => onRemoveStep(stepIdx)}
+          className="ml-auto text-[10px] px-1.5 py-0.5 rounded
+                     text-text-muted hover:text-red-400
+                     hover:bg-red-400/10 transition-colors"
+          title="Delete this step"
+        >
+          ✕
+        </button>
+      </div>
+
+      <input
+        type="text"
+        value={step.step_title}
+        onChange={e => upd('step_title', e.target.value)}
+        placeholder="Step title (e.g. Verify password lockout)"
+        className="evolv-input w-full text-[11px] font-semibold
+                   px-2 py-1"
+      />
+      <textarea
+        value={step.step_instruction}
+        onChange={e => upd('step_instruction', e.target.value)}
+        placeholder="Instruction — what the tester does, step by step."
+        rows={2}
+        className="evolv-input w-full text-[10px] px-2 py-1
+                   resize-none"
+      />
+      {step.step_type === 'Execution' && (
+        <textarea
+          value={step.expected_result}
+          onChange={e => upd('expected_result', e.target.value)}
+          placeholder="Expected result — observable, measurable outcome."
+          rows={2}
+          className="evolv-input w-full text-[10px] px-2 py-1
+                     resize-none"
+        />
+      )}
     </div>
   )
 }
 
 // ── Subcomponent: bundle preview (right) ──────────────────────────
-function PreviewPane({ bundle, onPromote, onRemove, promoted }) {
+function PreviewPane({
+  bundle, onPromote, onRemove, promoted, frs,
+  onUpdateStep, onRemoveStep, onAddStep,
+}) {
   if (!bundle) {
     return (
       <div className="h-full flex flex-col items-center justify-center
@@ -487,6 +700,19 @@ function PreviewPane({ bundle, onPromote, onRemove, promoted }) {
       {/* Steps */}
       <div className="px-2 py-3">
         {(bundle.steps ?? []).map((step, idx) => {
+          // Manual bundle → editable row
+          if (bundle.source === 'manual') {
+            return (
+              <ManualStepRow
+                key={`${step.step_type}-${step.step_number}-${idx}`}
+                step={step}
+                stepIdx={idx}
+                frs={frs}
+                onUpdateStep={onUpdateStep}
+                onRemoveStep={onRemoveStep}
+              />
+            )
+          }
           const arch = ARCHETYPE_BADGE[step.archetype]
             ?? { label: step.archetype, bg: '#1e293b', text: '#94a3b8' }
           return (
@@ -558,6 +784,32 @@ function PreviewPane({ bundle, onPromote, onRemove, promoted }) {
             </div>
           )
         })}
+
+        {/* Add-step buttons for manual bundles */}
+        {bundle.source === 'manual' && (
+          <div className="flex gap-2 mt-2 px-1">
+            <button
+              onClick={() => onAddStep({ stepType: 'Setup' })}
+              className="flex-1 text-[10px] px-2 py-1.5 rounded border
+                         border-dashed border-border-base text-text-muted
+                         hover:border-purple-DEFAULT/60
+                         hover:text-purple-300 hover:bg-purple-dim/30
+                         transition-colors"
+            >
+              + Add Setup Step
+            </button>
+            <button
+              onClick={() => onAddStep({ stepType: 'Execution' })}
+              className="flex-1 text-[10px] px-2 py-1.5 rounded border
+                         border-dashed border-border-base text-text-muted
+                         hover:border-purple-DEFAULT/60
+                         hover:text-purple-300 hover:bg-purple-dim/30
+                         transition-colors"
+            >
+              + Add Execution Step
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Quality checklist */}
@@ -584,11 +836,15 @@ function PreviewPane({ bundle, onPromote, onRemove, promoted }) {
 }
 
 // ── Main TestAuthoring tab ────────────────────────────────────────
-export default function TestAuthoring({ planData }) {
+export default function TestAuthoring({
+  planData, deepLinkReqId, onDeepLinkConsumed,
+}) {
   const {
     requirements, riskData,
     testBundles, testScripts,
     setTestBundle, removeTestBundle, promoteBundleToScript,
+    createManualBundle, addBundleStep,
+    updateBundleStep, removeBundleStep,
     setPhaseComplete,
   } = useAppStore()
 
@@ -606,6 +862,13 @@ export default function TestAuthoring({ planData }) {
     })
     if (firstUr) setSelectedReqId(firstUr.id)
   }, [requirements, riskData, selectedReqId])
+
+  // Deep-link from CoverageMonitor "Generate now" — overrides selection
+  useEffect(() => {
+    if (!deepLinkReqId) return
+    setSelectedReqId(deepLinkReqId)
+    onDeepLinkConsumed?.()
+  }, [deepLinkReqId, onDeepLinkConsumed])
 
   const selectedReq = useMemo(
     () => requirements.find(r => r.id === selectedReqId) ?? null,
@@ -659,7 +922,7 @@ export default function TestAuthoring({ planData }) {
       }
       const newBundle = await res.json()
       setTestBundle(selectedReq.id, newBundle)
-      setPhaseComplete('design')
+      // Phase completion now gated on coverage check — see DesignSpecTab.
     } catch (err) {
       setLastError(
         `${err.message} — tried ${API_BASE}/test-authoring/generate. `
@@ -678,6 +941,32 @@ export default function TestAuthoring({ planData }) {
   const handleRemove = () => {
     if (!selectedReq) return
     removeTestBundle(selectedReq.id)
+  }
+
+  const handleCreateManual = ({ riskLevel, testType }) => {
+    if (!selectedReq) return
+    createManualBundle(selectedReq.id, {
+      riskLevel,
+      testType,
+      requirementSummary: selectedReq.statement,
+      projectName: planData?.projectName || 'Untitled Project',
+    })
+    // Phase completion now gated on coverage check — see DesignSpecTab.
+  }
+
+  const handleAddStep = (args) => {
+    if (!selectedReq) return
+    addBundleStep(selectedReq.id, args)
+  }
+
+  const handleUpdateStep = (idx, field, value) => {
+    if (!selectedReq) return
+    updateBundleStep(selectedReq.id, idx, field, value)
+  }
+
+  const handleRemoveStep = (idx) => {
+    if (!selectedReq) return
+    removeBundleStep(selectedReq.id, idx)
   }
 
   return (
@@ -704,6 +993,7 @@ export default function TestAuthoring({ planData }) {
           frs={frs}
           bundle={bundle}
           onGenerate={handleGenerate}
+          onCreateManual={handleCreateManual}
           busy={busyReqId === selectedReqId}
           lastError={lastError}
         />
@@ -715,6 +1005,10 @@ export default function TestAuthoring({ planData }) {
         onPromote={handlePromote}
         onRemove={handleRemove}
         promoted={promoted}
+        frs={frs}
+        onUpdateStep={handleUpdateStep}
+        onRemoveStep={handleRemoveStep}
+        onAddStep={handleAddStep}
       />
     </div>
   )

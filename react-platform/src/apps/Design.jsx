@@ -14,6 +14,8 @@
 import { useState, useCallback } from 'react'
 import { useAppStore }           from '../store/useAppStore.js'
 import TestAuthoring             from './design/TestAuthoring.jsx'
+import CoverageMonitor, { computeCoverage }
+                                 from './design/CoverageMonitor.jsx'
 
 const GAMP_LABELS = {
   '1': 'Cat 1 — Infrastructure',
@@ -56,13 +58,20 @@ function FieldRow({ label, hint, children }) {
 
 // ── Design Spec tab ───────────────────────────────────────────────
 function DesignSpecTab({ designData, setDesignField,
-                         planData, setPhaseComplete }) {
+                         planData, setPhaseComplete,
+                         canCompleteDesign, uncoveredGxpDirect }) {
   const cat  = planData.gampCategory
   const isCat5 = cat === '5'
 
-  const [saved, setSaved] = useState(false)
+  const [saved,   setSaved]   = useState(false)
+  const [blocked, setBlocked] = useState(false)
 
   const handleSave = () => {
+    if (!canCompleteDesign) {
+      setBlocked(true)
+      setTimeout(() => setBlocked(false), 4000)
+      return
+    }
     setPhaseComplete('design')
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -192,19 +201,38 @@ function DesignSpecTab({ designData, setDesignField,
       </FieldRow>
 
       {/* Save button */}
-      <div className="flex items-center gap-3 pt-2">
+      <div className="flex items-center gap-3 pt-2 flex-wrap">
         <button
           onClick={handleSave}
           className="px-5 py-2 rounded-lg text-xs font-semibold
-                     bg-purple-DEFAULT/80 text-white
-                     hover:opacity-90 transition-opacity"
-          style={{ background: 'rgba(168,85,247,0.8)' }}
+                     text-white hover:opacity-90 transition-opacity"
+          style={{
+            background: canCompleteDesign
+              ? 'rgba(168,85,247,0.8)'
+              : 'rgba(100,116,139,0.5)',
+            cursor: canCompleteDesign ? 'pointer' : 'not-allowed',
+          }}
+          title={canCompleteDesign
+            ? 'Mark Design phase complete'
+            : 'Hard block — every GxP Direct UR must have a test '
+              + 'bundle before Design can be marked complete.'}
         >
-          Save Design Spec
+          {canCompleteDesign
+            ? 'Save Design Spec'
+            : '🛑 Coverage gate not met'}
         </button>
         {saved && (
           <span className="text-[10px] text-lime-DEFAULT font-medium">
             ✓ Saved — Design phase marked complete
+          </span>
+        )}
+        {blocked && (
+          <span className="text-[10px] text-red-400 font-medium
+                           leading-relaxed">
+            🛑 {uncoveredGxpDirect.length} GxP Direct UR
+            {uncoveredGxpDirect.length === 1 ? '' : 's'} still need
+            test bundles ({uncoveredGxpDirect.join(', ')}) — go to
+            ⚡ Test Authoring to generate.
           </span>
         )}
       </div>
@@ -723,14 +751,23 @@ export default function Design({ openTab }) {
     phaseCompletion, planData,
     designData, setDesignField, addConfigItem, removeConfigItem,
     setPhaseComplete,
-    requirements, riskData, testScripts,
+    requirements, riskData, testScripts, testBundles,
   } = useAppStore()
 
-  const [activeTab, setActiveTab] = useState('spec')
+  const [activeTab,      setActiveTab]      = useState('spec')
+  const [deepLinkReqId,  setDeepLinkReqId]  = useState(null)
 
   // Gate: Risk must be complete
   if (!phaseCompletion.risk) {
     return <GateScreen openTab={openTab} />
+  }
+
+  // Coverage gate (Sprint 15.3) — used by Design Spec save + banner
+  const coverage = computeCoverage(requirements, riskData, testBundles)
+
+  const handleJumpToAuthoring = reqId => {
+    setDeepLinkReqId(reqId)
+    setActiveTab('authoring')
   }
 
   const tabs = [
@@ -792,6 +829,14 @@ export default function Design({ openTab }) {
         </div>
       </div>
 
+      {/* ── Coverage Gap Detector banner (Sprint 15.3) ──────── */}
+      <CoverageMonitor
+        requirements={requirements}
+        riskData={riskData}
+        testBundles={testBundles}
+        onJumpToAuthoring={handleJumpToAuthoring}
+      />
+
       {/* ── Tab content ──────────────────────────────────── */}
       <div className="flex-1 overflow-auto px-6 py-5">
         {activeTab === 'spec' && (
@@ -800,10 +845,16 @@ export default function Design({ openTab }) {
             setDesignField={setDesignField}
             planData={planData}
             setPhaseComplete={setPhaseComplete}
+            canCompleteDesign={coverage.canCompleteDesign}
+            uncoveredGxpDirect={coverage.uncoveredGxpDirect}
           />
         )}
         {activeTab === 'authoring' && (
-          <TestAuthoring planData={planData} />
+          <TestAuthoring
+            planData={planData}
+            deepLinkReqId={deepLinkReqId}
+            onDeepLinkConsumed={() => setDeepLinkReqId(null)}
+          />
         )}
         {activeTab === 'trace' && (
           <TraceabilityTab

@@ -12,6 +12,32 @@ import { persist }   from 'zustand/middleware'
 
 const MAX_TABS = 8
 
+// Recompute the 5-point quality checklist for a bundle's steps.
+// Mirrors the checks used by the Python test_authoring_engine so
+// manually authored bundles are scored the same way.
+function _recomputeQuality(steps) {
+  const exec = steps.filter(s => s.step_type === 'Execution')
+  const nonEmpty = s => Boolean((s ?? '').toString().trim())
+  const titles = steps.map(s => (s.step_title ?? '').trim())
+    .filter(Boolean)
+  return {
+    all_steps_have_instructions:
+      steps.length > 0
+        && steps.every(s => nonEmpty(s.step_instruction)),
+    execution_steps_have_expected_results:
+      exec.length > 0
+        && exec.every(s => nonEmpty(s.expected_result)),
+    execution_steps_have_references:
+      exec.length > 0
+        && exec.every(s => nonEmpty(s.requirement_reference)),
+    all_execution_steps_carry_citations:
+      exec.length > 0
+        && exec.every(s => (s.citations ?? []).length > 0),
+    step_titles_unique:
+      new Set(titles).size === titles.length,
+  }
+}
+
 // Initial status badges — demo data so the feature is visible on load
 const INITIAL_BADGES = {
   'home':         null,
@@ -59,6 +85,7 @@ const FRESH_PROJECT = {
   briefingAcknowledged: {},
   defects:             {},
   unscriptedSessions:  {},
+  qaReviews:           {},
   releaseData:  { approvals: [], released: false, releasedAt: null },
   designData: {
     architectureNotes: '', hldNotes: '', lldNotes: '',
@@ -91,6 +118,7 @@ function extractProjectData(state) {
     briefingAcknowledged: state.briefingAcknowledged,
     defects:              state.defects,
     unscriptedSessions:   state.unscriptedSessions,
+    qaReviews:            state.qaReviews,
     releaseData:          state.releaseData,
     designData:           state.designData,
     phaseCompletion:      state.phaseCompletion,
@@ -335,6 +363,86 @@ persist(
     }
   }),
 
+  // ── Adhoc step insertion during execution (Sprint 15.2) ────────
+  // Inserts a tester-authored step into a TestScript mid-run.
+  // The step is tagged source='tester-adhoc' so ALCOA report and
+  // exports can distinguish it from AI-generated / authored steps.
+  // Numbering is hierarchical (e.g. 3.1, 3.2 after step 3) so that
+  // the original step_number keys for prior results stay stable.
+  insertAdhocStep: (scriptId, runId, afterStepKey, draft) =>
+    set(state => {
+      const script = state.testScripts[scriptId]
+      if (!script) return {}
+      const run = runId ? state.testRuns[runId] : null
+      if (run && run.status === 'locked') return {}
+
+      const idx = (script.steps ?? []).findIndex(
+        s => `${s.step_number}_${s.step_type}` === afterStepKey,
+      )
+      if (idx === -1) return {}
+      const prev = script.steps[idx]
+
+      // Hierarchical numbering: count siblings already inserted
+      // under the same prefix so 3.1, 3.2, 3.3 stay monotonic.
+      const prefix = String(prev.step_number).split('.')[0]
+      const siblings = (script.steps ?? []).filter(
+        s => s.step_type === 'Execution'
+          && String(s.step_number).startsWith(`${prefix}.`),
+      )
+      const newNumber = `${prefix}.${siblings.length + 1}`
+
+      const newStep = {
+        step_type:             'Execution',
+        step_number:           newNumber,
+        step_title:            draft.stepTitle ?? '',
+        step_instruction:      draft.instruction ?? '',
+        expected_result:       draft.expectedResult ?? '',
+        test_case_type:        draft.testCaseType ?? 'Positive',
+        requirement_reference: draft.frRef ?? '',
+        archetype:             'tester-adhoc',
+        citations:             [],
+        source:                'tester-adhoc',
+        inserted_at:           new Date().toISOString(),
+        inserted_by:           draft.testerName ?? '',
+        adhoc_reason:          draft.reason ?? '',
+      }
+
+      // Place new step after the trigger + any earlier siblings
+      // (keeps adhoc steps clustered right after their parent).
+      const insertAt = idx + 1 + siblings.length
+      const newSteps = [
+        ...script.steps.slice(0, insertAt),
+        newStep,
+        ...script.steps.slice(insertAt),
+      ]
+
+      // Seed an empty stepResults entry on the active run.
+      const newKey = `${newNumber}_Execution`
+      const updatedRun = run ? {
+        ...run,
+        stepResults: {
+          ...run.stepResults,
+          [newKey]: {
+            verdict:      null,
+            actualResult: '',
+            testerName:   draft.testerName ?? '',
+            executedAt:   null,
+            evidence:     null,
+          },
+        },
+      } : null
+
+      return {
+        testScripts: {
+          ...state.testScripts,
+          [scriptId]: { ...script, steps: newSteps },
+        },
+        ...(updatedRun ? {
+          testRuns: { ...state.testRuns, [runId]: updatedRun },
+        } : {}),
+      }
+    }),
+
   // ── Test Bundles (Sprint 14 — Test Authoring) ──────────────────
   // testBundles: keyed by requirement_id (e.g. 'UR-1')
   // Shape per entry: full bundle dict from
@@ -352,6 +460,120 @@ persist(
   }),
 
   clearTestBundles: () => set({ testBundles: {} }),
+
+  // ── Manual-authoring actions (Sprint 15) ───────────────────────
+  // Create an empty bundle skeleton for manual authoring.
+  // Mirrors the shape returned by POST /test-authoring/generate
+  // so the rest of the pipeline (preview, promote) is unchanged.
+  createManualBundle: (reqId, { riskLevel, testType,
+                                 requirementSummary,
+                                 projectName }) => set(state => {
+    if (state.testBundles[reqId]) return {}  // idempotent
+    const bundle = {
+      bundle_id:            `TB-${reqId}`,
+      requirement_id:       reqId,
+      requirement_summary:  requirementSummary ?? '',
+      project_name:         projectName ?? 'Untitled Project',
+      impact:               '',
+      implementation_method:'',
+      risk_level:           riskLevel ?? 'Low',
+      depth:                'manual',
+      test_type:            testType ?? 'Informal',
+      mode:                 'manual',
+      enrichment_applied:   false,
+      source:               'manual',
+      generated_at:         new Date().toISOString(),
+      steps:                [],
+      bundle_citations:     [],
+      quality_checklist: {
+        all_steps_have_instructions:        false,
+        execution_steps_have_expected_results: false,
+        execution_steps_have_references:    false,
+        all_execution_steps_carry_citations: false,
+        step_titles_unique:                 true,
+      },
+      schema_version:       '1.0.0',
+    }
+    return {
+      testBundles: { ...state.testBundles, [reqId]: bundle },
+    }
+  }),
+
+  // Append a step to a bundle (manual or AI-generated).
+  // stepType = 'Setup' | 'Execution'; archetype is optional.
+  addBundleStep: (reqId, { stepType, archetype } = {}) =>
+    set(state => {
+      const bundle = state.testBundles[reqId]
+      if (!bundle) return {}
+      const type = stepType || 'Execution'
+      const arch = archetype
+        || (type === 'Setup' ? 'setup' : 'positive')
+      const sameType = bundle.steps.filter(s => s.step_type === type)
+      const next = {
+        step_type:             type,
+        step_number:           sameType.length + 1,
+        step_title:            '',
+        step_instruction:      '',
+        expected_result:       type === 'Execution' ? '' : '',
+        archetype:             arch,
+        requirement_reference: '',
+        citations:             [],
+        source:                'manual',
+      }
+      const steps = [...bundle.steps, next]
+      return {
+        testBundles: {
+          ...state.testBundles,
+          [reqId]: {
+            ...bundle,
+            steps,
+            quality_checklist:
+              _recomputeQuality(steps),
+          },
+        },
+      }
+    }),
+
+  // Update a single field on a step (by absolute index in bundle.steps).
+  updateBundleStep: (reqId, stepIdx, field, value) => set(state => {
+    const bundle = state.testBundles[reqId]
+    if (!bundle || !bundle.steps[stepIdx]) return {}
+    const steps = bundle.steps.map((s, i) =>
+      i === stepIdx ? { ...s, [field]: value } : s,
+    )
+    return {
+      testBundles: {
+        ...state.testBundles,
+        [reqId]: {
+          ...bundle,
+          steps,
+          quality_checklist: _recomputeQuality(steps),
+        },
+      },
+    }
+  }),
+
+  // Remove a step by absolute index; re-numbers within its type.
+  removeBundleStep: (reqId, stepIdx) => set(state => {
+    const bundle = state.testBundles[reqId]
+    if (!bundle || !bundle.steps[stepIdx]) return {}
+    const filtered = bundle.steps.filter((_, i) => i !== stepIdx)
+    const counters = { Setup: 0, Execution: 0 }
+    const steps = filtered.map(s => ({
+      ...s,
+      step_number: ++counters[s.step_type],
+    }))
+    return {
+      testBundles: {
+        ...state.testBundles,
+        [reqId]: {
+          ...bundle,
+          steps,
+          quality_checklist: _recomputeQuality(steps),
+        },
+      },
+    }
+  }),
 
   // Promote a bundle to a runnable testScript (so Verify can
   // load it via the existing testScripts/initTestRun pipeline).
@@ -491,6 +713,77 @@ persist(
       unscriptedSessions: {
         ...state.unscriptedSessions,
         [runId]: { ...s, verdict },
+      },
+    }
+  }),
+
+  // ── QA Review (Sprint 15.4 — pre-lock review screen) ──────────
+  // Per-run reviewer record built before electronic sign-off.
+  // Shape per entry:
+  //   {
+  //     reviewerName, comments,
+  //     checks: { actualResultsComplete, defectsLogged,
+  //               evidenceAttached, adhocStepsJustified },
+  //     reviewedAt: ISO|null
+  //   }
+  // We deliberately do NOT lock anything here — the sign-off
+  // panel still owns the legal lock. This screen exists so a QA
+  // lead can attest "I reviewed the failed steps + defects + adhoc
+  // inserts" before the executor signs.
+  qaReviews: {},
+
+  setQaReview: (runId, field, value) => set(state => {
+    if (!runId) return {}
+    const prev = state.qaReviews[runId] ?? {
+      reviewerName: '',
+      comments:     '',
+      checks: {
+        actualResultsComplete: false,
+        defectsLogged:         false,
+        evidenceAttached:      false,
+        adhocStepsJustified:   false,
+      },
+      reviewedAt:   null,
+    }
+    return {
+      qaReviews: {
+        ...state.qaReviews,
+        [runId]: { ...prev, [field]: value },
+      },
+    }
+  }),
+
+  setQaReviewCheck: (runId, checkKey, value) => set(state => {
+    if (!runId) return {}
+    const prev = state.qaReviews[runId] ?? {
+      reviewerName: '',
+      comments:     '',
+      checks: {
+        actualResultsComplete: false,
+        defectsLogged:         false,
+        evidenceAttached:      false,
+        adhocStepsJustified:   false,
+      },
+      reviewedAt:   null,
+    }
+    return {
+      qaReviews: {
+        ...state.qaReviews,
+        [runId]: {
+          ...prev,
+          checks: { ...prev.checks, [checkKey]: value },
+        },
+      },
+    }
+  }),
+
+  markQaReviewSigned: runId => set(state => {
+    const prev = state.qaReviews[runId]
+    if (!prev) return {}
+    return {
+      qaReviews: {
+        ...state.qaReviews,
+        [runId]: { ...prev, reviewedAt: new Date().toISOString() },
       },
     }
   }),
@@ -687,6 +980,7 @@ persist(
     briefingAcknowledged: state.briefingAcknowledged,
     defects:              state.defects,
     unscriptedSessions:   state.unscriptedSessions,
+    qaReviews:            state.qaReviews,
     releaseData:          state.releaseData,
     requirements:         state.requirements,
     designData:           state.designData,

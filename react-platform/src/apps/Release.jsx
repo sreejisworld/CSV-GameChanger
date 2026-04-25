@@ -10,6 +10,7 @@
 import { useState, useCallback } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { API_BASE } from '../config.js'
+import { computeCoverage } from './design/CoverageMonitor.jsx'
 
 function downloadCSV(filename, headers, rows) {
   const escape = v =>
@@ -238,7 +239,7 @@ export default function Release() {
     testRuns, activeRunId,
     releaseData, addApproval, setReleased,
     setPhaseComplete, setStatusBadge,
-    riskData,
+    riskData, requirements, testBundles,
   } = useAppStore()
 
   const [goLiveLoading, setGoLiveLoading] = useState(false)
@@ -335,6 +336,26 @@ export default function Release() {
         ? `${riskRows.length} requirements assessed · ${highCount} HIGH risk`
         : 'No risk data yet',
     },
+    (() => {
+      const cov = computeCoverage(requirements, riskData, testBundles)
+      const done = cov.canCompleteDesign
+      let detail
+      if (cov.totalUrs === 0) {
+        detail = 'No URs yet — generate requirements first'
+      } else if (done) {
+        detail = `${cov.coveragePct}% coverage · `
+          + `all GxP Direct URs have test bundles`
+      } else {
+        detail = `${cov.uncoveredGxpDirect.length} GxP Direct UR`
+          + `${cov.uncoveredGxpDirect.length === 1 ? '' : 's'}`
+          + ` uncovered (${cov.uncoveredGxpDirect.join(', ')})`
+      }
+      return {
+        label:  'Test coverage gate (GxP Direct)',
+        done,
+        detail,
+      }
+    })(),
     {
       label:  'Tests executed & signed',
       done:   testSigned,
