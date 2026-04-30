@@ -27,16 +27,18 @@ const RISK_COLORS = {
             border: 'rgba(50,205,50,0.40)' },
 }
 
+// Backgrounds use rgba so they tint correctly in both dark and light
+// themes. Text uses brand-locked accent hex (theme-agnostic by spec).
 const ARCHETYPE_BADGE = {
-  setup:    { label: 'Setup',     bg: '#1e293b', text: '#94a3b8' },
-  positive: { label: 'Positive',  bg: '#0f3d2e', text: '#32CD32' },
-  negative: { label: 'Negative',  bg: '#3d0f1e', text: '#ef4444' },
-  boundary: { label: 'Boundary',  bg: '#3d2e0f', text: '#f59e0b' },
-  edge_case:{ label: 'Edge Case', bg: '#3d2e0f', text: '#f59e0b' },
-  recovery: { label: 'Recovery',  bg: '#1e2a3d', text: '#60a5fa' },
-  security: { label: 'Security',  bg: '#3d1e2a', text: '#f87171' },
-  uat:      { label: 'UAT',       bg: '#2a1e3d', text: '#a855f7' },
-  charter:  { label: 'Charter',   bg: '#1e3d3a', text: '#34d399' },
+  setup:    { label: 'Setup',     bg: 'rgba(100,116,139,0.12)', text: 'var(--text-muted)' },
+  positive: { label: 'Positive',  bg: 'rgba(50,205,50,0.12)',   text: '#32CD32' },
+  negative: { label: 'Negative',  bg: 'rgba(239,68,68,0.12)',   text: '#ef4444' },
+  boundary: { label: 'Boundary',  bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b' },
+  edge_case:{ label: 'Edge Case', bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b' },
+  recovery: { label: 'Recovery',  bg: 'rgba(0,127,255,0.12)',   text: '#007FFF' },
+  security: { label: 'Security',  bg: 'rgba(239,68,68,0.10)',   text: '#ef4444' },
+  uat:      { label: 'UAT',       bg: 'rgba(168,85,247,0.12)',  text: '#a855f7' },
+  charter:  { label: 'Charter',   bg: 'rgba(50,205,50,0.12)',   text: '#32CD32' },
 }
 
 // Mirror Risk.jsx matrix in JS
@@ -481,7 +483,7 @@ function ManualStepRow({
   step, stepIdx, frs, onUpdateStep, onRemoveStep,
 }) {
   const arch = ARCHETYPE_BADGE[step.archetype]
-    ?? { label: step.archetype, bg: '#1e293b', text: '#94a3b8' }
+    ?? { label: step.archetype, bg: 'rgba(100,116,139,0.12)', text: 'var(--text-muted)' }
   const upd = (field, value) =>
     onUpdateStep(stepIdx, field, value)
 
@@ -502,8 +504,8 @@ function ManualStepRow({
         >
           {MANUAL_ARCHETYPES.map(a => (
             <option key={a} value={a}
-                    style={{ background: '#1e293b',
-                             color: '#e2e8f0' }}>
+                    style={{ background: 'var(--bg-card)',
+                             color: 'var(--text-primary)' }}>
               {ARCHETYPE_BADGE[a]?.label ?? a}
             </option>
           ))}
@@ -714,7 +716,7 @@ function PreviewPane({
             )
           }
           const arch = ARCHETYPE_BADGE[step.archetype]
-            ?? { label: step.archetype, bg: '#1e293b', text: '#94a3b8' }
+            ?? { label: step.archetype, bg: 'rgba(100,116,139,0.12)', text: 'var(--text-muted)' }
           return (
             <div
               key={`${step.step_type}-${step.step_number}-${idx}`}

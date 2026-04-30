@@ -695,12 +695,12 @@ function NoScriptsState({ bundleCount = 0, onPullBundles, openTab }) {
           <>
             <p className="text-text-muted text-xs leading-relaxed">
               You have{' '}
-              <span className="text-blue-DEFAULT font-semibold">
+              <span className="text-text-primary font-semibold">
                 {bundleCount}
               </span>{' '}
               risk-adaptive test bundle{bundleCount === 1 ? '' : 's'}{' '}
               authored in{' '}
-              <span className="text-purple-400 font-medium">
+              <span className="text-text-primary font-semibold">
                 Design → Test Authoring
               </span>
               . Pull them into Verify to start execution.
@@ -720,11 +720,11 @@ function NoScriptsState({ bundleCount = 0, onPullBundles, openTab }) {
           <>
             <p className="text-text-muted text-xs leading-relaxed">
               Author risk-adaptive test bundles in{' '}
-              <span className="text-purple-400 font-medium">
+              <span className="text-text-primary font-semibold">
                 Design → Test Authoring
               </span>
               {' '}or generate scripts from the{' '}
-              <span className="text-blue-DEFAULT font-medium">
+              <span className="text-text-primary font-semibold">
                 Validation Factory
               </span>
               . They will appear here automatically.

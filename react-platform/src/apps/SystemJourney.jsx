@@ -515,7 +515,7 @@ function PhaseNode({ phase, phaseData, isSelected, isLast, onClick }) {
               ? `${style.node}20`
               : status === 'in_progress'
                 ? `${style.node}15`
-                : '#0d1b2a',
+                : 'var(--bg-card)',
           }}
         >
           {isPulse && (

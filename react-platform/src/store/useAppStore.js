@@ -220,7 +220,10 @@ persist(
   }),
 
   // ── Theme ──────────────────────────────────────────────────
-  theme: 'dark',  // 'dark' | 'light'
+  // New users land in light by default — pharma QA/validation pros
+  // expect a light UI from legacy validation tools. Existing users'
+  // preference is preserved via Zustand persist middleware.
+  theme: 'light',  // 'dark' | 'light'
   toggleTheme: () => set(state => ({
     theme: state.theme === 'dark' ? 'light' : 'dark',
   })),
