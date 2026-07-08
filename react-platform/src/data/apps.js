@@ -235,6 +235,38 @@ export const APPS = [
     category:    'intelligence',
     badge:       'New',
   },
+  {
+    id:          'traceability-matrix',
+    label:       'Traceability Matrix',
+    icon:        '🔗',
+    emoji:       '🔗',
+    accentColor: '#007FFF',
+    accentClass: 'blue',
+    description: 'Living Requirements Traceability Matrix — one row per '
+               + 'UR linking Risk → Test Bundle → Test Runs → Defects → '
+               + 'Release approvals, with filter chips, drill-down '
+               + 'drawer, CSV export, and signed PDF per 21 CFR Part 11.',
+    closeable:   true,
+    category:    'intelligence',
+    badge:       'RTM',
+  },
+  {
+    id:          'bounded-autonomy-profile',
+    label:       'Bounded Autonomy Profile',
+    icon:        '🛡️',
+    emoji:       '🛡️',
+    accentColor: '#32CD32',
+    accentClass: 'lime',
+    description: 'Sprint 40 — 3-layer diagnostic stack (Impact Class → '
+               + 'Failure Envelope → Control Sustainability) outputting a '
+               + 'proportional assurance tier (BAP-0 to BAP-4, or BAP-X '
+               + 'exclusion) + 7-question Assurance Argument with '
+               + 'Fragility Markers. Pairs with the AI Trustworthiness '
+               + 'Report as the customer-facing evidence pair.',
+    closeable:   true,
+    category:    'intelligence',
+    badge:       'New',
+  },
 
   // ── Tools ─────────────────────────────────────────────────
   {
@@ -275,6 +307,21 @@ export const APPS = [
     badge:       'Beta',
   },
   {
+    id:          'audit-trail',
+    label:       'Audit Trail',
+    icon:        '🔍',
+    emoji:       '🔍',
+    accentColor: '#007FFF',
+    accentClass: 'blue',
+    description: 'Read-only inspection viewer over the EVOLV audit '
+               + 'trail — sortable/filterable records, AI reasoning '
+               + 'drill-down, lifecycle timeline, and signed PDF '
+               + 'export per 21 CFR Part 11.',
+    closeable:   true,
+    category:    'tools',
+    badge:       'New',
+  },
+  {
     id:          'docs',
     label:       'Documentation',
     icon:        '📚',
@@ -302,10 +349,12 @@ export const NAV_GROUPS = [
   },
   {
     label: 'Intelligence',
-    items: ['system-journey', 'portfolio', 'governance', 'navigator', 'regulatory-watch', 'impact-analytics'],
+    // RTM first — it's the headline go-live metric and the artefact
+    // inspectors / auditors ask for first when reviewing a released system.
+    items: ['traceability-matrix', 'bounded-autonomy-profile', 'system-journey', 'portfolio', 'governance', 'navigator', 'regulatory-watch', 'impact-analytics'],
   },
   {
     label: 'Tools',
-    items: ['dev-portal', 'config', 'academy', 'docs'],
+    items: ['dev-portal', 'config', 'audit-trail', 'academy', 'docs'],
   },
 ]

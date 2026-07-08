@@ -1,10 +1,79 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../../store/useAppStore.js'
 import { SYSTEMS } from '../../data/systems.js'
 import { API_BASE } from '../../config.js'
 
 const CC_API = API_BASE
+
+// ── Sprint 35.5 (F3 fix) ────────────────────────────────────────────
+// Synthesize an "active project" system entry from the live store so
+// a CR submitted via this tab can target the project the user is
+// actually validating — not just the static `SYSTEMS` demo registry.
+//
+// Returns null if there's no usable active project (no projectName,
+// or projectName matches the empty default). The full Change Impact
+// Assessment (compute which URs/bundles are affected, generate CIA
+// document, trigger targeted revalidation) is Sprint 36 work — this
+// fix is the prerequisite wire-up so the CR knows about the project
+// at all.
+function buildActiveProjectSystem(
+  planData, riskData, requirements, phaseCompletion, releaseData,
+) {
+  const name = (planData?.projectName ?? '').trim()
+  if (!name) return null
+
+  // Roll up GxP status from per-UR risk impacts (worst wins).
+  const rows = Object.values(riskData ?? {})
+  let gxpStatus = 'Non-GxP'
+  if (rows.some(r => r?.impact === 'GxP Direct'))   gxpStatus = 'GxP Direct'
+  else if (rows.some(r => r?.impact === 'GxP Indirect')) gxpStatus = 'GxP Indirect'
+
+  // Roll up risk level — worst wins.
+  let risk = 'Low'
+  if (rows.some(r => r?.riskLevel === 'HIGH'))   risk = 'High'
+  else if (rows.some(r => r?.riskLevel === 'MEDIUM')) risk = 'Medium'
+
+  // Current lifecycle phase — `Monitor` once released, otherwise the
+  // most-recently-completed phase. Mirrors the SYSTEMS.phase strings.
+  const PHASE_ORDER = [
+    ['plan',         'Plan'],
+    ['requirements', 'Requirements'],
+    ['risk',         'Risk'],
+    ['design',       'Design'],
+    ['verify',       'Verify'],
+    ['release',      'Released'],
+  ]
+  let phase = 'Plan'
+  if (releaseData?.released) phase = 'Monitor'
+  else {
+    for (const [k, label] of PHASE_ORDER) {
+      if (phaseCompletion?.[k]) phase = label
+    }
+  }
+
+  const urCount = (requirements ?? []).filter(r => r?.type === 'UR').length
+
+  return {
+    id:           'PROJ-ACTIVE',
+    name,
+    gampCategory: Number(planData?.gampCategory) || 4,
+    gxpStatus,
+    site:         'Active validation project',
+    phase,
+    risk,
+    owner:        planData?.vmpContent?.resourcesResponsibilities
+                    ? 'See VMP'
+                    : 'Unassigned',
+    lastAction:   new Date().toISOString().slice(0, 10),
+    dueDate:      null,
+    regulations:  planData?.regulatoryFrameworks ?? [],
+    notes:
+      `Active EVOLV project · ${urCount} UR${urCount === 1 ? '' : 's'} · `
+      + 'changes will (Sprint 36) trigger Change Impact Assessment.',
+    isActiveProject: true,
+  }
+}
 
 const SN_SCENARIOS = [
   { label: 'Emergency Patch',     icon: '🚨', color: '#ef4444',
@@ -301,17 +370,503 @@ function buildAuditFeed(cr_id, data, t0, hash, ctx) {
   return feed
 }
 
+// ── Sprint 36 — CIA viewer ──────────────────────────────────────────
+//
+// Renders an AI-drafted Change Impact Assessment inline below the
+// CR form. Shows summary + affected URs (with risk before/after) +
+// affected FRs + affected bundles + invalidated approvals + the
+// full reasoning chain. The Sign CCR button on the bottom is the
+// human-signature gate per bounded-autonomy principle.
+
+function CIAViewer({ cia, ccr, onOpenCcrModal }) {
+  return (
+    <div
+      className="rounded-xl border p-5 space-y-4 animate-fade-in"
+      style={{
+        background:  'rgba(0,127,255,0.04)',
+        borderColor: 'rgba(0,127,255,0.25)',
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center
+                     shrink-0 text-lg"
+          style={{
+            background: 'rgba(0,127,255,0.12)',
+            border:     '1px solid rgba(0,127,255,0.30)',
+          }}
+        >
+          📋
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-sm font-bold text-text-primary">
+              {cia.cia_id}
+            </span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full border
+                             font-semibold"
+              style={{
+                background:  'rgba(168,85,247,0.12)',
+                color:       '#a855f7',
+                borderColor: 'rgba(168,85,247,0.30)',
+              }}
+            >
+              AI-DRAFTED
+            </span>
+            <span className="text-[10px] text-text-muted">
+              for {cia.cr_id}
+            </span>
+          </div>
+          <p className="text-[12px] text-text-secondary leading-relaxed">
+            {cia.summary}
+          </p>
+        </div>
+      </div>
+
+      {/* Affected URs */}
+      {cia.affected_urs?.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[9px] uppercase tracking-wider
+                        text-text-muted font-semibold">
+            Affected User Requirements ({cia.affected_urs.length})
+          </p>
+          <div className="space-y-1.5">
+            {cia.affected_urs.map(ur => (
+              <div
+                key={ur.requirement_id}
+                className="px-3 py-2 rounded border border-border-base
+                           bg-bg-card text-[11px]"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <code className="font-mono font-semibold
+                                   text-text-primary">
+                    {ur.requirement_id}
+                  </code>
+                  {ur.risk_before && (
+                    <span className="text-[10px] text-text-muted">
+                      risk: <strong className="text-text-secondary">
+                        {ur.risk_before}
+                      </strong>
+                      {ur.risk_after && ur.risk_after !== ur.risk_before
+                        && (
+                          <>
+                            {' → '}
+                            <strong>{ur.risk_after}</strong>
+                          </>
+                        )}
+                    </span>
+                  )}
+                </div>
+                <p className="text-text-secondary line-clamp-2 mb-1">
+                  {ur.statement}
+                </p>
+                <p className="text-[10px] text-text-muted italic">
+                  {ur.reason}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Affected FRs */}
+      {cia.affected_frs?.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[9px] uppercase tracking-wider
+                        text-text-muted font-semibold">
+            Downstream FRs ({cia.affected_frs.length})
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {cia.affected_frs.map(fr => (
+              <span
+                key={fr.requirement_id}
+                className="text-[10px] font-mono px-2 py-0.5 rounded
+                           border border-border-base bg-bg-card
+                           text-text-secondary"
+                title={fr.reason}
+              >
+                {fr.requirement_id} · via {fr.parent_id}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Affected Bundles */}
+      {cia.affected_bundles?.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[9px] uppercase tracking-wider
+                        text-text-muted font-semibold">
+            Test Bundles Requiring Revalidation
+            ({cia.affected_bundles.length})
+          </p>
+          <div className="space-y-1.5">
+            {cia.affected_bundles.map(b => (
+              <div
+                key={b.bundle_id}
+                className="px-3 py-2 rounded border text-[11px]"
+                style={{
+                  background:  'rgba(245,158,11,0.08)',
+                  borderColor: 'rgba(245,158,11,0.30)',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <code className="font-mono font-semibold text-amber-500">
+                    {b.bundle_id}
+                  </code>
+                  <span className="text-[10px] text-text-muted">
+                    covers {b.requirement_id}
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full
+                                   ml-auto font-semibold"
+                    style={{
+                      background:  'rgba(245,158,11,0.15)',
+                      color:       '#f59e0b',
+                    }}
+                  >
+                    ↻ NEEDS REVAL
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Invalidated Approvals */}
+      {cia.invalidated_approvals?.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[9px] uppercase tracking-wider
+                        text-text-muted font-semibold">
+            Prior Approvals Requiring Re-attestation
+            ({cia.invalidated_approvals.length})
+          </p>
+          <div className="space-y-1">
+            {cia.invalidated_approvals.map((a, i) => (
+              <div
+                key={i}
+                className="px-3 py-1.5 rounded border border-border-base
+                           bg-bg-card text-[11px] flex items-center gap-2"
+              >
+                <span className="text-text-primary font-semibold">
+                  {a.approver_name}
+                </span>
+                <span className="text-text-muted">
+                  · {a.role}
+                </span>
+                <span className="text-[10px] text-text-muted ml-auto">
+                  signed {a.signed_at?.slice(0, 10)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reasoning chain */}
+      <details className="text-[11px]">
+        <summary className="text-text-muted cursor-pointer
+                            hover:text-text-secondary transition-colors
+                            text-[10px] uppercase tracking-wider font-semibold">
+          AI Reasoning Chain (Logic Archive preview)
+        </summary>
+        <ol className="mt-2 ml-4 space-y-1 list-decimal
+                       text-text-secondary leading-relaxed">
+          {cia.reasoning_chain?.map((step, i) => (
+            <li key={i}>{step}</li>
+          ))}
+        </ol>
+      </details>
+
+      {/* CCR action bar */}
+      <div className="pt-3 border-t border-border-base
+                      flex items-center gap-3">
+        <p className="text-[10px] text-text-muted leading-relaxed
+                      flex-1">
+          <strong>This is a draft proposal.</strong> No records have
+          been modified; no revalidation has been triggered. The
+          Change Control Record (CCR) below is the human signature
+          that authorises (or rejects) action.
+        </p>
+        {ccr ? (
+          <div className="rounded-lg px-3 py-2 border text-[11px]"
+            style={{
+              background:  'rgba(50,205,50,0.10)',
+              borderColor: 'rgba(50,205,50,0.30)',
+              color:       '#32CD32',
+            }}
+          >
+            <div className="font-semibold">✓ CCR Signed</div>
+            <div className="text-[9px] opacity-80">
+              {ccr.signer_name} · {ccr.decision.replace(/_/g, ' ')}
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={onOpenCcrModal}
+            className="px-4 py-2 rounded-lg text-xs font-semibold
+                       text-white shadow-sm transition-opacity
+                       hover:opacity-90"
+            style={{
+              background:
+                'linear-gradient(90deg, #007FFF, #32CD32)',
+            }}
+          >
+            ✍ Sign Change Control Record
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Sprint 36 — CCR sign modal ──────────────────────────────────────
+
+function CCRSignModal({
+  cia, defaultSigner, onCancel, onSubmit, submitting, error,
+}) {
+  const [signerName, setSignerName] = useState(defaultSigner ?? '')
+  const [role,       setRole]       = useState('QA Director')
+  const [meaning,    setMeaning]    =
+    useState('Approval of Change Impact Assessment')
+  // No default decision — user must consciously pick per the
+  // Sprint 36 design call we agreed.
+  const [decision,   setDecision]   = useState('')
+
+  const canSubmit = (
+    signerName.trim().length > 0
+    && decision.length > 0
+    && !submitting
+  )
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center
+                    bg-black/40 backdrop-blur-sm"
+         onClick={onCancel}>
+      <div
+        className="w-[560px] max-w-full bg-bg-card border
+                   border-border-base rounded-xl shadow-2xl p-6
+                   space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div>
+          <h3 className="text-base font-semibold text-text-primary">
+            Sign Change Control Record
+          </h3>
+          <p className="text-[11px] text-text-muted mt-0.5">
+            21 CFR Part 11 §11.50 — qualified electronic signature.
+            Your signature authorises (or rejects) action against{' '}
+            <code className="font-mono text-text-secondary">
+              {cia.cia_id}
+            </code>.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-[11px]">
+          <label className="block">
+            <span className="text-text-muted text-[10px]
+                             uppercase tracking-wider font-semibold">
+              Signer Name
+            </span>
+            <input
+              value={signerName}
+              onChange={e => setSignerName(e.target.value)}
+              placeholder="e.g. Sarah Chen"
+              className="evolv-input mt-1 w-full"
+            />
+          </label>
+          <label className="block">
+            <span className="text-text-muted text-[10px]
+                             uppercase tracking-wider font-semibold">
+              Role
+            </span>
+            <input
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              className="evolv-input mt-1 w-full"
+            />
+          </label>
+          <label className="block col-span-2">
+            <span className="text-text-muted text-[10px]
+                             uppercase tracking-wider font-semibold">
+              Meaning of Signature
+            </span>
+            <input
+              value={meaning}
+              onChange={e => setMeaning(e.target.value)}
+              className="evolv-input mt-1 w-full"
+            />
+          </label>
+        </div>
+
+        <div>
+          <p className="text-[10px] uppercase tracking-wider
+                        text-text-muted font-semibold mb-2">
+            Decision <span className="text-red-500">*</span>
+          </p>
+          <div className="space-y-1.5">
+            {[
+              {
+                value: 'approve_revalidation',
+                label: 'Approve — trigger revalidation',
+                desc:
+                  'Authorises revalidation sub-run on affected '
+                  + 'bundles. (Sprint 37 spawns the sub-run; '
+                  + 'today the signed CCR is the gate.)',
+                color: '#32CD32',
+              },
+              {
+                value: 'approve_no_revalidation',
+                label: 'Approve — no revalidation needed',
+                desc:
+                  'Authorises the change without revalidation. '
+                  + 'Use when the AI flagged URs but QA judges no '
+                  + 'material effect.',
+                color: '#007FFF',
+              },
+              {
+                value: 'reject',
+                label: 'Reject the change',
+                desc:
+                  'CR is not authorised. No revalidation; no '
+                  + 'records modified.',
+                color: '#ef4444',
+              },
+            ].map(opt => {
+              const active = decision === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDecision(opt.value)}
+                  className={`w-full text-left px-3 py-2 rounded-lg
+                              border transition-all`}
+                  style={{
+                    borderColor: active
+                      ? opt.color
+                      : 'var(--border-base)',
+                    background: active
+                      ? `${opt.color}14`
+                      : 'transparent',
+                  }}
+                >
+                  <p className="text-[11px] font-semibold"
+                     style={{ color: active ? opt.color
+                                            : 'var(--text-primary)' }}>
+                    {opt.label}
+                  </p>
+                  <p className="text-[10px] text-text-muted mt-0.5">
+                    {opt.desc}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {error && (
+          <div className="px-3 py-2 rounded border border-red-500/30
+                          bg-red-500/10 text-[11px] text-red-400">
+            {error}
+          </div>
+        )}
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            onClick={onCancel}
+            disabled={submitting}
+            className="px-3 py-1.5 text-xs rounded border
+                       border-border-base text-text-muted
+                       hover:text-text-secondary transition-colors
+                       disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSubmit({
+              signerName: signerName.trim(),
+              role:       role.trim(),
+              meaning:    meaning.trim(),
+              decision,
+            })}
+            disabled={!canSubmit}
+            className="px-4 py-1.5 text-xs rounded font-semibold
+                       text-white shadow-sm transition-opacity
+                       hover:opacity-90 disabled:opacity-40
+                       disabled:cursor-not-allowed"
+            style={{
+              background:
+                'linear-gradient(90deg, #007FFF, #32CD32)',
+            }}
+          >
+            {submitting ? 'Signing…' : '✍ Apply Electronic Signature'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 export default function ChangeControlTab() {
   const customSystems   = useAppStore(s => s.customSystems)
   const addCustomSystem = useAppStore(s => s.addCustomSystem)
+
+  // Sprint 35.5 (F3 fix): pull the active project from the store so
+  // we can stitch it into the dropdown ahead of the static SYSTEMS
+  // demo registry. Without this, a CR posted from Monitor lands on a
+  // hardcoded fictional portfolio item and the user's real project
+  // is invisible to change control — the bug we want to kill.
+  const planData         = useAppStore(s => s.planData)
+  const riskData         = useAppStore(s => s.riskData)
+  const requirements     = useAppStore(s => s.requirements)
+  const phaseCompletion  = useAppStore(s => s.phaseCompletion)
+  const releaseData      = useAppStore(s => s.releaseData)
+
+  // Sprint 36 — Change Impact Assessment. AI proposes, human signs,
+  // revalidation runs. The store actions live in useAppStore.
+  const testBundles      = useAppStore(s => s.testBundles)
+  const changeRecords    = useAppStore(s => s.changeRecords)
+  const addChangeRecord  = useAppStore(s => s.addChangeRecord)
+  const attachCIA        = useAppStore(s => s.attachCIA)
+  const signCCRAction    = useAppStore(s => s.signCCR)
+  const userProfile      = useAppStore(s => s.userProfile)
+
+  const activeProject = useMemo(
+    () => buildActiveProjectSystem(
+      planData, riskData, requirements, phaseCompletion, releaseData,
+    ),
+    [planData, riskData, requirements, phaseCompletion, releaseData],
+  )
+
   const allSystems = useMemo(
-    () => [...SYSTEMS, ...customSystems], [customSystems],
+    () => activeProject
+      ? [activeProject, ...SYSTEMS, ...customSystems]
+      : [...SYSTEMS, ...customSystems],
+    [activeProject, customSystems],
   )
 
   const [form, setForm] = useState({
     cr_id: '', description: '',
-    system_criticality: 'high', change_type: 'normal', system_name: '',
+    system_criticality: 'high', change_type: 'normal',
+    // Pre-select the active project so the user lands on "this CR
+    // targets my project" instead of "— Unknown —".
+    system_name: activeProject?.name ?? '',
   })
+
+  // Keep the dropdown in sync if the user renames the project in Plan
+  // while this tab is mounted. Only auto-fill if the user hasn't
+  // explicitly picked a different system, so we don't stomp on a
+  // demo-portfolio selection.
+  useEffect(() => {
+    if (!activeProject) return
+    setForm(f => {
+      const isOnDemoPortfolio = !!SYSTEMS.find(s => s.name === f.system_name)
+      const isAlreadyOnProject = f.system_name === activeProject.name
+      if (isOnDemoPortfolio || isAlreadyOnProject) return f
+      return { ...f, system_name: activeProject.name }
+    })
+  }, [activeProject])
   const [loading,        setLoading]        = useState(false)
   const [result,         setResult]         = useState(null)
   const [apiOnline,      setApiOnline]      = useState(null)
@@ -319,6 +874,13 @@ export default function ChangeControlTab() {
   const [activeScen,     setActiveScen]     = useState(null)
   const [showClassifier, setShowClassifier] = useState(false)
   const [newSysName,     setNewSysName]     = useState('')
+
+  // Sprint 36 — CIA generation + CCR signing state
+  const [ciaLoading,     setCiaLoading]     = useState(false)
+  const [ciaError,       setCiaError]       = useState('')
+  const [ccrModalOpen,   setCcrModalOpen]   = useState(false)
+  const [ccrSubmitting,  setCcrSubmitting]  = useState(false)
+  const [ccrError,       setCcrError]       = useState('')
 
   const matchedSystem = allSystems.find(s => s.name === form.system_name) ?? null
 
@@ -391,6 +953,119 @@ export default function ChangeControlTab() {
   const rCol = RISK_COLORS[rlvl] ?? '#888'
   const rBg  = RISK_BG[rlvl]    ?? 'rgba(128,128,128,0.1)'
 
+  // ── Sprint 36 — Change Impact Assessment handlers ───────────────
+  //
+  // Active record lookup: if a CR has been submitted, we look it up
+  // in the store by cr_id to find its current state (received,
+  // cia_generated, ccr_signed). This is what powers the CIA viewer
+  // and Sign CCR button below.
+  const activeRecord = form.cr_id
+    ? changeRecords[form.cr_id]
+    : null
+  const hasCia       = !!activeRecord?.cia
+  const hasCcr       = !!activeRecord?.ccr
+
+  // Only allow CIA generation when the active project is selected.
+  // CRs against demo-portfolio entries don't have real project data
+  // to assess against; that's a sales-demo signal, not a workflow.
+  const ciaEligible = (
+    !!activeProject
+    && form.system_name === activeProject.name
+    && !!form.cr_id
+    && !!form.description
+  )
+
+  const handleGenerateCIA = useCallback(async () => {
+    if (!ciaEligible) return
+    setCiaLoading(true)
+    setCiaError('')
+
+    // Optimistic store add — the row appears in changeRecords as
+    // soon as the user clicks; the CIA attaches when the backend
+    // returns.
+    addChangeRecord(form.cr_id, {
+      cr_text:      form.description,
+      project_name: activeProject.name,
+    })
+
+    try {
+      const res = await fetch(`${CC_API}/change-control/cia`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cr_id:        form.cr_id,
+          cr_text:      form.description,
+          project_name: activeProject.name,
+          requirements: requirements ?? [],
+          risk_data:    riskData      ?? {},
+          test_bundles: testBundles   ?? {},
+          approvals:    releaseData?.approvals ?? [],
+          user_id:      userProfile?.name ?? 'demo',
+        }),
+        signal: AbortSignal.timeout(15000),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(
+          errBody.detail ?? `HTTP ${res.status}`,
+        )
+      }
+      const cia = await res.json()
+      attachCIA(form.cr_id, cia)
+    } catch (e) {
+      setCiaError(
+        `CIA generation failed: ${e.message ?? e}. `
+        + 'Ensure FastAPI is running on port 8000.',
+      )
+    } finally {
+      setCiaLoading(false)
+    }
+  }, [
+    ciaEligible, form.cr_id, form.description,
+    activeProject, requirements, riskData, testBundles,
+    releaseData, userProfile, addChangeRecord, attachCIA,
+  ])
+
+  const handleSignCCR = useCallback(async ({
+    signerName, role, meaning, decision,
+  }) => {
+    if (!activeRecord?.cia) return
+    setCcrSubmitting(true)
+    setCcrError('')
+    try {
+      const res = await fetch(`${CC_API}/change-control/ccr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cia_id:      activeRecord.cia.cia_id,
+          cr_id:       activeRecord.cr_id,
+          signer_name: signerName,
+          role,
+          meaning,
+          decision,
+          user_id:     userProfile?.name ?? 'demo',
+        }),
+        signal: AbortSignal.timeout(10000),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(
+          errBody.detail ?? `HTTP ${res.status}`,
+        )
+      }
+      const ccr = await res.json()
+      signCCRAction(activeRecord.cr_id, ccr)
+      setCcrModalOpen(false)
+    } catch (e) {
+      setCcrError(
+        `CCR sign-off failed: ${e.message ?? e}. `
+        + 'Ensure FastAPI is running on port 8000.',
+      )
+    } finally {
+      setCcrSubmitting(false)
+    }
+  }, [activeRecord, signCCRAction, userProfile])
+
   return (
     <div className="space-y-5 overflow-y-auto h-full pr-1">
 
@@ -408,6 +1083,26 @@ export default function ChangeControlTab() {
             Submit a Change Request — EVOLV cross-references the GAMP 5 system
             registry, assesses risk, and logs a 21 CFR Part 11 audit record.
           </p>
+          {/* Sprint 35.5 (F3 fix): tell the user up-front which project
+              this CR will target. Sprint 36 will replace this with a
+              "Generate Impact Assessment" call-to-action. */}
+          {activeProject && (
+            <p className="text-[10px] mt-1.5 px-2 py-1 rounded inline-block"
+              style={{
+                background: 'rgba(0,127,255,0.08)',
+                border:     '1px solid rgba(0,127,255,0.25)',
+                color:      '#007FFF',
+              }}
+            >
+              ★ Active project pre-selected:
+              {' '}
+              <span className="font-semibold">{activeProject.name}</span>
+              {' · '}
+              {activeProject.phase}
+              {' · '}
+              {activeProject.gxpStatus}
+            </p>
+          )}
         </div>
         {apiOnline !== null && (
           <span className={`text-[10px] px-2 py-1 rounded-lg border shrink-0 ml-4
@@ -466,11 +1161,30 @@ export default function ChangeControlTab() {
                          px-3 py-2 text-xs text-text-primary outline-none
                          focus:border-border-blue transition-colors">
               <option value="">— Unknown / Not in EVOLV registry —</option>
-              {allSystems.map(s => (
-                <option key={s.id} value={s.name}>
-                  {s.name} ({s.gxpStatus}, Cat {s.gampCategory})
-                </option>
-              ))}
+              {/* Sprint 35.5 (F3 fix): pin the active project at the
+                  top of the list in its own optgroup so it's
+                  unmistakable. The demo portfolio (SYSTEMS) is for
+                  story-mode; the active project is what a real CR
+                  will target. */}
+              {activeProject && (
+                <optgroup label="★ Your active project">
+                  <option value={activeProject.name}>
+                    {activeProject.name} ({activeProject.gxpStatus},
+                    {' '}Cat {activeProject.gampCategory},
+                    {' '}{activeProject.phase})
+                  </option>
+                </optgroup>
+              )}
+              <optgroup label="Demo portfolio + classified systems">
+                {allSystems
+                  .filter(s => s.id !== 'PROJ-ACTIVE')
+                  .map(s => (
+                    <option key={s.id} value={s.name}>
+                      {s.name} ({s.gxpStatus}, Cat {s.gampCategory})
+                    </option>
+                  ))
+                }
+              </optgroup>
             </select>
             {matchedSystem && (
               <div className="mt-2 rounded-lg px-3 py-2 flex items-center gap-3
@@ -606,6 +1320,37 @@ export default function ChangeControlTab() {
               ? <><span className="animate-spin">⏳</span> Assessing…</>
               : '⚡ Submit to EVOLV'}
           </button>
+
+          {/* Sprint 36 — Change Impact Assessment button. Visible only
+              when the active project is selected and a CR has been
+              entered. The button generates a CIA via the agent +
+              renders the viewer below. AI proposes; the user signs
+              the CCR before any action propagates. */}
+          {ciaEligible && !hasCia && (
+            <button
+              onClick={handleGenerateCIA}
+              disabled={ciaLoading}
+              className="w-full mt-2 flex items-center justify-center
+                         gap-2 px-4 py-2.5 rounded-xl text-xs font-bold
+                         text-white shadow-sm transition-opacity
+                         hover:opacity-90 disabled:opacity-50
+                         disabled:cursor-not-allowed"
+              style={{
+                background:
+                  'linear-gradient(90deg, #007FFF, #32CD32)',
+              }}
+            >
+              {ciaLoading
+                ? <><span className="animate-spin">🧠</span>{' '}
+                    Generating Change Impact Assessment…</>
+                : '🧠 Generate Change Impact Assessment (AI)'}
+            </button>
+          )}
+          {ciaError && (
+            <p className="text-red-400 text-[10px] mt-1">
+              {ciaError}
+            </p>
+          )}
           {apiOnline === false && (
             <p className="text-amber-400 text-[10px] text-center">
               ⚠ API server offline — showing deterministic fallback
@@ -733,6 +1478,21 @@ export default function ChangeControlTab() {
             )}
           </AnimatePresence>
 
+          {/* Sprint 36 — CIA viewer renders when the active project's
+              CR has had its CIA generated. Lives right below the risk
+              result so the visual flow reads as: CR → risk → AI-drafted
+              impact assessment → human signs CCR. */}
+          {hasCia && (
+            <CIAViewer
+              cia={activeRecord.cia}
+              ccr={activeRecord.ccr}
+              onOpenCcrModal={() => {
+                setCcrError('')
+                setCcrModalOpen(true)
+              }}
+            />
+          )}
+
           <AnimatePresence>
             {auditFeed.length > 0 && (
               <motion.div key="audit"
@@ -786,6 +1546,20 @@ export default function ChangeControlTab() {
           </div>
         ))}
       </div>
+
+      {/* Sprint 36 — CCR Sign modal. Lives at the root of the
+          ChangeControlTab so it can overlay the entire surface
+          rather than being constrained by the response panel. */}
+      {ccrModalOpen && activeRecord?.cia && (
+        <CCRSignModal
+          cia={activeRecord.cia}
+          defaultSigner={userProfile?.name ?? ''}
+          submitting={ccrSubmitting}
+          error={ccrError}
+          onCancel={() => setCcrModalOpen(false)}
+          onSubmit={handleSignCCR}
+        />
+      )}
     </div>
   )
 }

@@ -9,10 +9,71 @@
  *   [Academy — 1×2] [Risk — 1×1]           [Monitor — 1×2]
  *                   [Impact Analytics — 1×1]
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { APPS }         from '../data/apps.js'
 import { useAppStore,
          LIFECYCLE_PHASES } from '../store/useAppStore.js'
+import { DEMO_PROJECT_META } from '../data/demoProject.js'
+import { V_NODES, V_PATH }   from '../shell/vmodelGeometry.js'
+
+// ── Sprint 31 — Copilot-style intent routing ────────────────────
+// Pharma QA pros land on Home and ask "where do I start?". The
+// chat-input hero gives them one front door — they describe what
+// they want, and we deterministically route to the matching app.
+//
+// Order matters: the FIRST entry whose keyword matches wins, so
+// list more-specific intents (audit, traceability) before broader
+// ones (verify, plan).
+const ROUTE_KEYWORDS = [
+  ['audit-trail',         ['audit trail', 'audit log', 'inspector', 'inspect',
+                           '21 cfr part 11 trail', 'reasoning hash']],
+  ['traceability-matrix', ['traceability', 'rtm', 'trace matrix']],
+  ['regulatory-watch',    ['regulatory change', 'regulatory update',
+                           'new regulation', 'fda guidance', 'ema',
+                           'reg watch']],
+  ['governance',          ['governance', 'hitl', 'human in the loop',
+                           'override', 'ai decision queue']],
+  ['portfolio',           ['portfolio', 'inventory', 'estate', 'rag status',
+                           'all systems']],
+  ['system-journey',      ['journey', 'lifecycle flow', 'timeline view']],
+  ['impact-analytics',    ['impact', 'roi', 'savings', 'comparison']],
+  ['docs',                ['docs', 'documentation', 'glossary', 'help me',
+                           'how do i']],
+  ['academy',             ['academy', 'training', 'tutorial', 'walkthrough',
+                           'learn']],
+  ['dev-portal',          ['api', 'webhook', 'sandbox', 'dev portal']],
+  ['config',              ['config', 'tenant', 'site', 'abac', 'policy']],
+  // Lifecycle phases (more specific keywords first)
+  ['plan',                ['plan', 'start a new', 'new project', 'kick off',
+                           'kick-off', 'new validation', 'gamp category',
+                           'vmp', 'validation master plan']],
+  ['requirements',        ['requirement', 'urs', 'business story',
+                           'user story', 'gxp control', 'smart req']],
+  ['risk',                ['risk', 'fmea', 'gap analysis', 'rpn',
+                           'patient safety', 'severity']],
+  ['design',              ['design', 'sds', 'hld', 'lld', 'test author',
+                           'configuration spec', 'test bundle']],
+  ['verify',              ['verify', 'execute', 'test execution',
+                           'run script', 'continue testing', 'pass/fail',
+                           'evidence', 'sign off run']],
+  ['release',             ['release', 'go live', 'go-live', 'approver',
+                           'multi-approver', 'approval', 'release gate']],
+  ['monitor',             ['monitor', 'operations', 'change request',
+                           'deviation', 'system health']],
+  ['retire',              ['retire', 'decommission', 'archive',
+                           'sunset']],
+]
+
+function routeIntent(text) {
+  const t = text.toLowerCase().trim()
+  if (!t) return null
+  for (const [appId, keywords] of ROUTE_KEYWORDS) {
+    if (keywords.some(k => t.includes(k))) return appId
+  }
+  // Fallback — open Requirements (most natural-language asks
+  // route to "I want the system to do X")
+  return 'requirements'
+}
 
 // Bento grid slot config — [appId, colSpan, rowSpan, extraClass]
 const BENTO = [
@@ -36,6 +97,20 @@ const PHASE_META = [
   { id: 'monitor',      label: 'Monitor',       emoji: '📡' },
   { id: 'retire',       label: 'Retire',        emoji: '🔒' },
 ]
+
+// ── Sprint 32 — V-model node geometry ────────────────────────────
+// V_NODES + V_PATH are now imported from `shell/vmodelGeometry.js`
+// (Sprint 33) so the Home hero and the persistent LifecycleStrip
+// spine share a single source of truth. Both components show the
+// same 8 phases in the same V-shape — the V-model is the platform's
+// visual spine, not just a Home decoration.
+
+// Sprint 32.3 — natural-language "what's next" router. Matches
+// patterns like "what's next", "where am I", "next phase",
+// "continue", "resume". When the user types one of these in the
+// HeroPrompt, we look up the active project's first incomplete
+// phase from the store rather than going through ROUTE_KEYWORDS.
+const NEXT_PATTERNS = /\b(what'?s?\s+next|where\s+am\s+i|next\s+(phase|step)|continue|pick\s+up|resume|what\s+should\s+i\s+do)\b/i
 
 // Next-action suggestions keyed by the FIRST incomplete phase
 const NEXT_ACTION = {
@@ -242,7 +317,7 @@ function StatCard({ label, value, sub, color, icon }) {
 // ── Project switcher strip ────────────────────────────────────────
 function ProjectsSwitcher({
   projects, activeProjectId, phaseCompletion,
-  onSwitch, onCreate, onDelete,
+  onSwitch, onCreate, onDelete, onLoadDemo,
 }) {
   const [creating, setCreating] = useState(false)
   const [newName,  setNewName]  = useState('')
@@ -251,6 +326,31 @@ function ProjectsSwitcher({
   const activeProj    = projects[activeProjectId]
   const otherProjects = projectList.filter(p => p.id !== activeProjectId)
   const activeDone    = Object.values(phaseCompletion).filter(Boolean).length
+  const demoLoaded    = Boolean(projects[DEMO_PROJECT_META.id])
+  const onDemo        = activeProjectId === DEMO_PROJECT_META.id
+
+  const handleDemoClick = () => {
+    if (onDemo) {
+      // Already on demo — offer reset
+      const ok = window.confirm(
+        'Reset the LabCore demo to its pristine seeded state?\n\n'
+        + 'Any test runs, defects, or sign-offs you added on the '
+        + 'demo will be cleared.',
+      )
+      if (ok) onLoadDemo()
+      return
+    }
+    const verb = demoLoaded ? 'Switch back to' : 'Load'
+    const ok = window.confirm(
+      `${verb} the LabCore LIMS v4.2 Migration demo?\n\n`
+      + 'A pre-populated mid-flight CSV project will be loaded so '
+      + 'you can walk Plan → Requirements → Risk → Design → '
+      + 'Verify → Release end-to-end.\n\n'
+      + 'Your current project will be saved and remains available '
+      + 'in the project switcher.',
+    )
+    if (ok) onLoadDemo()
+  }
 
   const handleCreate = () => {
     if (!newName.trim()) return
@@ -306,6 +406,34 @@ function ProjectsSwitcher({
         )
       })}
 
+      {/* Load / reset demo project */}
+      <button
+        onClick={handleDemoClick}
+        className={`
+          flex items-center gap-1.5 px-3 py-1.5 rounded-lg shrink-0
+          text-xs font-semibold transition-all
+          ${onDemo
+            ? 'border border-lime-DEFAULT/40 bg-lime-dim text-lime-DEFAULT'
+            : 'border border-blue-DEFAULT/40 bg-blue-dim text-blue-DEFAULT '
+              + 'hover:bg-blue-DEFAULT/15 hover:border-blue-DEFAULT/60'}
+        `}
+        title={onDemo
+          ? 'Reset the demo project to its pristine state'
+          : (demoLoaded
+              ? 'Switch back to the LabCore LIMS demo'
+              : 'Load a pre-populated end-to-end CSV project to '
+                + 'explore the platform')}
+      >
+        <span aria-hidden>{onDemo ? '↺' : '★'}</span>
+        <span>
+          {onDemo
+            ? 'Reset Demo'
+            : demoLoaded
+              ? 'Open Demo'
+              : 'Load Demo Project'}
+        </span>
+      </button>
+
       {/* New project */}
       {creating ? (
         <div className="flex items-center gap-2">
@@ -349,6 +477,373 @@ function ProjectsSwitcher({
   )
 }
 
+// ── VModelHero — Sprint 32 animated phase-progress strip ────────
+// A live status board that doubles as the brand visual. The SVG V
+// curve sketches itself in once on first paint (~1.2s), then sits
+// still as a clickable phase map. Each node is colour-coded by
+// `phaseCompletion[id]`:
+//   • lime    → done
+//   • blue    → next incomplete phase (pulses)
+//   • muted   → not started
+//   • locked  → retire (when project hasn't been released yet)
+//
+// Click a node → opens that phase. Hover → tooltip with full label.
+// The overlay below the curve names the active project + first
+// incomplete phase in plain English.
+function VModelHero({
+  phaseCompletion, nextPhase, projectName, doneCount, totalPhases,
+  onPhaseClick,
+}) {
+  const pathRef = useRef(null)
+  const [pathLength, setPathLength] = useState(640)
+  const [drawn,      setDrawn]      = useState(false)
+
+  // Measure the actual path length once mounted, then trigger the
+  // draw animation on the next frame. Two rAFs are necessary
+  // because we need React to commit the dasharray=length /
+  // dashoffset=length state before transitioning to dashoffset=0.
+  useEffect(() => {
+    if (pathRef.current) {
+      setPathLength(pathRef.current.getTotalLength())
+    }
+    const r1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDrawn(true))
+    })
+    return () => cancelAnimationFrame(r1)
+  }, [])
+
+  return (
+    <div
+      className="rounded-2xl bg-bg-card border border-border-base
+                 px-6 py-5 mb-6"
+      style={{ boxShadow: '0 1px 2px rgba(42,40,37,0.04)' }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em]
+                        text-text-muted font-semibold">
+            Lifecycle
+          </p>
+          {projectName && (
+            <span className="text-xs text-text-secondary truncate">
+              · {projectName}
+            </span>
+          )}
+        </div>
+        <span className="text-[11px] text-text-muted font-mono">
+          {doneCount}/{totalPhases} complete
+        </span>
+      </div>
+
+      <svg
+        viewBox="0 0 720 170"
+        preserveAspectRatio="xMidYMid meet"
+        className="w-full h-auto"
+        style={{ maxHeight: '180px' }}
+      >
+        <defs>
+          <linearGradient id="v-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="#007FFF" />
+            <stop offset="50%"  stopColor="#32CD32" />
+            <stop offset="100%" stopColor="#007FFF" />
+          </linearGradient>
+        </defs>
+
+        {/* Track path — drawn first as a faint guide so the animated
+            stroke has something to fill in over. */}
+        <path
+          d={V_PATH}
+          fill="none"
+          stroke="var(--border-base)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Animated brand-gradient stroke — the headline visual. */}
+        <path
+          ref={pathRef}
+          d={V_PATH}
+          fill="none"
+          stroke="url(#v-grad)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={pathLength}
+          strokeDashoffset={drawn ? 0 : pathLength}
+          style={{ transition: 'stroke-dashoffset 1.2s ease-out' }}
+        />
+
+        {/* Nodes — fade in sequentially after the path completes. */}
+        {V_NODES.map((n, i) => {
+          const done    = !!phaseCompletion?.[n.id]
+          const active  = n.id === nextPhase
+          const locked  = n.id === 'retire' && !phaseCompletion?.monitor
+          const fill    = done   ? '#32CD32'
+                        : active ? '#007FFF'
+                        : locked ? 'var(--bg-card)'
+                        :          'var(--bg-card)'
+          const stroke  = done   ? '#32CD32'
+                        : active ? '#007FFF'
+                        : locked ? 'var(--border-base)'
+                        :          'var(--border-base)'
+          const labelClr = done || active
+                        ? 'var(--text-primary)'
+                        : 'var(--text-muted)'
+
+          return (
+            <g
+              key={n.id}
+              style={{
+                opacity: drawn ? 1 : 0,
+                transition: `opacity 0.45s ease-out ${i * 0.12 + 0.4}s`,
+                cursor: locked ? 'not-allowed' : 'pointer',
+              }}
+              onClick={() => !locked && onPhaseClick?.(n.id)}
+            >
+              {/* Pulse halo for the active phase only. */}
+              {active && (
+                <circle
+                  cx={n.x} cy={n.y} r="14"
+                  fill="#007FFF" opacity="0.18"
+                  className="animate-pulse"
+                />
+              )}
+              {/* Main node */}
+              <circle
+                cx={n.x} cy={n.y} r="9"
+                fill={fill}
+                stroke={stroke}
+                strokeWidth="2.5"
+                style={{
+                  filter: done || active
+                    ? `drop-shadow(0 0 6px ${active ? '#007FFF' : '#32CD32'}80)`
+                    : 'none',
+                }}
+              />
+              {/* Tick mark on done nodes */}
+              {done && (
+                <path
+                  d={`M ${n.x - 3.5},${n.y} L ${n.x - 1},${n.y + 2.5} L ${n.x + 4},${n.y - 2.5}`}
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+              {/* Label — above for top-row nodes, below for apex. */}
+              <text
+                x={n.x}
+                y={n.y > 130 ? n.y + 24 : n.y - 16}
+                textAnchor="middle"
+                fill={labelClr}
+                fontSize="11"
+                fontWeight={done || active ? '600' : '500'}
+                fontFamily="Inter, sans-serif"
+              >
+                {n.short}
+              </text>
+              <title>
+                {n.label}
+                {' — '}
+                {done ? 'Complete' : active ? 'In progress (next up)' : 'Not started'}
+              </title>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+// ── HeroPrompt — Sprint 31 Copilot-style chat input ─────────────
+// The headline interaction surface on Home. Three goals:
+//   1. Answer the new-user question "where do I start?" with one
+//      input box instead of 20 sidebar items.
+//   2. Feel native to anyone arriving from Claude / ChatGPT.
+//   3. Stay deterministic — every keystroke routes via a fixed
+//      keyword map (see ROUTE_KEYWORDS), no LLM call, no surprises
+//      in a demo. Falls back to Requirements when nothing matches.
+//
+// The 4 chips below the input are calibrated to the most common
+// pharma QA tasks identified in April demos: start a project,
+// continue testing, review portfolio, search the audit trail.
+const SUGGESTIONS = [
+  { label: 'Start a new validation',  hint: 'Plan',         appId: 'plan'         },
+  { label: 'Continue test execution', hint: 'Verify',       appId: 'verify'       },
+  { label: 'Review portfolio status', hint: 'Portfolio',    appId: 'portfolio'    },
+  { label: 'Search the audit trail',  hint: 'Audit Trail',  appId: 'audit-trail'  },
+]
+
+function HeroPrompt({ userName, onRoute, nextPhase }) {
+  const [text,     setText]     = useState('')
+  const [focused,  setFocused]  = useState(false)
+  const inputRef = useRef(null)
+
+  // First-name greeting — falls back to the generic prompt copy.
+  const firstName = (userName ?? '').trim().split(/\s+/)[0]
+  const greeting = firstName
+    ? `Hi ${firstName} — what do you want to validate today?`
+    : 'What do you want to validate today?'
+
+  // Auto-grow the textarea (max 5 rows) as the user types.
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+  }, [text])
+
+  const handleSubmit = e => {
+    e?.preventDefault?.()
+    const t = text.trim()
+    if (!t) return
+    // Sprint 32.3 — "what's next" / "where am I" / "continue" /
+    // "resume" route to the active project's first incomplete
+    // phase rather than going through ROUTE_KEYWORDS. Falls back
+    // to the keyword router when no project state is available.
+    if (NEXT_PATTERNS.test(t) && nextPhase) {
+      onRoute(nextPhase, t)
+      setText('')
+      return
+    }
+    const target = routeIntent(t)
+    if (!target) return
+    onRoute(target, t)
+    setText('')
+  }
+
+  const handleKeyDown = e => {
+    // Enter submits; Shift+Enter inserts a newline (Claude/ChatGPT
+    // convention — pharma QA pros recognise it from those tools).
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }
+
+  return (
+    <div className="mb-6">
+      {/* Sprint 35.6 UX diet: removed the "GAMP 5 · CSA · 21 CFR Part 11
+          · FDA AI Guidance 2026" credibility strip. EVOLV is FOR the
+          regulated-pharma audience — users inside the platform already
+          trust it's built for these frameworks. Showing the labels on
+          Home was outsider-facing marketing copy that didn't earn its
+          space on the surface a user sees every day. The chat input
+          is the only thing that needs the eye on first paint. */}
+
+      <h1 className="text-2xl md:text-3xl font-semibold text-text-primary
+                     mb-5 tracking-tight">
+        {greeting}
+      </h1>
+
+      {/* Chat-input card — gradient ring on focus is the brand
+          accent (lime → blue, same as the EVOLV logo) so the focal
+          point on first paint is unmistakably "EVOLV is AI". */}
+      <form
+        onSubmit={handleSubmit}
+        className="relative rounded-2xl bg-bg-card border transition-all
+                   duration-200"
+        style={{
+          borderColor: focused
+            ? 'transparent'
+            : 'var(--border-base)',
+          boxShadow:   focused
+            ? '0 0 0 1.5px #007FFF, 0 8px 32px rgba(0,127,255,0.10)'
+            : '0 1px 2px rgba(42,40,37,0.04)',
+          backgroundImage: focused
+            ? 'linear-gradient(white,white), linear-gradient(135deg,#007FFF,#32CD32)'
+            : 'none',
+          backgroundOrigin: 'border-box',
+          backgroundClip:   'padding-box, border-box',
+        }}
+      >
+        <textarea
+          ref={inputRef}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          rows={1}
+          placeholder="Describe a system to validate, ask about a regulation, or jump to a phase…"
+          className="w-full resize-none bg-transparent outline-none
+                     text-text-primary text-sm leading-relaxed
+                     placeholder:text-text-muted/70
+                     px-5 pt-4 pb-2"
+          style={{ minHeight: '52px' }}
+        />
+
+        {/* Footer row — keyboard hint + submit button */}
+        <div className="flex items-center justify-between px-5 pb-3 pt-1">
+          <span className="flex items-center gap-1.5 text-[10px]
+                           text-text-muted">
+            <kbd className="bg-bg-hover border border-border-base
+                            rounded px-1.5 py-0.5 text-[9px] font-mono">
+              ↵
+            </kbd>
+            to submit
+            <span className="opacity-50">·</span>
+            <kbd className="bg-bg-hover border border-border-base
+                            rounded px-1.5 py-0.5 text-[9px] font-mono">
+              ⇧↵
+            </kbd>
+            new line
+          </span>
+
+          <button
+            type="submit"
+            disabled={!text.trim()}
+            title="Submit (Enter)"
+            className="w-8 h-8 rounded-full flex items-center justify-center
+                       transition-all disabled:opacity-30
+                       disabled:cursor-not-allowed shrink-0"
+            style={{
+              background: text.trim()
+                ? 'linear-gradient(135deg,#007FFF 0%,#32CD32 100%)'
+                : 'var(--bg-hover)',
+              color: text.trim() ? '#ffffff' : 'var(--text-muted)',
+              boxShadow: text.trim()
+                ? '0 4px 12px rgba(0,127,255,0.25)'
+                : 'none',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor"
+                    strokeWidth="1.8" strokeLinecap="round"
+                    strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      {/* Suggestion chips — calibrated to top pharma QA tasks. */}
+      <div className="flex flex-wrap gap-2 mt-3">
+        {SUGGESTIONS.map(s => (
+          <button
+            key={s.appId}
+            onClick={() => onRoute(s.appId, s.label)}
+            className="group flex items-center gap-2 px-3 py-1.5 rounded-full
+                       bg-bg-card border border-border-base
+                       text-xs text-text-secondary
+                       hover:border-blue-DEFAULT/40 hover:text-text-primary
+                       hover:bg-bg-hover transition-all"
+          >
+            <span>{s.label}</span>
+            <span className="text-[9px] text-text-muted
+                             group-hover:text-blue-DEFAULT
+                             border border-border-base rounded px-1.5
+                             py-0.5 transition-colors">
+              {s.hint}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────
 export default function Home() {
   const {
@@ -358,6 +853,8 @@ export default function Home() {
     riskData,
     projects, activeProjectId,
     createProject, switchProject, deleteProject,
+    loadDemoProject,
+    userProfile,
   } = useAppStore()
 
   const openTabIds = new Set(tabs.map(t => t.appId))
@@ -441,22 +938,35 @@ export default function Home() {
     <div className="h-full overflow-y-auto bg-bg-base">
       <div className="max-w-6xl mx-auto px-6 py-8">
 
-        {/* ── Hero header ────────────────────────────────── */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-white">
-              EVOLV Platform
-            </h1>
-            <span className="ai-badge animate-pulse-lime text-sm px-2 py-1">
-              EVOLV AI Active
-            </span>
-          </div>
-          <p className="text-text-secondary text-sm">
-            The Validation Factory — GAMP 5 · CSA · 21 CFR Part 11
-            · FDA AI Guidance 2026
-          </p>
-          <div className="neon-sep mt-4" />
-        </div>
+        {/* ── Hero — Sprint 31 Copilot-style prompt ─────── */}
+        {/* Sprint 31 replaces the old "EVOLV Platform" title +
+            "EVOLV AI Active" badge with a chat-input front door.
+            The AI is now implied by the interaction surface — no
+            decorative badge needed. The standards strip moves
+            inside HeroPrompt as a small uppercase line above the
+            greeting (only compliance signal on Home after Sprint
+            30 deleted the header pills). */}
+        <HeroPrompt
+          userName={userProfile?.name}
+          onRoute={appId => handleCardClick(appId)}
+          nextPhase={nextPhase}
+        />
+        <div className="neon-sep mb-6" />
+
+        {/* ── Sprint 32 — V-model hero ──────────────────────
+            Animated SVG curve (plays once on first paint) that
+            doubles as a clickable phase-progress strip. Replaces
+            the old "Lifecycle Progress" pills row in the health
+            banner — the V-model itself shows phase status, so
+            pills are redundant. */}
+        <VModelHero
+          phaseCompletion={phaseCompletion}
+          nextPhase={nextPhase}
+          projectName={projects?.[activeProjectId]?.name}
+          doneCount={doneCount}
+          totalPhases={totalPhases}
+          onPhaseClick={handleCardClick}
+        />
 
         {/* ── Project switcher ────────────────────────────── */}
         <ProjectsSwitcher
@@ -466,62 +976,29 @@ export default function Home() {
           onSwitch={switchProject}
           onCreate={createProject}
           onDelete={deleteProject}
+          onLoadDemo={loadDemoProject}
         />
 
-        {/* ── Project health banner ───────────────────────── */}
+        {/* ── Project health banner — now ring + next action only.
+            Phase pills moved up into VModelHero (Sprint 32). */}
         <div className="glass rounded-2xl p-5 mb-6 flex items-center gap-6">
 
           {/* Progress ring */}
           <ProgressRing done={doneCount} total={totalPhases} />
 
-          {/* Phase pills */}
+          {/* Next action CTA — wider now that phase pills are gone. */}
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-text-muted uppercase tracking-widest
-                          mb-2 font-semibold">
-              Lifecycle Progress
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PHASE_META.map(p => {
-                const done   = phaseCompletion[p.id]
-                const locked = p.id === 'retire'
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() =>
-                      !locked && handleCardClick(p.id)}
-                    disabled={locked}
-                    className={`
-                      flex items-center gap-1 px-2 py-1 rounded-lg
-                      text-[10px] font-medium transition-colors
-                      ${locked
-                        ? 'border border-border-base text-text-muted opacity-40 cursor-not-allowed'
-                        : done
-                          ? 'border border-lime-DEFAULT/30 bg-lime-DEFAULT/10 text-lime-DEFAULT'
-                          : 'border border-border-base text-text-muted hover:border-border-bright hover:text-text-secondary'}
-                    `}
-                  >
-                    <span>{p.emoji}</span>
-                    <span>{p.label}</span>
-                    {done && <span className="text-lime-DEFAULT">✓</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Next action CTA */}
-          <div className="shrink-0 max-w-[220px]">
             <p className="text-[10px] text-text-muted uppercase tracking-widest
                           mb-2 font-semibold">
               Next Action
             </p>
-            <p className="text-xs text-text-secondary leading-relaxed mb-3">
+            <p className="text-sm text-text-secondary leading-relaxed mb-3">
               {nextAction.msg}
             </p>
             {nextAction.appId && (
               <button
                 onClick={() => handleCardClick(nextAction.appId)}
-                className="w-full py-1.5 text-xs rounded-lg font-semibold
+                className="px-4 py-1.5 text-xs rounded-lg font-semibold
                            bg-blue-DEFAULT text-white hover:opacity-90
                            transition-opacity"
               >
@@ -568,76 +1045,15 @@ export default function Home() {
             )
           })}
 
-          {/* Compliance card (decorative) */}
-          <div
-            className="glass rounded-2xl p-5 flex flex-col justify-between"
-            style={{ gridColumn: 'span 2', gridRow: 'span 1' }}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-4 h-4 text-text-secondary shrink-0">
-                {ICONS.shield}
-              </div>
-              <p className="text-text-secondary text-xs font-semibold
-                            uppercase tracking-wider">
-                Compliance Status
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: '21 CFR Part 11', ok: true },
-                { label: 'GAMP 5 Rev 2',  ok: true },
-                { label: 'FDA AI 2026',    ok: true },
-                { label: 'ISO 13485',      ok: true },
-                { label: 'GMP Mode',       ok: true },
-                { label: 'Audit Trail',    ok: true },
-              ].map(c => (
-                <div key={c.label}
-                  className="flex items-center gap-1.5 text-[10px]">
-                  <span className={c.ok
-                    ? 'text-lime-DEFAULT' : 'text-red-400'}>
-                    {c.ok ? '✓' : '✗'}
-                  </span>
-                  <span className="text-text-secondary">{c.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* EVOLV AI status card (decorative) */}
-          <div
-            className="glass-lime rounded-2xl p-5 flex flex-col justify-between"
-            style={{ gridColumn: 'span 2', gridRow: 'span 1' }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 text-lime-DEFAULT shrink-0">
-                  {ICONS.cpu}
-                </div>
-                <p className="text-lime-DEFAULT text-xs font-semibold
-                              uppercase tracking-wider">
-                  EVOLV AI Engine
-                </p>
-              </div>
-              <span className="text-[9px] text-lime-DEFAULT border
-                               border-lime-DEFAULT/30 bg-lime-dim rounded-full
-                               px-2 py-0.5 animate-pulse-lime">
-                Online
-              </span>
-            </div>
-            <div className="space-y-1.5 text-[11px] text-text-secondary">
-              {[
-                'RequirementArchitect — GAMP 5 URS generation',
-                'VerificationAgent — Regulatory compliance check',
-                'DeltaAgent — CSA test script generation',
-                'SentinelImpactAgent — Blast radius analysis',
-              ].map(agent => (
-                <div key={agent} className="flex items-center gap-2">
-                  <span className="text-lime-DEFAULT text-[9px]">●</span>
-                  <span>{agent}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Sprint 35.6 UX diet: removed two decorative span-2 cards.
+              (1) "Compliance Status" card claimed ✓ on 6 frameworks
+              including FDA AI 2026 and ISO 13485 — overclaims you'd
+              have to defend in a vendor review, contradicts Newsletter
+              #3 Q6 honesty stance. (2) "EVOLV AI Engine" card listed
+              internal *Agent class names with a hardcoded pulsing
+              "Online" badge — theatre + the exact "agentic" language
+              Nuno publicly cautioned against. Both deleted. The bento
+              grid breathes more; honesty story tightens. */}
         </div>
 
         {/* ── Bottom tagline ───────────────────────────────── */}

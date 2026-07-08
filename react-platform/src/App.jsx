@@ -42,9 +42,13 @@ const RENDERERS = {
   'navigator':          lazy(() => import('./apps/Navigator.jsx')),
   'regulatory-watch':   lazy(() => import('./apps/RegulatoryWatch.jsx')),
   'impact-analytics':   lazy(() => import('./apps/ImpactAnalytics.jsx')),
+  'traceability-matrix': lazy(() => import('./apps/TraceabilityMatrix.jsx')),
+  'bounded-autonomy-profile':
+                        lazy(() => import('./apps/BoundedAutonomyProfile.jsx')),
   // Tools
   'dev-portal':         lazy(() => import('./apps/DevPortal.jsx')),
   'config':             lazy(() => import('./apps/Config.jsx')),
+  'audit-trail':        lazy(() => import('./apps/AuditTrail.jsx')),
   'academy':            lazy(() => import('./apps/Academy.jsx')),
   'docs':               lazy(() => import('./apps/Docs.jsx')),
 }
@@ -78,6 +82,7 @@ export default function App() {
   const {
     tabs, activeTabId, openTab, closeTab, switchTab, theme, fontSize,
     phaseCompletion, setStatusBadge, statusBadges,
+    requirements, riskData,
   } = useAppStore()
 
   // Global Streamlit ↔ React data sync (requirements + plan polling)
@@ -113,6 +118,35 @@ export default function App() {
     })
     prevCompletion.current = { ...phaseCompletion }
   }, [phaseCompletion, setStatusBadge, statusBadges])
+
+  // Live Risk-badge recompute — keeps the sidebar pill honest as the
+  // user adds/edits risk profiles. Heals stale "1 pending" demo seeds
+  // that may be persisted in older Zustand stores from before the
+  // dynamic-badge fix landed.
+  useEffect(() => {
+    const urs = (requirements ?? []).filter(
+      r => (r.type ?? 'UR') === 'UR',
+    )
+    const ranked = urs.filter(u => {
+      const row = riskData?.[u.id]
+      return row && row.impact && row.implMethod
+    }).length
+    const pending = urs.length - ranked
+    let next
+    if (urs.length === 0) {
+      next = null
+    } else if (pending === 0) {
+      next = { type: 'success', label: 'All ranked' }
+    } else {
+      next = { type: 'warning', label: `${pending} pending` }
+    }
+    const cur = statusBadges.risk
+    const same = (
+      (cur === null && next === null) ||
+      (cur && next && cur.type === next.type && cur.label === next.label)
+    )
+    if (!same) setStatusBadge('risk', next)
+  }, [requirements, riskData, statusBadges.risk, setStatusBadge])
 
   return (
     <div

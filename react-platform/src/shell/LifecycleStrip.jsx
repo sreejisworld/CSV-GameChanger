@@ -1,126 +1,32 @@
 /**
- * LifecycleStrip — horizontal V-model lifecycle progress bar.
+ * LifecycleStrip — persistent V-shape lifecycle spine above phase pages.
+ *
+ * Sprint 33 upgrade: replaced the flat horizontal node row with a
+ * compact V-shape SVG that mirrors VModelHero's geometry. Same nodes,
+ * same gradient stroke, same colour conventions — the V-model is now
+ * the platform's *spine*, not just a Home decoration. Pharma QA pros
+ * see the same brand visual on landing AND above every working phase.
  *
  * Behaviour:
- *   • Collapsed (default): 6px gradient progress line — shows completion at a glance.
- *   • Hover → full 52px strip slides down.
- *   • Press `L` (outside inputs) to pin/unpin the strip permanently.
- *   • A small lock badge appears in the top-right corner when pinned.
+ *   • Collapsed (default): 6px gradient progress line — completion at
+ *     a glance.
+ *   • Hover → full ~96px V-shape strip slides down.
+ *   • Press `L` (outside inputs) to pin/unpin permanently.
+ *   • Lock badge appears in the top-right corner when pinned.
  *
- * Node states:
- *   active    — current tab (electric blue)
- *   completed — phase has been visited (lime green ✓)
- *   available — can be opened (grey)
- *   locked    — not applicable yet (dim, disabled)
+ * Node states (matches VModelHero on Home):
+ *   active    — current open tab (electric blue + halo)
+ *   completed — visited / signed-off (lime green ✓)
+ *   available — clickable, not yet visited (muted)
+ *   locked    — not applicable yet (Retire before release)
  *
- * Clicking a node opens that phase as a tab.
- * Connector lines fill lime as phases complete.
+ * Click any node → opens that phase as a tab.
  */
 import { useState, useEffect } from 'react'
 import { useAppStore, LIFECYCLE_PHASES } from '../store/useAppStore.js'
 import { APP_MAP }                        from '../data/apps.js'
-
-const PHASE_LABELS = {
-  plan:         'Plan',
-  requirements: 'Reqs',
-  risk:         'Risk',
-  design:       'Design',
-  verify:       'Verify',
-  release:      'Release',
-  monitor:      'Monitor',
-  retire:       'Retire',
-}
-
-// ── Individual phase node ────────────────────────────────────
-function PhaseNode({ phaseId, isActive, isCompleted, isLocked, onClick }) {
-  const app = APP_MAP[phaseId]
-
-  const nodeClass = isActive    ? 'phase-node-active'
-    : isCompleted ? 'phase-node-complete'
-    : isLocked    ? 'phase-node-locked'
-    : 'phase-node-avail'
-
-  const labelClass = isActive    ? 'phase-label-active'
-    : isCompleted ? 'phase-label-complete'
-    : isLocked    ? 'phase-label-locked'
-    : 'phase-label-avail'
-
-  return (
-    <button
-      onClick={isLocked ? undefined : onClick}
-      disabled={isLocked}
-      title={isLocked ? (app?.lockedReason ?? 'Locked') : app?.description}
-      className={`
-        flex flex-col items-center gap-1 group
-        transition-all duration-150 outline-none
-        ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}
-      `}
-    >
-      {/* Circle node */}
-      <div
-        className={`
-          w-5 h-5 rounded-full border-2 flex items-center
-          justify-center transition-all duration-150 shrink-0
-          ${nodeClass}
-          ${isActive ? 'shadow-[0_0_0_3px_rgba(0,127,255,0.20)]' : ''}
-          ${isCompleted && !isActive ? 'shadow-[0_0_0_2px_rgba(50,205,50,0.15)]' : ''}
-        `}
-      >
-        {isCompleted && !isActive && (
-          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-            <path
-              d="M1.5 4L3 5.5L6.5 2"
-              stroke="white"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-        {isLocked && (
-          <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
-            <rect x="1" y="3" width="5" height="3.5" rx="0.8"
-                  fill="currentColor" opacity="0.4" />
-            <path d="M2 3V2a1.5 1.5 0 013 0v1"
-                  stroke="currentColor" strokeWidth="1.2"
-                  strokeLinecap="round" fill="none" opacity="0.4" />
-          </svg>
-        )}
-        {isActive && (
-          <div className="w-1.5 h-1.5 rounded-full bg-white" />
-        )}
-      </div>
-
-      {/* Label */}
-      <span
-        className={`text-[9px] font-medium uppercase tracking-wide
-                    leading-none whitespace-nowrap transition-colors
-                    ${labelClass}`}
-      >
-        {PHASE_LABELS[phaseId]}
-      </span>
-    </button>
-  )
-}
-
-// ── Connector line ───────────────────────────────────────────
-function Connector({ leftCompleted, rightCompleted }) {
-  const filled = leftCompleted && rightCompleted
-  const connClass = filled
-    ? 'connector-lime'
-    : leftCompleted
-      ? 'connector-half'
-      : 'connector-empty'
-
-  return (
-    <div className="flex-1 flex items-center pb-4 min-w-[12px]">
-      <div
-        className={`w-full transition-all duration-300 ${connClass}`}
-        style={{ height: '1.5px' }}
-      />
-    </div>
-  )
-}
+import { V_NODES_SPINE, V_PATH_SPINE,
+         PHASE_SHORT }                    from './vmodelGeometry.js'
 
 // ── Main LifecycleStrip ──────────────────────────────────────
 export default function LifecycleStrip() {
@@ -159,7 +65,7 @@ export default function LifecycleStrip() {
       className="shrink-0 select-none bg-bg-surface border-b border-border-base
                  relative overflow-hidden"
       style={{
-        height:     expanded ? '52px' : '6px',
+        height:     expanded ? '96px' : '6px',
         transition: 'height 0.22s cubic-bezier(0.4,0,0.2,1)',
       }}
     >
@@ -190,41 +96,157 @@ export default function LifecycleStrip() {
         />
       </div>
 
-      {/* ── Expanded view: full node strip ──────────────── */}
+      {/* ── Expanded view: compact V-shape SVG ──────────── */}
       <div
-        className="absolute inset-0 flex items-center px-4 py-2 overflow-x-auto"
+        className="absolute inset-0 flex items-center justify-center px-6"
         style={{
           opacity:       expanded ? 1 : 0,
           transition:    'opacity 0.15s 0.06s',
           pointerEvents: expanded ? 'auto' : 'none',
-          minHeight:     '52px',
         }}
       >
-        {LIFECYCLE_PHASES.map((phaseId, idx) => {
-          const app         = APP_MAP[phaseId]
-          const isActive    = activeTabId === phaseId
-          const isCompleted = phaseCompletion[phaseId] ?? false
-          const isLocked    = app?.locked ?? false
-          const isLast      = idx === LIFECYCLE_PHASES.length - 1
+        <svg
+          viewBox="0 0 720 80"
+          preserveAspectRatio="xMidYMid meet"
+          className="w-full h-full"
+          style={{ maxHeight: '88px', maxWidth: '1180px' }}
+          aria-label="Lifecycle V-model spine"
+        >
+          <defs>
+            <linearGradient id="v-spine-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stopColor="#007FFF" />
+              <stop offset="50%"  stopColor="#32CD32" />
+              <stop offset="100%" stopColor="#007FFF" />
+            </linearGradient>
+          </defs>
 
-          return (
-            <div key={phaseId} className="flex items-center flex-1 min-w-0">
-              <PhaseNode
-                phaseId={phaseId}
-                isActive={isActive}
-                isCompleted={isCompleted}
-                isLocked={isLocked}
-                onClick={() => { openTab(phaseId); setPhaseComplete(phaseId) }}
-              />
-              {!isLast && (
-                <Connector
-                  leftCompleted={isCompleted}
-                  rightCompleted={phaseCompletion[LIFECYCLE_PHASES[idx + 1]] ?? false}
+          {/* Track path — faint guide so the gradient stroke has
+              something to layer over on light backgrounds. */}
+          <path
+            d={V_PATH_SPINE}
+            fill="none"
+            stroke="var(--border-base)"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Brand gradient stroke. No draw-in animation here — the
+              hero earns that on first paint; on the spine it'd be
+              jarring every time the user opens a phase. */}
+          <path
+            d={V_PATH_SPINE}
+            fill="none"
+            stroke="url(#v-spine-grad)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.55"
+          />
+
+          {/* Nodes — coloured by state. Active phase (current tab) takes
+              precedence over completion: even on a phase you've already
+              signed, when you re-open it the spine shows you're THERE. */}
+          {V_NODES_SPINE.map(n => {
+            const app       = APP_MAP[n.id]
+            const isActive  = activeTabId === n.id
+            const done      = !!phaseCompletion?.[n.id]
+            const locked    = (app?.locked ?? false)
+                              || (n.id === 'retire' && !phaseCompletion?.monitor)
+
+            const fill   = isActive ? '#007FFF'
+                          : done    ? '#32CD32'
+                          : locked  ? 'var(--bg-card)'
+                          :           'var(--bg-card)'
+            const stroke = isActive ? '#007FFF'
+                          : done    ? '#32CD32'
+                          : locked  ? 'var(--border-base)'
+                          :           'var(--border-base)'
+            const labelClr = isActive
+                          ? '#007FFF'
+                          : done
+                            ? 'var(--text-primary)'
+                            : 'var(--text-muted)'
+
+            // Label position: above for the four "top" nodes (Plan,
+            // Reqs / Monitor, Retire — y < 24), below for apex nodes
+            // (Design, Verify, Risk, Release — y > 24). Keeps labels
+            // outside the V curve so they never collide with the
+            // gradient stroke.
+            const labelY = n.y > 28 ? n.y + 14 : n.y - 9
+
+            return (
+              <g
+                key={n.id}
+                style={{ cursor: locked ? 'not-allowed' : 'pointer' }}
+                onClick={() => {
+                  if (locked) return
+                  openTab(n.id)
+                  setPhaseComplete(n.id)
+                }}
+              >
+                {/* Pulse halo on active node — same as Home hero. */}
+                {isActive && (
+                  <circle
+                    cx={n.x} cy={n.y} r="9"
+                    fill="#007FFF" opacity="0.22"
+                    className="animate-pulse"
+                  />
+                )}
+                {/* Main node */}
+                <circle
+                  cx={n.x} cy={n.y} r="5.5"
+                  fill={fill}
+                  stroke={stroke}
+                  strokeWidth="1.8"
+                  style={{
+                    filter: isActive
+                      ? 'drop-shadow(0 0 4px rgba(0,127,255,0.55))'
+                      : done
+                        ? 'drop-shadow(0 0 3px rgba(50,205,50,0.45))'
+                        : 'none',
+                  }}
                 />
-              )}
-            </div>
-          )
-        })}
+                {/* Tick on completed (only when not the active node —
+                    on active node we want the solid blue dot). */}
+                {done && !isActive && (
+                  <path
+                    d={`M ${n.x - 2.5},${n.y} L ${n.x - 0.5},${n.y + 1.8} L ${n.x + 3},${n.y - 1.8}`}
+                    fill="none"
+                    stroke="#fff"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+                {/* Label */}
+                <text
+                  x={n.x}
+                  y={labelY}
+                  textAnchor="middle"
+                  fill={labelClr}
+                  fontSize="9"
+                  fontWeight={isActive ? '700' : done ? '600' : '500'}
+                  fontFamily="Inter, sans-serif"
+                  style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                >
+                  {PHASE_SHORT[n.id] ?? n.short}
+                </text>
+                <title>
+                  {app?.label ?? n.label}
+                  {' — '}
+                  {isActive
+                    ? 'Active phase'
+                    : done
+                      ? 'Complete'
+                      : locked
+                        ? (app?.lockedReason ?? 'Locked')
+                        : 'Available'}
+                </title>
+              </g>
+            )
+          })}
+        </svg>
       </div>
 
       {/* ── Pin badge (top-right, visible when pinned) ──── */}

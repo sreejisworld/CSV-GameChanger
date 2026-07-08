@@ -10,7 +10,7 @@
  *  5. ReDoc    — alternative reference docs.
  *  6. Webhooks — register event endpoints with HMAC secret.
  */
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { API_BASE as _EVOLV_API_BASE } from '../config.js'
 
@@ -1067,18 +1067,312 @@ function ServiceNowDemoPanel() {
   )
 }
 
+// ── Agent Passports Panel (Sprint 35.7) ────────────────────────────
+//
+// Surfaces the explicit Permission Envelopes from
+// Agents/agent_passports.py. Each card is an agent's machine-readable
+// declaration of what it may do, what data it may see, and what
+// outputs require human sign-off.
+//
+// This is the artefact a pharma QA director reads in five minutes
+// before signing the procurement contract — and the artefact an FDA
+// inspector asks for by name. Salim Ismail ExO 3.0 / Nuno Valério
+// Trust Architecture alignment.
+
+function AgentPassportsPanel() {
+  const [data,    setData]    = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState('')
+  const [expanded, setExpanded] = useState(null)
+
+  // Load once on mount. The endpoint is read-only and cheap; no need
+  // for re-fetch logic until Sprint 41's runtime passport_check()
+  // ships and passports become live-mutable.
+  useEffect(() => {
+    const ctrl = new AbortController()
+    fetch(`${EVOLV_API}/agents/passports`, { signal: ctrl.signal })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(json => { setData(json); setLoading(false) })
+      .catch(e => {
+        if (e.name === 'AbortError') return
+        setError(e.message || 'Failed to load passports')
+        setLoading(false)
+      })
+    return () => ctrl.abort()
+  }, [])
+
+  if (loading) return (
+    <p className="text-text-muted text-xs">
+      Loading Agent Passports from EVOLV API…
+    </p>
+  )
+  if (error) return (
+    <div className="px-4 py-3 rounded border border-red-500/30
+                    bg-red-500/5 text-[11px] text-red-400">
+      Could not load passports: {error}. Ensure FastAPI is running
+      on port 8000.
+    </div>
+  )
+
+  const passports = data?.passports ?? {}
+  const names = Object.keys(passports)
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-text-primary font-semibold text-sm mb-1">
+          Agent Passports
+        </h2>
+        <p className="text-text-secondary text-xs leading-relaxed
+                      max-w-3xl">
+          Explicit Permission Envelopes for every specialist function
+          in EVOLV. Each agent's passport declares what it may do,
+          what data it may see, and what outputs require human
+          sign-off before propagation. The artefact a pharma QA
+          director can read in five minutes and an FDA inspector can
+          ask for by name.
+        </p>
+        <p className="text-[10px] text-text-muted mt-2">
+          Schema version{' '}
+          <span className="font-mono text-text-secondary">
+            {data?.schema_version}
+          </span>
+          {' · '}
+          {data?.passport_count} registered{' · '}
+          source: <span className="font-mono text-text-secondary">
+            Agents/agent_passports.py
+          </span>
+        </p>
+        {data?.notes && (
+          <p className="text-[10px] text-amber-500/80 mt-1.5
+                        max-w-3xl leading-relaxed">
+            {data.notes}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        {names.map(name => {
+          const p          = passports[name]
+          const isOpen     = expanded === name
+          const callsLlm   = p?.llm_usage?.calls_llm
+          return (
+            <div
+              key={name}
+              className="rounded-xl border border-border-base
+                         bg-bg-card overflow-hidden transition-all"
+            >
+              <button
+                onClick={() => setExpanded(isOpen ? null : name)}
+                className="w-full text-left px-4 py-3
+                           hover:bg-bg-hover transition-colors
+                           flex items-center gap-3"
+              >
+                <span className="font-mono text-sm font-semibold
+                                 text-text-primary">
+                  {name}
+                </span>
+                <span className="text-[10px] text-text-muted">
+                  v{p.version}
+                </span>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full
+                             border font-medium"
+                  style={callsLlm
+                    ? {
+                        background:  'rgba(168,85,247,0.10)',
+                        color:       '#a855f7',
+                        borderColor: 'rgba(168,85,247,0.30)',
+                      }
+                    : {
+                        background:  'rgba(50,205,50,0.10)',
+                        color:       '#32CD32',
+                        borderColor: 'rgba(50,205,50,0.30)',
+                      }
+                  }
+                >
+                  {callsLlm ? 'LLM-backed' : 'Deterministic'}
+                </span>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full
+                             border font-medium ml-auto"
+                  style={p.rollback_eligible ? {
+                    background:  'rgba(0,127,255,0.10)',
+                    color:       '#007FFF',
+                    borderColor: 'rgba(0,127,255,0.30)',
+                  } : {
+                    background:  'rgba(100,116,139,0.10)',
+                    color:       '#94a3b8',
+                    borderColor: 'rgba(100,116,139,0.30)',
+                  }}
+                >
+                  {p.rollback_eligible
+                    ? 'Rollback eligible'
+                    : 'Append-only'}
+                </span>
+                <span className="text-text-muted text-xs">
+                  {isOpen ? '▾' : '▸'}
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="px-4 py-3 border-t border-border-base
+                                space-y-3 text-[11px]">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider
+                                  text-text-muted font-semibold mb-1">
+                      Purpose
+                    </p>
+                    <p className="text-text-secondary leading-relaxed">
+                      {p.purpose}
+                    </p>
+                  </div>
+
+                  <PassportList
+                    label="Allowed Actions"
+                    items={p.allowed_actions}
+                    tone="green" />
+
+                  <PassportList
+                    label="Forbidden Actions"
+                    items={p.forbidden_actions}
+                    tone="red" />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <PassportList
+                      label="Data Classifications — Allowed"
+                      items={p.data_classifications_allowed}
+                      tone="blue" />
+                    <PassportList
+                      label="Data Classifications — Forbidden"
+                      items={p.data_classifications_forbidden}
+                      tone="red" />
+                  </div>
+
+                  {p.requires_human_signoff_on?.length > 0 && (
+                    <PassportList
+                      label="Requires Human Sign-Off On"
+                      items={p.requires_human_signoff_on}
+                      tone="amber" />
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider
+                                    text-text-muted font-semibold mb-1">
+                        Audited Via
+                      </p>
+                      <p className="text-text-secondary font-mono
+                                    text-[10px] leading-relaxed">
+                        {p.outputs_audited_via}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider
+                                    text-text-muted font-semibold mb-1">
+                        LLM Usage
+                      </p>
+                      {p.llm_usage?.calls_llm ? (
+                        <ul className="text-text-secondary
+                                       text-[10px] space-y-0.5">
+                          <li>
+                            Purpose: {p.llm_usage.llm_purpose}
+                          </li>
+                          {p.llm_usage.max_context_chunks != null && (
+                            <li>
+                              Max context: {p.llm_usage.max_context_chunks} chunks
+                            </li>
+                          )}
+                          <li>
+                            Must cite sources:{' '}
+                            {String(p.llm_usage.must_cite_sources)}
+                          </li>
+                          <li>
+                            Verification required:{' '}
+                            {String(p.llm_usage.verification_required)}
+                          </li>
+                        </ul>
+                      ) : (
+                        <p className="text-text-secondary text-[10px]">
+                          No LLM calls. Pure deterministic logic.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function PassportList({ label, items, tone }) {
+  const palette = {
+    green: { bg: 'rgba(50,205,50,0.08)',  fg: '#32CD32', border: 'rgba(50,205,50,0.25)' },
+    red:   { bg: 'rgba(239,68,68,0.08)',  fg: '#ef4444', border: 'rgba(239,68,68,0.25)' },
+    blue:  { bg: 'rgba(0,127,255,0.08)',  fg: '#007FFF', border: 'rgba(0,127,255,0.25)' },
+    amber: { bg: 'rgba(245,158,11,0.08)', fg: '#f59e0b', border: 'rgba(245,158,11,0.25)' },
+  }[tone] ?? { bg: 'transparent', fg: 'inherit', border: 'transparent' }
+
+  if (!items || items.length === 0) return (
+    <div>
+      <p className="text-[9px] uppercase tracking-wider
+                    text-text-muted font-semibold mb-1">
+        {label}
+      </p>
+      <p className="text-text-muted text-[10px] italic">— none —</p>
+    </div>
+  )
+
+  return (
+    <div>
+      <p className="text-[9px] uppercase tracking-wider
+                    text-text-muted font-semibold mb-1">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map(item => (
+          <span
+            key={item}
+            className="text-[10px] font-mono px-2 py-0.5
+                       rounded border"
+            style={{
+              background:  palette.bg,
+              color:       palette.fg,
+              borderColor: palette.border,
+            }}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+
 // ── Main DevPortal component ───────────────────────────────────
 
 export default function DevPortal() {
   const [activeTab, setActiveTab] = useState('sn-demo')
 
   const tabs = [
-    { id: 'sn-demo', label: '🛠️ ServiceNow Demo' },
-    { id: 'keys',    label: '🔑 API Keys' },
-    { id: 'connect', label: '🔗 EVOLV Connect' },
-    { id: 'swagger', label: '📖 API Docs' },
-    { id: 'redoc',   label: '📘 ReDoc' },
-    { id: 'webhooks',label: '🪝 Webhooks' },
+    { id: 'sn-demo',   label: 'ServiceNow Demo' },
+    // Sprint 35.7 — Agent Passports tab. Explicit Permission Envelopes
+    // for every specialist function. Salim Ismail ExO 3.0 / Nuno
+    // Valério Trust Architecture alignment artefact.
+    { id: 'passports', label: 'Agent Passports' },
+    { id: 'keys',      label: 'API Keys' },
+    { id: 'connect',   label: 'EVOLV Connect' },
+    { id: 'swagger',   label: 'API Docs' },
+    { id: 'redoc',     label: 'ReDoc' },
+    { id: 'webhooks',  label: 'Webhooks' },
   ]
 
   return (
@@ -1117,9 +1411,10 @@ export default function DevPortal() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
-        {activeTab === 'sn-demo'  && <ServiceNowDemoPanel />}
-        {activeTab === 'keys'    && <ApiKeyManager />}
-        {activeTab === 'webhooks' && <WebhooksPanel />}
+        {activeTab === 'sn-demo'   && <ServiceNowDemoPanel />}
+        {activeTab === 'passports' && <AgentPassportsPanel />}
+        {activeTab === 'keys'      && <ApiKeyManager />}
+        {activeTab === 'webhooks'  && <WebhooksPanel />}
 
         {activeTab === 'connect' && (
           <div className="space-y-5">

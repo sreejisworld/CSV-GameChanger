@@ -8,10 +8,11 @@
  * Custom regulations use user-defined scope rules (impact level +
  * recommended actions per GxP tier).
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SYSTEMS, AI_MODELS } from '../data/systems.js'
 import { useAppStore } from '../store/useAppStore.js'
+import { API_BASE } from '../config.js'
 
 // ── Built-in regulation definitions ───────────────────────────────
 const REGULATIONS = [
@@ -297,6 +298,368 @@ function downloadCSV(reg, results) {
     new Date().toISOString().slice(0,10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// ─── Sprint 38 — Drift Detection Panel ────────────────────────────
+// Sister surface to the change-impact analyzer below. The analyzer
+// is forward-looking ("a NEW reg landed — which systems are hit?");
+// the drift panel is backward-looking ("which of my URs cite a
+// SUPERSEDED version of a reg I'm already grounded against?").
+//
+// Drift detection has two information surfaces:
+//   1. Corpus version registry — what EVOLV is currently grounded
+//      against. Read-only. Auditor question: "What corpus did the
+//      AI use?"
+//   2. Project scan — runs the agent over the live requirements
+//      slice and surfaces affected URs with citation deltas
+//      (cited_version → current_version) + a suggested action.
+//
+// :requirement: URS-38.9 - Surface drift detection in the platform UI.
+
+function CorpusVersionsCard({ registry, loading, error, onReload }) {
+  const frameworks = registry?.frameworks ?? {}
+  const entries    = Object.entries(frameworks)
+
+  return (
+    <div className="glass rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-text-primary text-[12px] font-semibold">
+            📚 Corpus Version Registry
+          </p>
+          <p className="text-text-muted text-[10px] mt-0.5">
+            The regulatory frameworks EVOLV is currently grounded
+            against. Read-only — corpus versions are bumped only
+            by the Ingestor agent.
+          </p>
+        </div>
+        <button
+          onClick={onReload}
+          disabled={loading}
+          className="px-2.5 py-1 text-[10px] rounded border
+                     border-border-base text-text-muted
+                     hover:text-text-secondary disabled:opacity-40
+                     transition-colors"
+        >
+          {loading ? '…' : '↻ Reload'}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-[10px] text-red-400">{error}</p>
+      )}
+
+      {entries.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {entries.map(([name, meta]) => (
+            <div key={name}
+              className="rounded-lg border border-border-base
+                         px-3 py-2 bg-bg-base/40">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-text-primary text-[11px]
+                                 font-semibold truncate">
+                  {name}
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5
+                                 rounded"
+                  style={{ color:'#32CD32',
+                           background:'rgba(50,205,50,0.1)' }}>
+                  {meta?.current_version ?? '—'}
+                </span>
+              </div>
+              {Array.isArray(meta?.previous_versions)
+                && meta.previous_versions.length > 0 && (
+                <p className="text-[9px] text-text-muted mt-1">
+                  Previous:{' '}
+                  <span className="font-mono">
+                    {meta.previous_versions.join(', ')}
+                  </span>
+                </p>
+              )}
+              {meta?.last_ingested_at && (
+                <p className="text-[9px] text-text-muted mt-0.5">
+                  Last ingested:{' '}
+                  {new Date(meta.last_ingested_at)
+                    .toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AffectedURRow({ ur }) {
+  return (
+    <div className="rounded-lg border border-amber-500/30
+                    bg-amber-500/5 px-3 py-2.5 space-y-2">
+      <div className="flex items-start gap-2">
+        <span className="text-[9px] font-mono text-text-muted shrink-0
+                         mt-0.5">
+          {ur.ur_id}
+        </span>
+        <p className="text-text-secondary text-[11px] leading-snug
+                      flex-1">
+          {ur.statement || '(no statement)'}
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        {(ur.affected_citations ?? []).map((c, i) => (
+          <div key={i}
+            className="flex items-center gap-2 text-[10px]
+                       text-text-secondary">
+            <span className="font-semibold">{c.framework}</span>
+            <span className="font-mono px-1.5 py-0.5 rounded"
+              style={{ color:'#ef4444',
+                       background:'rgba(239,68,68,0.1)' }}>
+              {c.cited_version}
+            </span>
+            <span className="text-text-muted">→</span>
+            <span className="font-mono px-1.5 py-0.5 rounded"
+              style={{ color:'#32CD32',
+                       background:'rgba(50,205,50,0.1)' }}>
+              {c.current_version}
+            </span>
+            <span className="text-text-muted text-[9px] ml-auto">
+              via {c.detection_source}
+            </span>
+          </div>
+        ))}
+      </div>
+      {ur.suggested_action && (
+        <p className="text-[10px] text-amber-400 italic">
+          → {ur.suggested_action}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function DriftDetectionPanel() {
+  const requirements    = useAppStore(s => s.requirements)
+  const projectName     = useAppStore(s => s.planData?.projectName)
+  // Default-guard: pre-Sprint-38 persisted state has no
+  // regulatoryDrift key — keep the panel alive on stale localStorage.
+  const regulatoryDrift = useAppStore(s => s.regulatoryDrift) ?? {
+    report: null, byUrId: {}, loading: false,
+    error: null, lastFetched: null,
+  }
+  const setLoading      = useAppStore(s => s.setRegulatoryDriftLoading)
+  const setReport       = useAppStore(s => s.setRegulatoryDriftReport)
+  const setError        = useAppStore(s => s.setRegulatoryDriftError)
+  const clear           = useAppStore(s => s.clearRegulatoryDrift)
+
+  const [registry,     setRegistry]     = useState(null)
+  const [regLoading,   setRegLoading]   = useState(false)
+  const [regError,     setRegError]     = useState('')
+
+  const loadRegistry = useCallback(async () => {
+    setRegLoading(true); setRegError('')
+    try {
+      const res = await fetch(
+        `${API_BASE}/regulatory-drift/corpus-versions`,
+        { signal: AbortSignal.timeout(10000) },
+      )
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setRegistry(await res.json())
+    } catch (e) {
+      setRegError(
+        e.message ?? 'Failed to load corpus registry. '
+        + 'Ensure FastAPI is running on port 8000.',
+      )
+    } finally {
+      setRegLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadRegistry() }, [loadRegistry])
+
+  const reqCount = requirements?.length ?? 0
+  const canScan  = reqCount > 0 && !regulatoryDrift.loading
+
+  const handleScan = useCallback(async () => {
+    setLoading(true)
+    try {
+      const body = {
+        project_name: projectName || 'Untitled Project',
+        requirements: (requirements ?? []).map(r => ({
+          id:        r.urId ?? r.id,
+          type:      r.type ?? 'UR',
+          statement: r.statement ?? r.text ?? '',
+          parentId:  r.parentId ?? null,
+          reg_versions_cited: r.regVersionsCited ?? null,
+        })),
+        user_id: 'demo',
+      }
+      const res = await fetch(
+        `${API_BASE}/regulatory-drift/scan`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(body),
+          signal:  AbortSignal.timeout(20000),
+        },
+      )
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.detail ?? `HTTP ${res.status}`)
+      }
+      setReport(await res.json())
+    } catch (e) {
+      setError(
+        e.message ?? 'Drift scan failed. '
+        + 'Ensure FastAPI is running on port 8000.',
+      )
+    }
+  }, [projectName, requirements, setLoading, setReport, setError])
+
+  const report = regulatoryDrift.report
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="text-text-primary font-semibold text-sm mb-1">
+          Are any of my requirements citing superseded regulations?
+        </h2>
+        <p className="text-text-secondary text-xs">
+          The drift detector scans every UR against the corpus
+          version registry. If a UR cites a previous version of any
+          framework EVOLV has re-ingested, it's flagged here and
+          the citation_drift signal fires on the Validated State
+          Engine's per-UR score.
+        </p>
+      </div>
+
+      <CorpusVersionsCard
+        registry={registry}
+        loading={regLoading}
+        error={regError}
+        onReload={loadRegistry}
+      />
+
+      <div className="glass rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3
+                        flex-wrap">
+          <div>
+            <p className="text-text-primary text-[12px] font-semibold">
+              🔎 Project Drift Scan
+            </p>
+            <p className="text-text-muted text-[10px] mt-0.5">
+              Scans {reqCount} requirement(s) from{' '}
+              <span className="text-text-secondary">
+                {projectName || '(no project selected)'}
+              </span>
+              .
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {report && (
+              <button onClick={clear}
+                className="px-2.5 py-1 text-[10px] rounded border
+                           border-border-base text-text-muted
+                           hover:text-text-secondary transition-colors">
+                Clear
+              </button>
+            )}
+            <button
+              onClick={handleScan}
+              disabled={!canScan}
+              className="px-3 py-1.5 text-xs rounded font-semibold
+                         text-white shadow-sm disabled:opacity-40
+                         disabled:cursor-not-allowed
+                         transition-opacity hover:opacity-90"
+              style={{
+                background:
+                  'linear-gradient(90deg, #007FFF, #32CD32)',
+              }}
+              title={reqCount === 0
+                ? 'No requirements in the current project to scan'
+                : 'Run the Regulatory Drift Agent against this '
+                  + 'project'}
+            >
+              {regulatoryDrift.loading
+                ? '🔎 Scanning…'
+                : '🔎 Scan project for drift'}
+            </button>
+          </div>
+        </div>
+
+        {regulatoryDrift.error && (
+          <div className="px-3 py-2 rounded-lg text-[11px]
+                          border border-red-500/30
+                          bg-red-500/10 text-red-400">
+            {regulatoryDrift.error}
+          </div>
+        )}
+
+        {report && (
+          <div className="space-y-3">
+            {(() => {
+              const hits    = report.affected_ur_count ?? 0
+              const isClean = hits === 0
+              const tone    = isClean
+                ? { fg: '#32CD32', bg: 'rgba(50,205,50,0.08)' }
+                : { fg: '#f59e0b', bg: 'rgba(245,158,11,0.08)' }
+              return (
+                <div className="px-3 py-2 rounded-lg border
+                                flex items-center gap-3 text-[11px]"
+                  style={{
+                    background:  tone.bg,
+                    borderColor: tone.fg + '44',
+                  }}
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: tone.fg }} />
+                  <span className="font-semibold"
+                    style={{ color: tone.fg }}>
+                    {isClean
+                      ? 'Clean'
+                      : `${hits} of ${report.ur_count}` +
+                        ` UR(s) affected`}
+                  </span>
+                  <span className="text-text-secondary flex-1
+                                   leading-relaxed">
+                    {report.headline}
+                  </span>
+                  <span className="text-[10px] text-text-muted
+                                   shrink-0">
+                    {new Date(report.scanned_at)
+                      .toLocaleString()}
+                  </span>
+                </div>
+              )
+            })()}
+
+            {(report.affected_urs ?? []).length > 0 && (
+              <div className="space-y-2">
+                {report.affected_urs.map(ur => (
+                  <AffectedURRow key={ur.ur_id} ur={ur} />
+                ))}
+              </div>
+            )}
+
+            {Array.isArray(report.reasoning_chain)
+              && report.reasoning_chain.length > 0 && (
+              <details className="text-[10px] text-text-muted">
+                <summary className="cursor-pointer
+                                    hover:text-text-secondary">
+                  Show agent reasoning chain
+                  ({report.reasoning_chain.length} steps)
+                </summary>
+                <ol className="mt-2 space-y-1 pl-5 list-decimal">
+                  {report.reasoning_chain.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ol>
+              </details>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ── System impact card ─────────────────────────────────────────────
@@ -848,9 +1211,14 @@ export default function RegulatoryWatch() {
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
+          {/* ── Sprint 38 — Drift Detection (top) ─────────────── */}
+          <DriftDetectionPanel />
+
+          <div className="border-t border-border-base my-2" />
+
           {/* ── Intro ─────────────────────────────────────────── */}
           <div>
-            <h2 className="text-white font-semibold text-sm mb-1">
+            <h2 className="text-text-primary font-semibold text-sm mb-1">
               Which of your systems are impacted by this regulation?
             </h2>
             <p className="text-text-secondary text-xs">

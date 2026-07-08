@@ -9,6 +9,8 @@
  */
 import { create }    from 'zustand'
 import { persist }   from 'zustand/middleware'
+import { buildDemoProject,
+         DEMO_PROJECT_META } from '../data/demoProject.js'
 
 const MAX_TABS = 8
 
@@ -43,7 +45,10 @@ const INITIAL_BADGES = {
   'home':         null,
   'plan':         null,
   'requirements': { type: 'info',    label: 'Ready' },
-  'risk':         { type: 'warning', label: '1 pending' },
+  // Risk badge is computed live from requirements/riskData
+  // (see setRiskRow + the Risk-badge effect in App.jsx) — start clean
+  // so we don't show stale "pending" counts before any UR exists.
+  'risk':         null,
   'design':       null,
   'verify':       null,
   'release':      null,
@@ -87,6 +92,9 @@ const FRESH_PROJECT = {
   unscriptedSessions:  {},
   qaReviews:           {},
   releaseData:  { approvals: [], released: false, releasedAt: null },
+  retireData:   { checklist: {}, notes: '',
+                   decommissionedAt: null,
+                   decommissionedBy: '' },
   designData: {
     architectureNotes: '', hldNotes: '', lldNotes: '',
     integrationNotes: '', diagramUrl: '', configItems: [],
@@ -120,9 +128,13 @@ function extractProjectData(state) {
     unscriptedSessions:   state.unscriptedSessions,
     qaReviews:            state.qaReviews,
     releaseData:          state.releaseData,
+    retireData:           state.retireData,
     designData:           state.designData,
     phaseCompletion:      state.phaseCompletion,
     statusBadges:         state.statusBadges,
+    changeRecords:        state.changeRecords,
+    validatedState:       state.validatedState,
+    regulatoryDrift:      state.regulatoryDrift,
   }
 }
 
@@ -133,8 +145,17 @@ persist(
   tabs:        [{ appId: 'home' }],
   activeTabId: 'home',
 
+  // Sprint 31.2 — track last-opened apps for the Cmd+K "Recent"
+  // section. FIFO, deduped, capped at 5. Home is excluded (it's
+  // always pinned, so it never feels like a "recently visited"
+  // item to the user).
+  recentApps: [],
+
   openTab: appId => set(state => {
     const exists = state.tabs.find(t => t.appId === appId)
+    const nextRecent = appId === 'home'
+      ? state.recentApps
+      : [appId, ...state.recentApps.filter(id => id !== appId)].slice(0, 5)
     return {
       tabs: exists
         ? state.tabs
@@ -142,6 +163,7 @@ persist(
           ? state.tabs
           : [...state.tabs, { appId }],
       activeTabId: appId,
+      recentApps: nextRecent,
     }
   }),
 
@@ -219,14 +241,19 @@ persist(
     },
   }),
 
-  // ── Theme ──────────────────────────────────────────────────
-  // New users land in light by default — pharma QA/validation pros
-  // expect a light UI from legacy validation tools. Existing users'
-  // preference is preserved via Zustand persist middleware.
-  theme: 'light',  // 'dark' | 'light'
-  toggleTheme: () => set(state => ({
-    theme: state.theme === 'dark' ? 'light' : 'dark',
-  })),
+  // ── Theme (Sprint 29 — single light theme) ────────────────
+  // Sprint 29 deleted dark mode in favour of a single warm-off-white
+  // palette inspired by Claude.ai. Pharma QA/validation pros at the
+  // April 2026 demos consistently asked for a lighter UI for long
+  // audit sessions, and 2026 users are most familiar with AI-tool-
+  // style warm neutrals (Claude, ChatGPT).
+  //
+  // `toggleTheme` is kept as a public action for backward compatibility
+  // — any old caller (e.g. a stale TopHeader.jsx import on disk) becomes
+  // a harmless no-op that re-asserts light. Persisted `theme: 'dark'`
+  // from pre-Sprint-29 stores is healed to 'light' on next mutation.
+  theme: 'light',
+  toggleTheme: () => set({ theme: 'light' }),
 
   // ── Font size ──────────────────────────────────────────────
   // 'normal' | 'large' | 'xl'  — applied as zoom on app root
@@ -236,6 +263,35 @@ persist(
       state.fontSize === 'normal' ? 'large'
       : state.fontSize === 'large' ? 'xl'
       : 'normal',
+  })),
+
+  // ── Sidebar nav-group collapse (Sprint 30 + 35.5 revision) ────
+  // Sprint 30 (April demos): pharma QA pros said the sidebar felt
+  // busy. Original fix collapsed Intelligence + Tools by default so
+  // first paint showed only the 8 lifecycle phases.
+  //
+  // Sprint 35.5 revision: Traceability Matrix (the flagship audit-
+  // readiness artefact, Sprint 28) ended up hidden behind the
+  // Intelligence chevron — pharma QA leads who walked the platform
+  // in pre-launch validation kept asking "where's traceability?"
+  // Intelligence is now default-EXPANDED (7 apps visible) so the
+  // Living Traceability Matrix, Portfolio, Audit Trail and the
+  // other read-side dashboards land in first paint. Tools stays
+  // collapsed (admin/secondary surfaces — Dev Portal, Config,
+  // Academy, Docs — none of which a QA lead needs in first 30s).
+  //
+  // State is still persisted (zustand partialize) so the user's
+  // own collapse/expand choices survive reload.
+  navGroupsCollapsed: {
+    Lifecycle:    false,
+    Intelligence: false,
+    Tools:        true,
+  },
+  toggleNavGroup: label => set(state => ({
+    navGroupsCollapsed: {
+      ...state.navGroupsCollapsed,
+      [label]: !state.navGroupsCollapsed?.[label],
+    },
   })),
 
   // ── Plan data ──────────────────────────────────────────────
@@ -265,12 +321,37 @@ persist(
   // ── Risk data ──────────────────────────────────────────────
   // keyed by requirement ID, each entry: { impact, implMethod, testAssurance }
   riskData: {},
-  setRiskRow: (reqId, field, value) => set(state => ({
-    riskData: {
+  setRiskRow: (reqId, field, value) => set(state => {
+    const nextRiskData = {
       ...state.riskData,
       [reqId]: { ...(state.riskData[reqId] ?? {}), [field]: value },
-    },
-  })),
+    }
+    // Recompute the Risk sidebar badge so it reflects live state
+    // rather than the stale "1 pending" demo seed.
+    const urs = (state.requirements ?? []).filter(
+      r => (r.type ?? 'UR') === 'UR',
+    )
+    const ranked = urs.filter(u => {
+      const row = nextRiskData[u.id]
+      return row && row.impact && row.implMethod
+    }).length
+    const pending = urs.length - ranked
+    let nextRiskBadge
+    if (urs.length === 0) {
+      nextRiskBadge = null
+    } else if (pending === 0) {
+      nextRiskBadge = { type: 'success', label: 'All ranked' }
+    } else {
+      nextRiskBadge = {
+        type: 'warning',
+        label: `${pending} pending`,
+      }
+    }
+    return {
+      riskData: nextRiskData,
+      statusBadges: { ...state.statusBadges, risk: nextRiskBadge },
+    }
+  }),
 
   // ── Test scripts & runs ────────────────────────────────────
   // testScripts: keyed by script_id (shape = DeltaAgent output)
@@ -879,6 +960,185 @@ persist(
 
   clearRequirements: () => set({ requirements: [] }),
 
+  // ── Manual-authoring CRUD (Sprint 17.6) ────────────────────────
+  // Hand-typed entry path. Auto-generates a globally-unique id of
+  // the form `UR-N` / `FR-N` by scanning existing rows so it never
+  // collides with workshop-generated rows (which already use the
+  // backend `_flatten_batch` numbering scheme).
+  //
+  // :requirement: URS-23.1 (manual authoring extends to URs/FRs)
+  addRequirement: req => set(state => {
+    const type = req?.type ?? 'UR'
+    const prefix = type === 'FR' ? 'FR' : 'UR'
+    const usedNums = new Set(
+      state.requirements
+        .filter(r => r.type === type)
+        .map(r => {
+          const m = String(r.id ?? '').match(/^(?:UR|FR)-(\d+)$/i)
+          return m ? Number(m[1]) : NaN
+        })
+        .filter(n => Number.isFinite(n))
+    )
+    let n = 1
+    while (usedNums.has(n)) n += 1
+    const id = `${prefix}-${n}`
+    const newReq = {
+      id,
+      type,
+      statement: req?.statement ?? '',
+      parentId:  req?.parentId ?? null,
+      ...req,
+      // Force the canonical id/type AFTER spread so caller can't
+      // smuggle a duplicate id in.
+      id,
+      type,
+    }
+    return { requirements: [...state.requirements, newReq] }
+  }),
+
+  removeRequirement: id => set(state => {
+    const remaining = state.requirements.filter(r => r.id !== id)
+    // Also clear orphaned FRs whose parent UR is being removed —
+    // otherwise the table renders dangling rows with broken parent
+    // references and the AI Sidekick chips reference a stale id.
+    const removed = state.requirements.find(r => r.id === id)
+    const finalReqs = removed?.type === 'UR'
+      ? remaining.filter(r => r.parentId !== id)
+      : remaining
+    // Drop any meta entries for ids that no longer exist
+    const keepIds = new Set(finalReqs.map(r => r.id))
+    const nextMeta = {}
+    for (const [metaId, m] of Object.entries(state.requirementMeta)) {
+      if (keepIds.has(metaId)) nextMeta[metaId] = m
+    }
+    return { requirements: finalReqs, requirementMeta: nextMeta }
+  }),
+
+  updateRequirementStatement: (id, statement) => set(state => ({
+    requirements: state.requirements.map(r =>
+      r.id === id ? { ...r, statement } : r
+    ),
+  })),
+
+  // ── Requirement metadata (Sprint 17.2 / 17.3) ──────────────────
+  // Per-requirement editor state, keyed by requirement id.
+  // Schema: { capability, condition, constraint,
+  //           requirement_type ('Functional' | 'Non-Functional'),
+  //           stakeholder ('Senior Mgmt' | 'Lab' | 'IT' | 'QA/ITQA'
+  //                       | 'Procurement' | 'Supplier' | 'Data Owner'),
+  //           override_justification }
+  // Survives FastAPI re-syncs of the `requirements` list because it
+  // lives in its own slice keyed by id (same pattern as riskData).
+  requirementMeta: {},
+
+  setRequirementMeta: (id, field, value) => set(state => ({
+    requirementMeta: {
+      ...state.requirementMeta,
+      [id]: {
+        ...(state.requirementMeta[id] ?? {}),
+        [field]: value,
+      },
+    },
+  })),
+
+  bulkSetRequirementMeta: (id, patch) => set(state => ({
+    requirementMeta: {
+      ...state.requirementMeta,
+      [id]: { ...(state.requirementMeta[id] ?? {}), ...patch },
+    },
+  })),
+
+  clearRequirementMeta: () => set({ requirementMeta: {} }),
+
+  // ── SMART refinements (Sprint 17.7) ────────────────────────────
+  // Cache of POST /requirements/refine-smart responses keyed by req
+  // id, plus per-row UI state (loading | error | suggestion). Lives
+  // outside requirementMeta so applying a suggestion can patch
+  // capability/condition/constraint without colliding with the user's
+  // hand-typed values.
+  //
+  // Schema per row id:
+  //   { status:   'idle'|'loading'|'ready'|'error',
+  //     error:    string | null,
+  //     suggestion: {
+  //       original, smart_text, risk_level, fda_ema_flags,
+  //       acceptance_criteria, negative_test_scenario,
+  //       engine_mode, refined_at,
+  //     } | null }
+  //
+  // Deliberately NOT persisted — refinements are advisory, ephemeral,
+  // and cheap to regenerate. Persisting would risk showing stale
+  // suggestions after the user edits the row.
+  requirementRefinements: {},
+
+  setRefinementLoading: id => set(state => ({
+    requirementRefinements: {
+      ...state.requirementRefinements,
+      [id]: {
+        ...(state.requirementRefinements[id] ?? {}),
+        status: 'loading', error: null,
+      },
+    },
+  })),
+
+  setRefinementSuggestion: (id, suggestion) => set(state => ({
+    requirementRefinements: {
+      ...state.requirementRefinements,
+      [id]: { status: 'ready', error: null, suggestion },
+    },
+  })),
+
+  setRefinementError: (id, error) => set(state => ({
+    requirementRefinements: {
+      ...state.requirementRefinements,
+      [id]: {
+        ...(state.requirementRefinements[id] ?? {}),
+        status: 'error',
+        error: String(error ?? 'Refinement failed'),
+      },
+    },
+  })),
+
+  clearRefinement: id => set(state => {
+    const next = { ...state.requirementRefinements }
+    delete next[id]
+    return { requirementRefinements: next }
+  }),
+
+  // Apply a cached SMART suggestion back into the row.
+  //
+  //  - statement  ← smart_text  (so the canonical text reflects the
+  //                              accepted rewrite for downstream sync)
+  //  - capability ← smart_text  (so the 3 Cs editor cell stays the
+  //                              source of truth the user can refine)
+  //
+  // Condition / constraint are intentionally left alone — the user
+  // may have already typed measurable values there and the SMART
+  // engine's section split is heuristic.
+  applyRefinementSuggestion: id => set(state => {
+    const entry = state.requirementRefinements[id]
+    const suggestion = entry?.suggestion
+    if (!suggestion?.smart_text) return state
+
+    const text = suggestion.smart_text
+    const nextRefinements = { ...state.requirementRefinements }
+    delete nextRefinements[id]
+
+    return {
+      requirements: state.requirements.map(r =>
+        r.id === id ? { ...r, statement: text } : r
+      ),
+      requirementMeta: {
+        ...state.requirementMeta,
+        [id]: {
+          ...(state.requirementMeta[id] ?? {}),
+          capability: text,
+        },
+      },
+      requirementRefinements: nextRefinements,
+    }
+  }),
+
   // ── Release data ───────────────────────────────────────────────
   // approvals: list of signed approval objects
   // released:  true once formally released
@@ -900,6 +1160,232 @@ persist(
       ...state.releaseData,
       released:   true,
       releasedAt: new Date().toISOString(),
+    },
+  })),
+
+  // ── Change Records (Sprint 36 — Change Impact Assessment) ──────
+  // Keyed by cr_id. Each record holds:
+  //   { cr_id, cr_text, project_name, createdAt,
+  //     cia: { ...CIA dict from backend },
+  //     ccr: { ...signed CCR | null },
+  //     status: 'received' | 'cia_generated' | 'ccr_signed'
+  //             | 'revalidating' | 'closed' }
+  //
+  // The principle: AI proposes the CIA, human signs the CCR, then
+  // the revalidation sub-run spawns. Every transition is auditable.
+  changeRecords: {},
+
+  // Record the initial CR (before the CIA generates). Used for
+  // optimistic UI — the row appears as soon as the user submits.
+  addChangeRecord: (crId, payload) => set(state => ({
+    changeRecords: {
+      ...state.changeRecords,
+      [crId]: {
+        cr_id:        crId,
+        cr_text:      payload?.cr_text       ?? '',
+        project_name: payload?.project_name  ?? '',
+        createdAt:    new Date().toISOString(),
+        cia:          null,
+        ccr:          null,
+        status:       'received',
+      },
+    },
+  })),
+
+  // Attach the generated CIA dict to a change record. Status moves
+  // to 'cia_generated' — Sign CCR button now becomes active.
+  attachCIA: (crId, cia) => set(state => {
+    const existing = state.changeRecords[crId]
+    if (!existing) return {}
+    return {
+      changeRecords: {
+        ...state.changeRecords,
+        [crId]: {
+          ...existing,
+          cia,
+          status: 'cia_generated',
+        },
+      },
+    }
+  }),
+
+  // Record the signed CCR against a change record. Status moves to
+  // 'ccr_signed' — the next event (revalidation sub-run spawn) is
+  // Sprint 37 work; for now we stop at the human signature gate.
+  signCCR: (crId, ccr) => set(state => {
+    const existing = state.changeRecords[crId]
+    if (!existing) return {}
+    return {
+      changeRecords: {
+        ...state.changeRecords,
+        [crId]: {
+          ...existing,
+          ccr,
+          status: 'ccr_signed',
+        },
+      },
+    }
+  }),
+
+  // Reset the entire change-records slice. Primarily used in the
+  // demo project loader.
+  clearChangeRecords: () => set({ changeRecords: {} }),
+
+  // ── Validated State (Sprint 37 — Confidence Engine) ───────────
+  // The "EVOLV helps you STAY validated" surface. Holds the latest
+  // ValidatedStateReport returned from POST /validated-state/assess
+  // plus per-UR drill-down. Loading + error tracked separately so
+  // the UI can show a spinner without losing the prior report.
+  //
+  // Shape:
+  //   validatedState.report:    full ValidatedStateReport dict
+  //                             from the engine (or null)
+  //   validatedState.byUrId:    { [urId]: URStateAssessment } map
+  //                             for fast Traceability Matrix lookup
+  //   validatedState.loading:   bool
+  //   validatedState.error:     string | null
+  //   validatedState.lastFetched: ISO timestamp | null
+  validatedState: {
+    report:      null,
+    byUrId:      {},
+    loading:     false,
+    error:       null,
+    lastFetched: null,
+  },
+
+  setValidatedStateLoading: loading => set(state => ({
+    validatedState: { ...state.validatedState, loading,
+                      error: loading ? null : state.validatedState.error },
+  })),
+
+  // Persist a fresh report. `byUrId` is denormalised at write time
+  // so the Traceability Matrix doesn't have to re-build it per
+  // render.
+  setValidatedStateReport: report => set(() => {
+    const byUrId = {}
+    for (const a of (report?.assessments ?? [])) {
+      if (a?.ur_id) byUrId[a.ur_id] = a
+    }
+    return {
+      validatedState: {
+        report,
+        byUrId,
+        loading:     false,
+        error:       null,
+        lastFetched: new Date().toISOString(),
+      },
+    }
+  }),
+
+  setValidatedStateError: error => set(state => ({
+    validatedState: { ...state.validatedState, loading: false, error },
+  })),
+
+  clearValidatedState: () => set({
+    validatedState: {
+      report: null, byUrId: {}, loading: false,
+      error: null, lastFetched: null,
+    },
+  }),
+
+  // ── Regulatory Drift (Sprint 38 — drift scan results) ─────────
+  // Drift detection identifies URs that cite a superseded version
+  // of any framework in the corpus registry. The scan result is
+  // denormalised into byUrId for fast per-row lookup on the
+  // Living Traceability Matrix (drift banner + per-UR drift
+  // indicator + drift_report forwarded into the VSE assess call
+  // so the citation-drift signal slot fires).
+  //
+  //   regulatoryDrift.report:    full DriftScanReport dict (or null)
+  //   regulatoryDrift.byUrId:    { [urId]: AffectedUR } — only
+  //                              affected URs present; clean URs
+  //                              return undefined
+  //   regulatoryDrift.loading:   bool
+  //   regulatoryDrift.error:     string | null
+  //   regulatoryDrift.lastFetched: ISO timestamp | null
+  //
+  // :requirement: URS-38.9 - Persist drift-scan results in store
+  //               for cross-page reuse (RegulatoryWatch +
+  //               TraceabilityMatrix + VSE assess wire-through).
+  regulatoryDrift: {
+    report:      null,
+    byUrId:      {},
+    loading:     false,
+    error:       null,
+    lastFetched: null,
+  },
+
+  setRegulatoryDriftLoading: loading => set(state => ({
+    regulatoryDrift: {
+      ...state.regulatoryDrift,
+      loading,
+      error: loading ? null : state.regulatoryDrift.error,
+    },
+  })),
+
+  // Persist a fresh scan. `byUrId` is denormalised at write time
+  // so the Traceability Matrix doesn't have to re-walk the
+  // affected_urs array on every render.
+  setRegulatoryDriftReport: report => set(() => {
+    const byUrId = {}
+    for (const u of (report?.affected_urs ?? [])) {
+      if (u?.ur_id) byUrId[u.ur_id] = u
+    }
+    return {
+      regulatoryDrift: {
+        report,
+        byUrId,
+        loading:     false,
+        error:       null,
+        lastFetched: new Date().toISOString(),
+      },
+    }
+  }),
+
+  setRegulatoryDriftError: error => set(state => ({
+    regulatoryDrift: {
+      ...state.regulatoryDrift, loading: false, error,
+    },
+  })),
+
+  clearRegulatoryDrift: () => set({
+    regulatoryDrift: {
+      report: null, byUrId: {}, loading: false,
+      error: null, lastFetched: null,
+    },
+  }),
+
+  // ── Retire data (Sprint 18.1 — Decommissioning Checklist) ─────
+  // checklist: keyed by item id → bool. Items, regulatory citations,
+  // and tooltips are defined in Retire.jsx (DECOM_CHECKLIST).
+  // decommissionedAt is set when the user formally retires the
+  // system after all checklist items pass.
+  //
+  // :requirement: URS-24.2 - Decommissioning checklist grounded in
+  //               21 CFR Part 11 §11.10(c) retention requirements.
+  retireData: {
+    checklist:        {},
+    notes:            '',
+    decommissionedAt: null,
+    decommissionedBy: '',
+  },
+
+  setRetireCheck: (itemId, value) => set(state => ({
+    retireData: {
+      ...state.retireData,
+      checklist: { ...state.retireData.checklist, [itemId]: value },
+    },
+  })),
+
+  setRetireNotes: text => set(state => ({
+    retireData: { ...state.retireData, notes: text },
+  })),
+
+  markDecommissioned: signerName => set(state => ({
+    retireData: {
+      ...state.retireData,
+      decommissionedAt: new Date().toISOString(),
+      decommissionedBy: signerName ?? '',
     },
   })),
 
@@ -964,14 +1450,97 @@ persist(
     const { [projectId]: _, ...rest } = state.projects
     return { projects: rest }
   }),
+
+  // ── Demo project hydration (Sprint 18.1) ───────────────────────
+  // One-click loader for first-time visitors and live demos.
+  // Snapshots whatever the user currently has open (so it isn't lost
+  // when they switch back), registers a `proj-demo-labcore` entry,
+  // and replaces the flat store with the LabCore LIMS demo seed.
+  //
+  // Idempotent: re-running while already on the demo project resets
+  // the demo data to its pristine state (useful after a tester walks
+  // the script and wants a clean slate again).
+  //
+  // :requirement: URS-24.1 - One-click demo project hydrates platform
+  loadDemoProject: () => set(state => {
+    const seed = buildDemoProject()
+    const demoId = DEMO_PROJECT_META.id
+    const isAlreadyOnDemo = state.activeProjectId === demoId
+
+    // Always snapshot the *previous* (non-demo) project before
+    // leaving it, so the user can return to their work.
+    const projectsAfterSnapshot = isAlreadyOnDemo
+      ? state.projects
+      : {
+          ...state.projects,
+          [state.activeProjectId]: {
+            ...state.projects[state.activeProjectId],
+            data: extractProjectData(state),
+          },
+        }
+
+    return {
+      projects: {
+        ...projectsAfterSnapshot,
+        [demoId]: {
+          id:        demoId,
+          name:      DEMO_PROJECT_META.name,
+          createdAt: state.projects[demoId]?.createdAt
+                       ?? new Date().toISOString(),
+          data:      null,  // live project — data is in flat store
+          isDemo:    true,
+        },
+      },
+      activeProjectId: demoId,
+      // Spread the seed into the flat store
+      ...seed,
+    }
+  }),
 }),
 {
   name: 'evolv-platform',
+  // Bump this version whenever a persisted slice's shape changes
+  // in a way that old data can't be safely merged into.
+  // Mismatched versions trigger the migrate() path below.
+  version: 38,
+  // Schema-evolution guard. When new slices are added to the store
+  // (e.g. Sprint 37 validatedState, Sprint 38 regulatoryDrift), old
+  // persisted state in users' browsers won't have those keys. Without
+  // this merge, accessing `s.validatedState.report` throws because
+  // `s.validatedState` itself is undefined → component crashes silently
+  // → page goes blank. This deep-merge keeps every key from the live
+  // initial state, with persisted values overriding only for keys
+  // that actually exist in storage. Safe for ALL future slice adds.
+  merge: (persistedState, currentState) => {
+    const p = persistedState ?? {}
+    const merged = { ...currentState }
+    for (const key of Object.keys(currentState)) {
+      const live = currentState[key]
+      const stored = p[key]
+      // Deep-merge plain-object slices so new sub-keys land too;
+      // overwrite primitives and arrays whole.
+      if (
+        stored !== undefined &&
+        live && typeof live === 'object' && !Array.isArray(live) &&
+        stored && typeof stored === 'object' && !Array.isArray(stored)
+      ) {
+        merged[key] = { ...live, ...stored }
+      } else if (stored !== undefined) {
+        merged[key] = stored
+      }
+    }
+    return merged
+  },
+  // Migration path for hard schema breaks. Returning the persisted
+  // state as-is means the merge() function above handles defaults.
+  migrate: (persistedState, _version) => persistedState,
   // Only persist data that should survive browser refresh.
   // Tabs and activeTabId intentionally reset on reload.
   partialize: state => ({
     theme:           state.theme,
     fontSize:        state.fontSize,
+    navGroupsCollapsed: state.navGroupsCollapsed,
+    recentApps:      state.recentApps,
     phaseCompletion: state.phaseCompletion,
     planData:        state.planData,
     riskData:        state.riskData,
@@ -985,10 +1554,15 @@ persist(
     unscriptedSessions:   state.unscriptedSessions,
     qaReviews:            state.qaReviews,
     releaseData:          state.releaseData,
+    retireData:           state.retireData,
     requirements:         state.requirements,
+    requirementMeta:      state.requirementMeta,
     designData:           state.designData,
     userProfile:          state.userProfile,
     projects:             state.projects,
+    changeRecords:        state.changeRecords,
+    validatedState:       state.validatedState,
+    regulatoryDrift:      state.regulatoryDrift,
     activeProjectId:      state.activeProjectId,
     customSystems:        state.customSystems,
     customRegulations:    state.customRegulations,

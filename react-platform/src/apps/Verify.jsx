@@ -684,10 +684,28 @@ function SignOffPanel({ run, locked, onSign, apiLoading }) {
 function NoScriptsState({ bundleCount = 0, onPullBundles, openTab }) {
   return (
     <div className="flex flex-col h-full bg-bg-base items-center
-                    justify-center gap-4 px-8">
-      <span className="text-5xl opacity-20">🏭</span>
+                    justify-center gap-5 px-8">
+      {/* Sprint 35.6 UX diet: replaced the 5xl 🏭 emoji at opacity-20
+          (read as dated decoration) with a clean SVG mark in brand-
+          blue at a calibrated 56px. Empty state now reads as a
+          considered moment, not an "oops nothing here". */}
+      <div
+        className="w-14 h-14 rounded-2xl flex items-center justify-center"
+        style={{
+          background: 'rgba(0,127,255,0.08)',
+          border: '1px solid rgba(0,127,255,0.20)',
+        }}
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+             stroke="#007FFF" strokeWidth="1.75"
+             strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 2h6a1 1 0 0 1 1 1v2H8V3a1 1 0 0 1 1-1z" />
+          <rect x="5" y="5" width="14" height="17" rx="2" />
+          <path d="M9 11h6M9 15h6M9 19h3" />
+        </svg>
+      </div>
       <div className="text-center max-w-sm">
-        <p className="text-text-secondary text-sm font-semibold mb-2">
+        <p className="text-text-primary text-sm font-semibold mb-2">
           No test scripts loaded
         </p>
 
@@ -725,7 +743,7 @@ function NoScriptsState({ bundleCount = 0, onPullBundles, openTab }) {
               </span>
               {' '}or generate scripts from the{' '}
               <span className="text-text-primary font-semibold">
-                Validation Factory
+                Requirements phase
               </span>
               . They will appear here automatically.
             </p>
@@ -788,6 +806,23 @@ export default function Verify({ openTab }) {
   const [apiError,         setApiError]         = useState('')
   const [pdfLoading,       setPdfLoading]       = useState(false)
   const [pdfError,         setPdfError]         = useState('')
+
+  // Sprint 35.6 UX diet: `⋯ More` menu collapses the Export CSV /
+  // PDF Report buttons off the main header. Primary action stays the
+  // tab strip; exports are tertiary and don't deserve top-of-page real
+  // estate during execution.
+  const [moreOpen,         setMoreOpen]         = useState(false)
+  const moreRef = useRef(null)
+  useEffect(() => {
+    if (!moreOpen) return
+    const onDocClick = e => {
+      if (moreRef.current && !moreRef.current.contains(e.target)) {
+        setMoreOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [moreOpen])
   const [selectedScriptId, setSelectedScriptId] = useState(null)
   const [focusedStepIdx,   setFocusedStepIdx]   = useState(0)
   // Set of stepKeys with open defect forms
@@ -1061,11 +1096,13 @@ export default function Verify({ openTab }) {
   // ── Tab definitions ───────────────────────────────────────────
   // QA Review is available pre-lock so a QA lead can attest before
   // the executor signs. It stays available post-lock as read-only.
+  // Sprint 35.6 UX diet: dropped the emoji prefixes — they read as
+  // decoration when the tabs are presented as a segmented picker.
   const TABS = [
-    { id: 'execute', label: showBriefing ? '📋 Briefing' : '▶ Execute Test' },
-    { id: 'review',  label: '📋 Script Review' },
-    ...(activeRunId ? [{ id: 'qa', label: '🛡 QA Review' }] : []),
-    ...(locked ? [{ id: 'alcoa', label: '🔍 ALCOA Report' }] : []),
+    { id: 'execute', label: showBriefing ? 'Briefing' : 'Execute' },
+    { id: 'review',  label: 'Script' },
+    ...(activeRunId ? [{ id: 'qa', label: 'QA Review' }] : []),
+    ...(locked ? [{ id: 'alcoa', label: 'ALCOA' }] : []),
   ]
 
   // ── Bundle integration ────────────────────────────────────────
@@ -1156,52 +1193,84 @@ export default function Verify({ openTab }) {
           </button>
         )}
 
-        {/* Export buttons (only when not in briefing) */}
-        {!showBriefing && (
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={handleExportCSV}
-              className="text-[10px] px-2 py-1 rounded border border-border-base
-                         text-text-muted hover:text-text-secondary
-                         hover:border-border-bright transition-colors"
-            >
-              📥 Export CSV
-            </button>
-            <button
-              onClick={handleExportPDF}
-              disabled={pdfLoading}
-              className={`
-                text-[10px] px-2 py-1 rounded border font-medium transition-colors
-                ${pdfLoading
-                  ? 'border-border-base text-text-muted opacity-50'
-                  : 'border-blue-DEFAULT/40 text-blue-DEFAULT bg-blue-dim'}
-              `}
-            >
-              {pdfLoading ? 'Generating…' : '📄 PDF Report'}
-            </button>
+        {/* Sprint 35.6 UX diet: segmented-picker tabs + ⋯ More menu
+            for exports. Replaces the old chrome (two export buttons
+            + 4 separately-styled tab pills) with a single visual
+            grouping. Pre-edit: ~6 actionable controls. Post-edit: 3. */}
+        <div className={`flex items-center gap-2
+                         ${showBriefing ? 'ml-auto' : 'ml-auto'}`}>
+          {/* Segmented tab picker — pill shape, single active fill */}
+          <div
+            role="tablist"
+            aria-label="Verify view"
+            className="flex items-center bg-bg-elev rounded-full p-0.5
+                       border border-border-base"
+          >
+            {TABS.map(tab => {
+              const active = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    text-[11px] font-medium px-3 py-1 rounded-full
+                    transition-all whitespace-nowrap
+                    ${active
+                      ? 'bg-bg-card text-text-primary shadow-sm'
+                      : 'text-text-muted hover:text-text-secondary'}
+                  `}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
           </div>
-        )}
 
-        {/* Tabs */}
-        <div className={`flex gap-1 ${showBriefing ? 'ml-auto' : ''}`}>
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                px-3 py-1 text-[11px] rounded transition-colors
-                ${activeTab === tab.id
-                  ? tab.id === 'alcoa'
-                    ? 'bg-blue-DEFAULT/20 text-blue-DEFAULT'
-                    : tab.id === 'qa'
-                      ? 'bg-purple-DEFAULT/20 text-purple-300'
-                      : 'bg-lime-DEFAULT/20 text-lime-DEFAULT'
-                  : 'text-text-muted hover:text-text-secondary'}
-              `}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {/* ⋯ More menu — Export CSV / PDF Report. Hidden during
+              briefing (no actions valid until acknowledged). */}
+          {!showBriefing && (
+            <div className="relative" ref={moreRef}>
+              <button
+                onClick={() => setMoreOpen(o => !o)}
+                aria-label="More actions"
+                aria-expanded={moreOpen}
+                className="w-7 h-7 flex items-center justify-center
+                           rounded text-text-muted
+                           hover:bg-bg-hover hover:text-text-secondary
+                           transition-colors"
+              >
+                <span className="text-base leading-none">⋯</span>
+              </button>
+              {moreOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1 z-20
+                             min-w-[200px] py-1
+                             bg-bg-card border border-border-base
+                             rounded-lg shadow-lg text-[11px]"
+                >
+                  <button
+                    onClick={() => { setMoreOpen(false); handleExportCSV() }}
+                    className="w-full text-left px-3 py-1.5
+                               text-text-secondary hover:bg-bg-hover
+                               transition-colors"
+                  >
+                    📥 Export run as CSV
+                  </button>
+                  <button
+                    onClick={() => { setMoreOpen(false); handleExportPDF() }}
+                    disabled={pdfLoading}
+                    className="w-full text-left px-3 py-1.5
+                               text-text-secondary hover:bg-bg-hover
+                               transition-colors disabled:opacity-40"
+                  >
+                    📄 {pdfLoading ? 'Generating PDF…' : 'Export run as PDF'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

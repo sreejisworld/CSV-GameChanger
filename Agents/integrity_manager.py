@@ -67,11 +67,41 @@ _IMPACT_MAP = {
     "CHANGE_REQUEST_RECEIVED": "Change Control",
     "CHANGE_REQUEST_ASSESSED": "Change Control",
     "CHANGE_REQUEST_FAILED": "Change Control",
+    # Sprint 39 — AI Trustworthiness Credibility Assessment Report
+    "TWR_GENERATION_RECEIVED":  "AI Trustworthiness + Regulatory Compliance",
+    "TWR_GENERATION_COMPLETED": "AI Trustworthiness + Regulatory Compliance",
+    "TWR_GENERATION_FAILED":    "AI Trustworthiness + Regulatory Compliance",
+    # Sprint 40 — Bounded Autonomy Profile (BAP) engine
+    "BAP_ASSESSMENT_RECEIVED":  "AI Trustworthiness + Bounded Autonomy",
+    "BAP_ASSESSMENT_COMPLETED": "AI Trustworthiness + Bounded Autonomy",
+    "BAP_ASSESSMENT_FAILED":    "AI Trustworthiness + Bounded Autonomy",
+    # Sprint 41 — Test Pilot Agent
+    "TEST_PILOT_RUN_RECEIVED":  "Platform Quality + Regression",
+    "TEST_PILOT_RUN_COMPLETED": "Platform Quality + Regression",
+    "TEST_PILOT_RUN_FAILED":    "Platform Quality + Regression",
     # SignOff / Release
     "DOCUMENT_SIGN_OFF":        "Electronic Signature",
     "TEST_RUN_SIGNED_OFF":      "Electronic Signature",
     "RELEASE_APPROVAL_SIGNED":  "Electronic Signature",
     "RELEASE_APPROVED":         "Release Authorization",
+    # Sprint 18.2 — Validation Deliverables Pack
+    "VALIDATION_PLAN_EXPORT_RECEIVED":         "GxP Documentation",
+    "VALIDATION_PLAN_EXPORT_COMPLETED":        "GxP Documentation",
+    "VALIDATION_PLAN_EXPORT_FAILED":           "GxP Documentation",
+    "DESIGN_SPEC_EXPORT_RECEIVED":             "GxP Documentation",
+    "DESIGN_SPEC_EXPORT_COMPLETED":            "GxP Documentation",
+    "DESIGN_SPEC_EXPORT_FAILED":               "GxP Documentation",
+    "VALIDATION_SUMMARY_EXPORT_RECEIVED":      "Validation Evidence",
+    "VALIDATION_SUMMARY_EXPORT_COMPLETED":     "Validation Evidence",
+    "VALIDATION_SUMMARY_EXPORT_FAILED":        "Validation Evidence",
+    # Sprint 19 — Audit Trail Viewer / Inspection Export
+    "AUDIT_EXPORT_RECEIVED":                   "Regulatory Compliance",
+    "AUDIT_EXPORT_COMPLETED":                  "Regulatory Compliance",
+    "AUDIT_EXPORT_FAILED":                     "Regulatory Compliance",
+    # Sprint 28 — Living Traceability Matrix Export
+    "TRACEABILITY_EXPORT_RECEIVED":            "Regulatory Compliance",
+    "TRACEABILITY_EXPORT_COMPLETED":           "Regulatory Compliance",
+    "TRACEABILITY_EXPORT_FAILED":              "Regulatory Compliance",
     # VerificationAgent
     "URS_VERIFIED": "Regulatory Compliance",
     "COMPLIANCE_EXCEPTION": "Compliance Exception",
@@ -97,6 +127,46 @@ _IMPACT_MAP = {
     # Access control decisions
     "ACCESS_PERMITTED":          "Access Control — Security",
     "ACCESS_DENIED":             "Access Control — Denial",
+    # Sprint 36 — Change Impact Assessment + CCR + Revalidation
+    # AI proposes the CIA, human signs the CCR, only then does the
+    # revalidation sub-run get triggered. Bounded autonomy applied to
+    # change management — every advance is signed; nothing autonomous.
+    "CIA_RECEIVED":              "Change Control",
+    "CIA_GENERATED":             "Change Control + AI Reasoning",
+    "CIA_FAILED":                "Change Control",
+    "CCR_RECEIVED":              "Change Control + Regulatory Compliance",
+    "CCR_APPROVED":              "Change Control + 21 CFR Part 11",
+    "CCR_FAILED":                "Change Control",
+    "REVALIDATION_RECEIVED":     "Validation Evidence",
+    "REVALIDATION_TRIGGERED":    "Validation Evidence + Change Control",
+    "REVALIDATION_CLOSED":       "Validation Evidence",
+    "REVALIDATION_FAILED":       "Validation Evidence",
+    # Sprint 35.7 — Agent Passport read endpoints (transparency)
+    "AGENT_PASSPORTS_RECEIVED":     "System Transparency",
+    "AGENT_PASSPORTS_COMPLETED":    "System Transparency",
+    "AGENT_PASSPORTS_FAILED":       "System Transparency",
+    "AGENT_PASSPORT_LOOKUP_RECEIVED":  "System Transparency",
+    "AGENT_PASSPORT_LOOKUP_COMPLETED": "System Transparency",
+    "AGENT_PASSPORT_LOOKUP_FAILED":    "System Transparency",
+    # Sprint 37 — Validated State Confidence Engine
+    # The "EVOLV helps you STAY validated" loop. Per-UR confidence
+    # scores from deterministic signals: citation freshness, bundle
+    # freshness, defect pressure, change-history density. Computed
+    # on demand; results audited so an inspector can see the score
+    # an inspector would have seen at any past moment.
+    "STATE_ASSESSMENT_RECEIVED":   "Validation Continuity",
+    "STATE_ASSESSMENT_COMPLETED":  "Validation Continuity + AI Reasoning",
+    "STATE_ASSESSMENT_FAILED":     "Validation Continuity",
+    # Sprint 38 — Regulatory Drift Detection (Sense Layer)
+    # When a regulatory framework version updates in the ingested
+    # corpus, this scan flags every UR whose cited version is now
+    # superseded. AI proposes the per-UR drift; QA decides whether
+    # to revalidate. The first cross-platform feature competitors
+    # cannot replicate without a comparable audit-chain spine.
+    "DRIFT_SCAN_RECEIVED":         "Regulatory Surveillance",
+    "DRIFT_SCAN_COMPLETED":        "Regulatory Surveillance + Validation Continuity",
+    "DRIFT_SCAN_FAILED":           "Regulatory Surveillance",
+    "CORPUS_VERSION_BUMPED":       "Regulatory Surveillance + Configuration Change",
 }
 
 DEFAULT_IMPACT = "Operational"

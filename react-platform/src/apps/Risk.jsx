@@ -171,11 +171,11 @@ export default function Risk() {
         setLastSynced(new Date())
         setSyncState('live')
         setSyncMsg(
-          `${data.count} requirement${data.count !== 1 ? 's' : ''} from Validation Factory`
+          `${data.count} requirement${data.count !== 1 ? 's' : ''} synced from EVOLV`
         )
       } else {
         setSyncState('idle')
-        setSyncMsg('No requirements in Validation Factory yet — using seed data')
+        setSyncMsg('No requirements synced yet — using seed data')
       }
     } catch {
       setSyncState('error')
@@ -345,7 +345,7 @@ export default function Risk() {
               className="flex items-center gap-1 text-text-muted
                          hover:text-text-secondary transition-colors
                          disabled:opacity-40 ml-1"
-              title="Re-sync from Validation Factory"
+              title="Re-sync requirements"
             >
               <svg width="10" height="10" viewBox="0 0 12 12"
                    className={isSyncing ? 'animate-spin' : ''}>

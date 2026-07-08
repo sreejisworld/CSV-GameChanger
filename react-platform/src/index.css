@@ -2,64 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Theme tokens (dark default) ──────────────────────── */
+/* ── Theme tokens — warm light (single theme as of Sprint 29) ──
+ *
+ * Sprint 29 deleted dark mode in favour of a single warm-off-white
+ * palette inspired by Claude.ai. The motivation: pharma QA pros
+ * doing 8-hour audit sessions reported the dark UI was hard on the
+ * eyes, and 2026 users are most familiar with AI-tool-style warm
+ * neutrals (Claude, ChatGPT). Pure white felt clinical; warm cream
+ * reads as approachable and modern.
+ *
+ * Brand accents (lime/blue/amber/purple/red) are theme-agnostic
+ * and unchanged — only the neutral surface + text + border tokens
+ * shifted.
+ *
+ * The `[data-theme="light"]` attribute selector is no longer used
+ * but the attribute is still set on the root element for backward
+ * compatibility with anything in the wider codebase that checks it.
+ * ─────────────────────────────────────────────────────────── */
 :root {
-  --bg-base:    #07070f;
-  --bg-surface: #0d0d1c;
-  --bg-card:    #111124;
-  --bg-hover:   #17172e;
+  /* Warm neutral surfaces (Claude-inspired off-white) */
+  --bg-base:    #FAFAF7;   /* page background — warm off-white */
+  --bg-surface: #F4F2EC;   /* sidebar / nav rail — slightly deeper warm */
+  --bg-card:    #FFFFFF;   /* cards / panels — pure white pops on warm bg */
+  --bg-hover:   #F0EEE6;   /* hover state — warm cream */
 
-  --text-primary:   #e2e8f0;
-  --text-secondary: #b0bec8;
-  --text-muted:     #7a8fa3;
+  /* Warm near-black text (avoids cold blue-grey #0f172a) */
+  --text-primary:   #2A2825;
+  --text-secondary: #57534E;
+  --text-muted:     #78716C;
 
-  --border-base:   #1c1c38;
-  --border-bright: #28284a;
+  --border-base:   #EAE7E1;
+  --border-bright: #D4D0C7;
 
-  --scrollbar-track: #0d0d1c;
-  --scrollbar-thumb: #28284a;
-  --scrollbar-hover: #3a3a5c;
+  --scrollbar-track: #F4F2EC;
+  --scrollbar-thumb: #D4D0C7;
+  --scrollbar-hover: #A8A29E;
 
-  --search-backdrop: rgba(7,7,15,0.85);
-  --input-bg:        #111124;
-  --input-border:    #1c1c38;
+  --search-backdrop: rgba(250,250,247,0.92);
+  --input-bg:        #FFFFFF;
+  --input-border:    #EAE7E1;
 
-  /* Accent tokens — same value in both themes; use these in SVG/inline */
+  /* Accent tokens — same value across themes; use these in SVG/inline */
   --accent-blue:    #007FFF;
   --accent-lime:    #32CD32;
   --accent-warning: #f59e0b;
   --accent-error:   #ef4444;
 
-  /* Progress ring track (dark: faint white, light: faint black) */
-  --ring-track: rgba(255,255,255,0.08);
+  /* Progress ring track — faint black against warm bg */
+  --ring-track: rgba(42,40,37,0.10);
 
   /* Lifecycle connector unfilled line */
-  --connector-empty: #1e293b;
+  --connector-empty: #EAE7E1;
 }
 
+/* Legacy attribute selector kept as a no-op alias for any persisted
+ * stores that still write theme="light". Values intentionally match
+ * :root — there is no longer a dark variant. */
 [data-theme="light"] {
-  --bg-base:    #ffffff;
-  --bg-surface: #f9fafb;
-  --bg-card:    #f1f5f9;
-  --bg-hover:   #e5e7eb;
-
-  --text-primary:   #0f172a;
-  --text-secondary: #334155;
-  --text-muted:     #64748b;
-
-  --border-base:   #e2e8f0;
-  --border-bright: #cbd5e1;
-
-  --scrollbar-track: #f9fafb;
-  --scrollbar-thumb: #cbd5e1;
-  --scrollbar-hover: #94a3b8;
-
-  --search-backdrop: rgba(249,250,251,0.92);
-  --input-bg:        #ffffff;
-  --input-border:    #e2e8f0;
-
-  --ring-track: rgba(0,0,0,0.08);
-  --connector-empty: #e2e8f0;
+  --bg-base:    #FAFAF7;
+  --bg-surface: #F4F2EC;
+  --bg-card:    #FFFFFF;
+  --bg-hover:   #F0EEE6;
+  --text-primary:   #2A2825;
+  --text-secondary: #57534E;
+  --text-muted:     #78716C;
+  --border-base:   #EAE7E1;
+  --border-bright: #D4D0C7;
+  --scrollbar-track: #F4F2EC;
+  --scrollbar-thumb: #D4D0C7;
+  --scrollbar-hover: #A8A29E;
+  --search-backdrop: rgba(250,250,247,0.92);
+  --input-bg:        #FFFFFF;
+  --input-border:    #EAE7E1;
+  --ring-track: rgba(42,40,37,0.10);
+  --connector-empty: #EAE7E1;
 }
 
 /* ── Global resets ─────────────────────────────────────── */
@@ -69,6 +85,12 @@ body {
   background: var(--bg-base);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
+  /* Sprint 29: bump base 14→15px so AI-tool-familiar typography
+   * (Claude/ChatGPT use ~15-16px body) reads more comfortably for
+   * 8-hour audit sessions. Tailwind text-* utilities still resolve
+   * to their literal px sizes, so this only shifts non-utility text. */
+  font-size: 15px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
@@ -76,38 +98,32 @@ body {
 ::-webkit-scrollbar-thumb  { background: var(--scrollbar-thumb); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
-/* ── Glassmorphism base ────────────────────────────────── */
+/* ── Glassmorphism base (light-only as of Sprint 29) ──── */
 .glass {
   background: linear-gradient(135deg,
-    rgba(255,255,255,0.07) 0%,
-    rgba(255,255,255,0.02) 100%);
+    rgba(255,255,255,0.92) 0%,
+    rgba(248,246,240,0.82) 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-[data-theme="light"] .glass {
-  background: linear-gradient(135deg,
-    rgba(255,255,255,0.9) 0%,
-    rgba(248,250,252,0.8) 100%);
-  border: 1px solid rgba(0,0,0,0.06);
+  border: 1px solid rgba(42,40,37,0.06);
 }
 
 .glass-blue {
   background: linear-gradient(135deg,
-    rgba(0,127,255,0.1) 0%,
+    rgba(0,127,255,0.10) 0%,
     rgba(0,127,255,0.03) 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0,127,255,0.2);
+  border: 1px solid rgba(0,127,255,0.20);
 }
 
 .glass-lime {
   background: linear-gradient(135deg,
-    rgba(50,205,50,0.1) 0%,
+    rgba(50,205,50,0.10) 0%,
     rgba(50,205,50,0.03) 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(50,205,50,0.2);
+  border: 1px solid rgba(50,205,50,0.20);
 }
 
 /* ── Bento card 3D hover ───────────────────────────────── */
@@ -121,34 +137,22 @@ body {
 .bento-card:hover {
   transform: translateY(-8px) rotateX(3deg) rotateY(-1deg);
   box-shadow:
-    0 24px 48px rgba(0,0,0,0.6),
-    0 0 40px rgba(0,127,255,0.12),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-}
-[data-theme="light"] .bento-card:hover {
-  box-shadow:
-    0 12px 32px rgba(0,0,0,0.12),
+    0 12px 32px rgba(42,40,37,0.12),
     0 0 24px rgba(0,127,255,0.10),
     inset 0 1px 0 rgba(255,255,255,0.8);
 }
 .bento-card:hover .app-icon-3d {
   transform: perspective(200px) translateZ(24px) scale(1.1);
-  filter: drop-shadow(0 6px 16px rgba(0,127,255,0.5));
+  filter: drop-shadow(0 6px 16px rgba(0,127,255,0.4));
 }
 .bento-card.lime:hover {
   box-shadow:
-    0 24px 48px rgba(0,0,0,0.6),
-    0 0 40px rgba(50,205,50,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-}
-[data-theme="light"] .bento-card.lime:hover {
-  box-shadow:
-    0 12px 32px rgba(0,0,0,0.12),
+    0 12px 32px rgba(42,40,37,0.12),
     0 0 24px rgba(50,205,50,0.12),
     inset 0 1px 0 rgba(255,255,255,0.8);
 }
 .bento-card.lime:hover .app-icon-3d {
-  filter: drop-shadow(0 6px 16px rgba(50,205,50,0.6));
+  filter: drop-shadow(0 6px 16px rgba(50,205,50,0.5));
 }
 
 .app-icon-3d {
@@ -181,7 +185,7 @@ body {
 .ai-badge {
   background: rgba(50,205,50,0.15);
   border: 1px solid rgba(50,205,50,0.35);
-  color: #32CD32;
+  color: #2BAE2B;
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -204,9 +208,9 @@ body {
 /* ── Animated gradient background for hero cards ──────── */
 .bento-hero-bg {
   background: linear-gradient(135deg,
-    rgba(0,127,255,0.15) 0%,
-    rgba(50,205,50,0.08) 50%,
-    rgba(0,127,255,0.05) 100%);
+    rgba(0,127,255,0.10) 0%,
+    rgba(50,205,50,0.06) 50%,
+    rgba(0,127,255,0.04) 100%);
 }
 
 /* ── Neon line separator ───────────────────────────────── */
@@ -235,32 +239,48 @@ body {
   display: block;
 }
 
-/* ── Form inputs (themed) ──────────────────────────────── */
-.evolv-input {
-  width: 100%;
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  color: var(--text-primary);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.evolv-input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(0,127,255,0.12);
-}
-.evolv-input::placeholder { color: var(--text-muted); }
+/* ── Form inputs (themed) ──────────────────────────────────
+ * Wrapped in @layer components so Tailwind utility classes
+ * (text-[11px], py-1, h-7, etc.) can override the base rules
+ * via @layer utilities, which sits above components in cascade
+ * order. Without the @layer wrapper, these rules sit in the
+ * implicit "outside-any-layer" tier — which beats @layer utilities
+ * in modern CSS — and the utility class overrides silently fail.
+ * ─────────────────────────────────────────────────────────── */
+@layer components {
+  .evolv-input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    /* Explicit line-height so descenders (g, y, p, j) in selected
+       option text — "Confi[g]ured", "Non-Functional", "Data Owner",
+       "GxP Direct", "Suppl[y]" — render fully when consumers tighten
+       the box with utility classes like h-7 / h-8. Without this,
+       some browsers default to a line-box that clips the bottom
+       pixels of descenders. */
+    line-height: 1.4;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .evolv-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(0,127,255,0.12);
+  }
+  .evolv-input::placeholder { color: var(--text-muted); }
 
-/* ── Select themed ─────────────────────────────────────── */
-.evolv-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 28px;
+  /* ── Select themed ─────────────────────────────────────── */
+  .evolv-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2378716c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
 }
 
 /* ── LifecycleStrip — theme-aware node & connector ─────── */
@@ -281,31 +301,35 @@ body {
 .connector-half  { background: linear-gradient(90deg, var(--accent-lime) 0%, var(--connector-empty) 100%); }
 .connector-empty { background: var(--connector-empty); }
 
-/* ── Light mode: text-white → text-primary ─────────────────
+/* ── text-white compat — Sprint 29 (single light theme) ──
  *
- * In dark mode, text-white was used as a semantic heading colour
- * (white on dark card/surface). In light mode those surfaces
- * become white, making the text invisible.
+ * Pre-Sprint-29, components used `text-white` as a semantic heading
+ * colour because the default theme was dark. With dark mode deleted,
+ * those headings now sit on white/cream cards and would be invisible.
  *
- * Fix: override text-white → text-primary for all elements that
- * are NOT themselves a coloured button (bg-blue-DEFAULT, etc.).
- * Child spans/labels *inside* a coloured button are restored via
- * the parent-child rule below.
+ * Fix: globally remap `text-white` to `--text-primary` UNLESS the
+ * element is itself a coloured button/badge container (in which case
+ * the white text is the correct foreground). Children of coloured
+ * containers retain real white via the second rule.
+ *
+ * This is identical to the previous Sprint-16.1 light-mode override,
+ * just with the `[data-theme="light"]` attribute prefix dropped now
+ * that there is no dark theme to scope against.
  * ─────────────────────────────────────────────────────────── */
-[data-theme="light"] .text-white:not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-lime"]):not([class*="bg-amber"]) {
+.text-white:not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-lime"]):not([class*="bg-amber"]):not([class*="bg-red"]) {
   color: var(--text-primary);
 }
 
-/* Restore white text for children nested inside coloured containers */
-[data-theme="light"] [class*="bg-blue-DEFAULT"] .text-white,
-[data-theme="light"] [class*="bg-purple"]       .text-white,
-[data-theme="light"] [class*="bg-lime-DEFAULT"] .text-white,
-[data-theme="light"] [class*="bg-amber"]        .text-white {
+[class*="bg-blue-DEFAULT"] .text-white,
+[class*="bg-purple"]       .text-white,
+[class*="bg-lime-DEFAULT"] .text-white,
+[class*="bg-amber"]        .text-white,
+[class*="bg-red"]          .text-white {
   color: #ffffff;
 }
 
 /* Sidebar nav active item — blue-dim bg needs visible text */
-[data-theme="light"] .bg-blue-dim .text-text-primary {
+.bg-blue-dim .text-text-primary {
   color: var(--text-primary);
 }
 

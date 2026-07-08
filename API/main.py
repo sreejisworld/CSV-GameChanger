@@ -68,6 +68,13 @@ from API.routers.plan             import router as plan_router
 from API.routers.audit            import router as audit_router
 from API.routers.governance       import router as governance_router
 from API.routers.test_authoring   import router as test_authoring_router
+from API.routers.traceability     import router as traceability_router
+from API.routers.agents           import router as agents_router
+from API.routers.change_control   import router as change_control_router
+from API.routers.validated_state  import router as validated_state_router
+from API.routers.regulatory_drift import router as regulatory_drift_router
+from API.routers.trustworthiness  import router as trustworthiness_router
+from API.routers.bap              import router as bap_router
 
 
 def _validate_env() -> None:
@@ -179,9 +186,16 @@ app.include_router(plan_router)
 app.include_router(audit_router)
 app.include_router(governance_router)
 app.include_router(test_authoring_router, prefix="/test-authoring")
+app.include_router(traceability_router)
+app.include_router(agents_router)
+app.include_router(change_control_router)
+app.include_router(validated_state_router)
+app.include_router(regulatory_drift_router)
+app.include_router(trustworthiness_router)
+app.include_router(bap_router)
 
-# CORSMiddleware — allow React (port 5173), legacy React
-# (port 3000), and Streamlit (port 8501).
+# CORSMiddleware — allow React (default 5173, parallel-worktree
+# 5174-5180), legacy React (3000), and Streamlit (8501).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -189,6 +203,10 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
+        "http://localhost:5179",
+        "http://127.0.0.1:5179",
+        "http://localhost:5180",
+        "http://127.0.0.1:5180",
         "http://localhost:3000",
         "http://localhost:8501",
         "http://127.0.0.1:3000",

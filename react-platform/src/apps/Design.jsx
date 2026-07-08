@@ -13,6 +13,8 @@
  */
 import { useState, useCallback } from 'react'
 import { useAppStore }           from '../store/useAppStore.js'
+import { API_BASE }              from '../config.js'
+import { downloadPDF, slugify }  from '../utils/downloadPDF.js'
 import TestAuthoring             from './design/TestAuthoring.jsx'
 import CoverageMonitor, { computeCoverage }
                                  from './design/CoverageMonitor.jsx'
@@ -59,12 +61,16 @@ function FieldRow({ label, hint, children }) {
 // ── Design Spec tab ───────────────────────────────────────────────
 function DesignSpecTab({ designData, setDesignField,
                          planData, setPhaseComplete,
-                         canCompleteDesign, uncoveredGxpDirect }) {
+                         canCompleteDesign, uncoveredGxpDirect,
+                         requirements, riskData, testBundles }) {
   const cat  = planData.gampCategory
   const isCat5 = cat === '5'
 
   const [saved,   setSaved]   = useState(false)
   const [blocked, setBlocked] = useState(false)
+  const [dsLoading, setDsLoading] = useState(false)
+  const [dsError,   setDsError]   = useState('')
+  const [dsSigner,  setDsSigner]  = useState('')
 
   const handleSave = () => {
     if (!canCompleteDesign) {
@@ -76,6 +82,45 @@ function DesignSpecTab({ designData, setDesignField,
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
+
+  // ── Design Specification (DS) export ─────────────────────
+  // Sends design + requirements + risk + bundles into
+  // /exports/design-specification, which returns a 4-page
+  // signed PDF (Cover, Config Items, Traceability, MoS).
+  const handleExportDS = useCallback(async () => {
+    setDsLoading(true)
+    setDsError('')
+    try {
+      if (!dsSigner.trim()) {
+        throw new Error(
+          'Enter a signer name before exporting the DS.'
+        )
+      }
+      const projName = planData.projectName || 'Untitled Project'
+      await downloadPDF(
+        `${API_BASE}/exports/design-specification`,
+        {
+          plan_data:    planData,
+          design_data:  designData,
+          requirements,
+          risk_data:    riskData,
+          test_bundles: testBundles,
+          signer_name:  dsSigner.trim(),
+          meaning:      'Approval of Design Specification',
+        },
+        `design-specification-${slugify(projName)}.pdf`,
+      )
+    } catch (err) {
+      setDsError(
+        `${err.message}. Ensure FastAPI is running on port 8000.`
+      )
+    } finally {
+      setDsLoading(false)
+    }
+  }, [
+    planData, designData, requirements, riskData,
+    testBundles, dsSigner,
+  ])
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -236,6 +281,53 @@ function DesignSpecTab({ designData, setDesignField,
           </span>
         )}
       </div>
+
+      {/* DS PDF export (Sprint 18.2) */}
+      <FieldRow
+        label="Export Design Specification (Signed PDF)"
+        hint="4-page artefact — Cover, Configuration Items, Traceability Matrix, Manifestation of Signature."
+      >
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1 grow min-w-[220px]">
+            <label className="text-[10px] text-text-muted">
+              Signer Name (Validation Lead / IT Architect)
+            </label>
+            <input
+              value={dsSigner}
+              onChange={e => setDsSigner(e.target.value)}
+              placeholder="e.g. Alex Lee"
+              className="evolv-input text-xs"
+            />
+          </div>
+          <button
+            onClick={handleExportDS}
+            disabled={dsLoading || !dsSigner.trim()}
+            className={`
+              px-4 py-2 rounded-lg text-xs font-medium
+              transition-colors
+              ${dsLoading || !dsSigner.trim()
+                ? 'bg-bg-card border border-border-base text-text-muted opacity-60 cursor-not-allowed'
+                : 'bg-purple-DEFAULT/10 border border-purple-DEFAULT/40 text-purple-DEFAULT hover:bg-purple-DEFAULT/20'}
+            `}
+            style={dsLoading || !dsSigner.trim() ? {} : {
+              borderColor: 'rgba(168,85,247,0.40)',
+              color: '#a855f7',
+              background: 'rgba(168,85,247,0.10)',
+            }}
+            title={
+              'Generate the Design Specification PDF with '
+              + 'requirement-to-test traceability matrix.'
+            }
+          >
+            {dsLoading ? 'Generating…' : '📐 Download DS PDF'}
+          </button>
+        </div>
+        {dsError && (
+          <p className="mt-2 text-[11px] text-red-400">
+            {dsError}
+          </p>
+        )}
+      </FieldRow>
     </div>
   )
 }
@@ -306,7 +398,7 @@ function TraceabilityTab({ requirements, riskData, testScripts }) {
           No requirements loaded yet.
         </p>
         <p className="text-[10px] text-text-muted">
-          Generate requirements in the Streamlit Validation Factory
+          Generate requirements in the Requirements phase
           and click "Save to Risk Matrix", then complete the Risk phase.
         </p>
       </div>
@@ -847,6 +939,9 @@ export default function Design({ openTab }) {
             setPhaseComplete={setPhaseComplete}
             canCompleteDesign={coverage.canCompleteDesign}
             uncoveredGxpDirect={coverage.uncoveredGxpDirect}
+            requirements={requirements}
+            riskData={riskData}
+            testBundles={testBundles}
           />
         )}
         {activeTab === 'authoring' && (

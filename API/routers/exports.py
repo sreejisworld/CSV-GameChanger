@@ -216,6 +216,40 @@ class ReleasePackageRequest(BaseModel):
     frameworks:      Optional[List[str]] = None
 
 
+# ── Sprint 18.2 — Validation Deliverables Pack ────────────────────
+class ValidationPlanRequest(BaseModel):
+    """Request payload for POST /exports/validation-plan."""
+    plan_data:    Dict[str, Any]
+    signer_name:  str
+    meaning:      Optional[str] = "Approval of Validation Plan"
+
+
+class DesignSpecRequest(BaseModel):
+    """Request payload for POST /exports/design-specification."""
+    plan_data:    Dict[str, Any]
+    design_data:  Dict[str, Any]
+    requirements: List[Dict[str, Any]] = []
+    risk_data:    Dict[str, Dict[str, Any]] = {}
+    test_bundles: Dict[str, Dict[str, Any]] = {}
+    signer_name:  str
+    meaning:      Optional[str] = "Approval of Design Specification"
+
+
+class ValidationSummaryRequest(BaseModel):
+    """Request payload for POST /exports/validation-summary-report."""
+    plan_data:    Dict[str, Any]
+    requirements: List[Dict[str, Any]] = []
+    risk_data:    Dict[str, Dict[str, Any]] = {}
+    test_runs:    Dict[str, Dict[str, Any]] = {}
+    defects:      Dict[str, List[Dict[str, Any]]] = {}
+    qa_reviews:   Dict[str, Dict[str, Any]] = {}
+    release_data: Dict[str, Any] = {}
+    signer_name:  str
+    meaning: Optional[str] = (
+        "Approval of Validation Summary Report"
+    )
+
+
 # ── Endpoints ──────────────────────────────────────────────────────
 @router.post(
     "/exports/verify-report",
@@ -528,4 +562,274 @@ def export_release_package(body: ReleasePackageRequest):
                 f'attachment; filename="release-package-'
                 f'{safe_name}.pdf"',
         },
+    )
+
+
+# ── Sprint 18.2 — Validation Deliverables Pack ────────────────────
+#
+# Three thin endpoints that delegate to utils/pdf_generator.py
+# (per CLAUDE.md: PDF logic lives there, not inline in the router).
+# Each emits the standard RECEIVED / COMPLETED / FAILED audit
+# triplet via integrity_manager.log_audit_event().
+
+def _slug(name: str) -> str:
+    """Filesystem-safe ASCII slug for the PDF filename."""
+    return "".join(
+        c if c.isalnum() else "-" for c in (name or "")
+    ).strip("-").lower() or "project"
+
+
+def _pdf_response(
+    pdf_bytes: bytes,
+    filename: str,
+) -> Response:
+    """Return a uniformly-shaped application/pdf Response.
+
+    fpdf2's ``pdf.output()`` returns ``bytearray``; Starlette's
+    ``Response.render()`` calls ``.encode()`` on non-``bytes`` content,
+    which fails on ``bytearray``. Coerce explicitly.
+
+    :requirement: URS-26.4
+    """
+    return Response(
+        content=bytes(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":
+                f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.post(
+    "/exports/validation-plan",
+    summary="Generate Validation Plan (VP) PDF",
+)
+def export_validation_plan(body: ValidationPlanRequest):
+    """Render the Validation Plan into a signed PDF.
+
+    Receives a ``plan_data`` dict (matches the React Plan page
+    Zustand slice) and a signer identity. Returns the PDF as
+    application/pdf bytes.
+
+    :requirement: URS-26.1 - Generate Validation Plan PDF.
+    """
+    from Agents.integrity_manager import log_audit_event
+    from utils.pdf_generator import (
+        generate_validation_plan_pdf,
+    )
+
+    project_name = (
+        body.plan_data.get("projectName") or "Untitled Project"
+    )
+    log_audit_event(
+        agent_name="ExportsRouter",
+        action="VALIDATION_PLAN_EXPORT_RECEIVED",
+        decision_logic=(
+            f"VP export requested for project "
+            f"'{project_name}' by {body.signer_name}"
+        ),
+    )
+
+    try:
+        pdf_bytes = generate_validation_plan_pdf(
+            plan_data=body.plan_data,
+            signer_name=body.signer_name,
+            meaning=body.meaning
+                or "Approval of Validation Plan",
+        )
+    except Exception as exc:
+        log_audit_event(
+            agent_name="ExportsRouter",
+            action="VALIDATION_PLAN_EXPORT_FAILED",
+            decision_logic=(
+                f"VP export failed for '{project_name}': "
+                f"{type(exc).__name__}: {exc}"
+            ),
+        )
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=500,
+            detail=f"VP generation failed: {exc}",
+        )
+
+    log_audit_event(
+        agent_name="ExportsRouter",
+        action="VALIDATION_PLAN_EXPORT_COMPLETED",
+        decision_logic=(
+            f"VP exported for '{project_name}' "
+            f"({len(pdf_bytes)} bytes) "
+            f"signed by {body.signer_name}"
+        ),
+    )
+
+    return _pdf_response(
+        pdf_bytes,
+        f"validation-plan-{_slug(project_name)}.pdf",
+    )
+
+
+@router.post(
+    "/exports/design-specification",
+    summary="Generate Design Specification PDF",
+)
+def export_design_specification(body: DesignSpecRequest):
+    """Render the Design Specification into a signed PDF.
+
+    Includes architecture / HLD / LLD / integration notes, the
+    configuration items table, and a UR -> FR -> Test Bundle
+    traceability matrix.
+
+    :requirement: URS-26.2 - Generate Design Specification PDF
+                  with requirement-to-test traceability matrix.
+    """
+    from Agents.integrity_manager import log_audit_event
+    from utils.pdf_generator import (
+        generate_design_specification_pdf,
+    )
+
+    project_name = (
+        body.plan_data.get("projectName") or "Untitled Project"
+    )
+    ur_count = sum(
+        1 for r in body.requirements if r.get("type") == "UR"
+    )
+    bundle_count = sum(1 for v in body.test_bundles.values() if v)
+
+    log_audit_event(
+        agent_name="ExportsRouter",
+        action="DESIGN_SPEC_EXPORT_RECEIVED",
+        decision_logic=(
+            f"DS export requested for '{project_name}' - "
+            f"{ur_count} URs, {bundle_count} bundles, by "
+            f"{body.signer_name}"
+        ),
+    )
+
+    try:
+        pdf_bytes = generate_design_specification_pdf(
+            plan_data=body.plan_data,
+            design_data=body.design_data,
+            requirements=body.requirements,
+            risk_data=body.risk_data,
+            test_bundles=body.test_bundles,
+            signer_name=body.signer_name,
+            meaning=body.meaning
+                or "Approval of Design Specification",
+        )
+    except Exception as exc:
+        log_audit_event(
+            agent_name="ExportsRouter",
+            action="DESIGN_SPEC_EXPORT_FAILED",
+            decision_logic=(
+                f"DS export failed for '{project_name}': "
+                f"{type(exc).__name__}: {exc}"
+            ),
+        )
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=500,
+            detail=f"Design Spec generation failed: {exc}",
+        )
+
+    log_audit_event(
+        agent_name="ExportsRouter",
+        action="DESIGN_SPEC_EXPORT_COMPLETED",
+        decision_logic=(
+            f"DS exported for '{project_name}' "
+            f"({len(pdf_bytes)} bytes) "
+            f"signed by {body.signer_name}"
+        ),
+    )
+
+    return _pdf_response(
+        pdf_bytes,
+        f"design-specification-{_slug(project_name)}.pdf",
+    )
+
+
+@router.post(
+    "/exports/validation-summary-report",
+    summary="Generate Validation Summary Report (VSR) PDF",
+)
+def export_validation_summary_report(
+    body: ValidationSummaryRequest,
+):
+    """Render the Validation Summary Report into a signed PDF.
+
+    Aggregates execution outcomes, defect log, QA review
+    attestation, and release approvals into the closing
+    Phase-6 evidence artefact.
+
+    :requirement: URS-26.3 - Generate Validation Summary Report
+                  PDF with execution outcomes, defects,
+                  deviations and approvals.
+    """
+    from Agents.integrity_manager import log_audit_event
+    from utils.pdf_generator import (
+        generate_validation_summary_report_pdf,
+    )
+
+    project_name = (
+        body.plan_data.get("projectName") or "Untitled Project"
+    )
+    run_count = len(body.test_runs)
+    defect_count = sum(
+        len(v or []) for v in body.defects.values()
+    )
+    approval_count = len(
+        (body.release_data or {}).get("approvals") or []
+    )
+
+    log_audit_event(
+        agent_name="ExportsRouter",
+        action="VALIDATION_SUMMARY_EXPORT_RECEIVED",
+        decision_logic=(
+            f"VSR export requested for '{project_name}' - "
+            f"{run_count} runs, {defect_count} defects, "
+            f"{approval_count} approvals, by {body.signer_name}"
+        ),
+    )
+
+    try:
+        pdf_bytes = generate_validation_summary_report_pdf(
+            plan_data=body.plan_data,
+            requirements=body.requirements,
+            risk_data=body.risk_data,
+            test_runs=body.test_runs,
+            defects=body.defects,
+            qa_reviews=body.qa_reviews,
+            release_data=body.release_data,
+            signer_name=body.signer_name,
+            meaning=body.meaning
+                or "Approval of Validation Summary Report",
+        )
+    except Exception as exc:
+        log_audit_event(
+            agent_name="ExportsRouter",
+            action="VALIDATION_SUMMARY_EXPORT_FAILED",
+            decision_logic=(
+                f"VSR export failed for '{project_name}': "
+                f"{type(exc).__name__}: {exc}"
+            ),
+        )
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=500,
+            detail=f"VSR generation failed: {exc}",
+        )
+
+    log_audit_event(
+        agent_name="ExportsRouter",
+        action="VALIDATION_SUMMARY_EXPORT_COMPLETED",
+        decision_logic=(
+            f"VSR exported for '{project_name}' "
+            f"({len(pdf_bytes)} bytes) "
+            f"signed by {body.signer_name}"
+        ),
+    )
+
+    return _pdf_response(
+        pdf_bytes,
+        f"validation-summary-report-{_slug(project_name)}.pdf",
     )

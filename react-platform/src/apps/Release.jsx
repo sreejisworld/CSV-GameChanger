@@ -11,6 +11,7 @@ import { useState, useCallback } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { API_BASE } from '../config.js'
 import { computeCoverage } from './design/CoverageMonitor.jsx'
+import { downloadPDF, slugify } from '../utils/downloadPDF.js'
 
 function downloadCSV(filename, headers, rows) {
   const escape = v =>
@@ -24,23 +25,6 @@ function downloadCSV(filename, headers, rows) {
   const a    = document.createElement('a')
   a.href = url; a.download = filename; a.click()
   URL.revokeObjectURL(url)
-}
-
-async function downloadPDF(url, body, filename) {
-  const res = await fetch(url, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(body),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail ?? `HTTP ${res.status}`)
-  }
-  const blob = await res.blob()
-  const burl = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href = burl; a.download = filename; a.click()
-  URL.revokeObjectURL(burl)
 }
 
 const API = API_BASE
@@ -174,6 +158,8 @@ function ApproverForm({ index, planData, testRuns, activeRunId,
 
   if (done) return null
 
+  const nameMissing = !name.trim()
+
   return (
     <div className="p-4 rounded-lg border border-border-base bg-bg-card">
       <p className="text-[10px] text-text-muted mb-3 font-semibold uppercase
@@ -213,18 +199,46 @@ function ApproverForm({ index, planData, testRuns, activeRunId,
             {MEANINGS.map(m => <option key={m}>{m}</option>)}
           </select>
         </div>
+      </div>
+
+      {/* Sign action on its own row — always visible, full width,
+          with a clear label + contextual disabled hint so the
+          user never has to guess what's blocking the signature. */}
+      <div className="mt-4 flex items-center gap-3 flex-wrap">
         <button
           onClick={handleSign}
-          disabled={loading || disabled}
+          disabled={loading || disabled || nameMissing}
+          title={
+            disabled
+              ? 'System is already released — no further signatures allowed.'
+              : nameMissing
+                ? 'Enter the approver full name to enable signing.'
+                : 'Apply 21 CFR Part 11 electronic signature'
+          }
           className={`
-            px-4 py-1.5 rounded text-xs font-semibold transition-opacity
+            px-5 py-2 rounded text-xs font-bold uppercase tracking-wide
+            transition-all flex items-center gap-2
             bg-blue-DEFAULT text-white
-            ${loading || disabled ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90'}
+            ${loading || disabled || nameMissing
+              ? 'opacity-40 cursor-not-allowed'
+              : 'hover:opacity-90 shadow-[0_0_12px_rgba(0,127,255,0.35)]'}
           `}
         >
-          {loading ? 'Signing…' : 'Sign'}
+          <span>{loading ? '⏳' : '🖊️'}</span>
+          {loading ? 'Signing…' : 'Sign Approval'}
         </button>
+        {nameMissing && !disabled && (
+          <p className="text-[10px] text-text-muted">
+            Enter approver name above to enable signing.
+          </p>
+        )}
+        {disabled && (
+          <p className="text-[10px] text-text-muted">
+            System already released — signatures locked.
+          </p>
+        )}
       </div>
+
       {error && (
         <p className="mt-2 text-[10px] text-red-400">{error}</p>
       )}
@@ -240,12 +254,15 @@ export default function Release() {
     releaseData, addApproval, setReleased,
     setPhaseComplete, setStatusBadge,
     riskData, requirements, testBundles,
+    defects, qaReviews,
   } = useAppStore()
 
   const [goLiveLoading, setGoLiveLoading] = useState(false)
   const [goLiveError,   setGoLiveError]   = useState('')
   const [pkgLoading,    setPkgLoading]    = useState(false)
   const [pkgError,      setPkgError]      = useState('')
+  const [vsrLoading,    setVsrLoading]    = useState(false)
+  const [vsrError,      setVsrError]      = useState('')
 
   const run          = activeRunId ? testRuns[activeRunId] : null
   const testSigned   = run?.status === 'locked'
@@ -314,6 +331,48 @@ export default function Release() {
       setPkgLoading(false)
     }
   }, [planData, releaseData, approvals, phaseCompletion, run])
+
+  // ── Validation Summary Report (VSR) export ─────────────────
+  // Aggregates all Phase-6 closing evidence (run outcomes,
+  // defects, QA reviews, release approvals) into a signed PDF.
+  const handleExportVSR = useCallback(async () => {
+    setVsrLoading(true)
+    setVsrError('')
+    try {
+      // Use first signed approver as the manifest signer; fall
+      // back to a neutral placeholder so the PDF still emits a
+      // 21 CFR Part 11 signature page even pre-approval.
+      const signer =
+        approvals[0]?.name || 'QA Director (unsigned)'
+      const projName = planData.projectName || 'Untitled Project'
+
+      await downloadPDF(
+        `${API_BASE}/exports/validation-summary-report`,
+        {
+          plan_data:    planData,
+          requirements,
+          risk_data:    riskData,
+          test_runs:    testRuns,
+          defects,
+          qa_reviews:   qaReviews,
+          release_data: releaseData,
+          signer_name:  signer,
+          meaning:      'Approval of Validation Summary Report',
+        },
+        `validation-summary-report-${slugify(projName)}.pdf`,
+      )
+    } catch (err) {
+      setVsrError(
+        `VSR export failed: ${err.message}. ` +
+        'Ensure FastAPI is running on port 8000.'
+      )
+    } finally {
+      setVsrLoading(false)
+    }
+  }, [
+    planData, requirements, riskData, testRuns,
+    defects, qaReviews, releaseData, approvals,
+  ])
 
   // Go-live checklist items
   const checks = [
@@ -435,6 +494,20 @@ export default function Release() {
               📥 Approvals CSV
             </button>
           )}
+          <button
+            onClick={handleExportVSR}
+            disabled={vsrLoading}
+            title="Generate the Validation Summary Report (VSR) — Phase-6 closing evidence pack"
+            className={`
+              text-[10px] px-2 py-1 rounded border font-medium
+              transition-colors
+              ${vsrLoading
+                ? 'border-border-base text-text-muted opacity-50'
+                : 'border-blue-DEFAULT/40 text-blue-DEFAULT bg-blue-DEFAULT/10 hover:bg-blue-DEFAULT/20'}
+            `}
+          >
+            {vsrLoading ? 'Generating…' : '📑 VSR PDF'}
+          </button>
           {released && (
             <button
               onClick={handleExportPDF}
@@ -565,11 +638,17 @@ export default function Release() {
           </section>
         )}
 
-        {/* ── Export error ──────────────────────────────── */}
+        {/* ── Export errors ─────────────────────────────── */}
         {pkgError && (
           <div className="px-4 py-2 rounded border border-red-500/30
                           bg-red-500/10 text-[11px] text-red-400">
             {pkgError}
+          </div>
+        )}
+        {vsrError && (
+          <div className="px-4 py-2 rounded border border-red-500/30
+                          bg-red-500/10 text-[11px] text-red-400">
+            {vsrError}
           </div>
         )}
 

@@ -6,8 +6,8 @@
  * at each stage and a regulatory compliance trail.
  *
  * Three pre-loaded demo systems at different lifecycle stages
- * answer Karunakar's request: "show entire flow — project →
- * system → validation plan → start to retire."
+ * answer the recurring buyer ask: show the entire flow — project →
+ * system → validation plan → start to retire.
  */
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'

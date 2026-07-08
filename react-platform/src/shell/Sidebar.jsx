@@ -132,15 +132,16 @@ function Monogram({ label, accentColor, isActive }) {
 
 // ── Main Sidebar ───────────────────────────────────────────────
 export default function Sidebar() {
-  const [collapsed,       setCollapsed]       = useState(false)
-  const [collapsedGroups, setCollapsedGroups] = useState(new Set())
-  const { activeTabId, openTab, statusBadges, phaseCompletion, setPhaseComplete } = useAppStore()
+  const [collapsed, setCollapsed] = useState(false)
+  const {
+    activeTabId, openTab, statusBadges, phaseCompletion, setPhaseComplete,
+    navGroupsCollapsed, toggleNavGroup,
+  } = useAppStore()
 
-  const toggleGroup = label => setCollapsedGroups(prev => {
-    const next = new Set(prev)
-    next.has(label) ? next.delete(label) : next.add(label)
-    return next
-  })
+  // Sprint 30 — `navGroupsCollapsed` lives in the store and persists
+  // (defaults: Intelligence + Tools collapsed, Lifecycle expanded).
+  // The local toggle just delegates to the store action.
+  const toggleGroup = label => toggleNavGroup(label)
 
   return (
     <aside
@@ -156,7 +157,18 @@ export default function Sidebar() {
       {/* ── Nav groups ───────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto py-3 space-y-4">
         {NAV_GROUPS.map(group => {
-          const isGroupCollapsed = collapsedGroups.has(group.label)
+          const isGroupCollapsed = Boolean(navGroupsCollapsed?.[group.label])
+
+          // Sprint 30 — when a group is collapsed, surface a tiny dot
+          // on its header if any item inside is active or carries a
+          // badge, so the user can tell there's hidden activity in
+          // there. Keeps the calm "lifecycle-first" first paint
+          // honest: nothing is disappeared without a breadcrumb.
+          const hiddenActivity = isGroupCollapsed && group.items.some(
+            id => id === activeTabId
+                  || (statusBadges?.[id]?.type
+                      && statusBadges[id].type !== 'info')
+          )
           return (
           <div key={group.label}>
             {!collapsed && (
@@ -165,11 +177,21 @@ export default function Sidebar() {
                 className="w-full flex items-center justify-between
                            px-4 mb-1.5 group focus-blue outline-none"
               >
-                <p className="text-[9px] text-text-muted uppercase
-                              tracking-widest group-hover:text-text-secondary
-                              transition-colors">
-                  {group.label}
-                </p>
+                <span className="flex items-center gap-1.5">
+                  <p className="text-[9px] text-text-muted uppercase
+                                tracking-widest group-hover:text-text-secondary
+                                transition-colors">
+                    {group.label}
+                  </p>
+                  {hiddenActivity && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0
+                                 animate-pulse"
+                      style={{ background: '#f59e0b' }}
+                      title="Activity in this group"
+                    />
+                  )}
+                </span>
                 <span
                   className="text-[9px] text-text-muted transition-transform
                              duration-200 group-hover:text-text-secondary"
