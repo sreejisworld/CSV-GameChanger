@@ -86,7 +86,10 @@ def get_all_passports() -> JSONResponse:
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to list agent passports: {e}",
+            detail=(
+                "[CSV-003] Failed to list agent passports. "
+                "See server audit log for details."
+            ),
         )
 
 
@@ -156,5 +159,8 @@ def get_passport(agent_name: str) -> JSONResponse:
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to look up passport: {e}",
+            detail=(
+                "[CSV-003] Failed to look up agent passport. "
+                "See server audit log for details."
+            ),
         )

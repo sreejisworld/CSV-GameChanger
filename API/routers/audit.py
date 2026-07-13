@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -25,6 +27,12 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+
+_logger = logging.getLogger("evolv.audit")
+
+# Reasoning-hash prefixes are hex only — reject anything else
+# before it reaches the filesystem glob (path/glob injection).
+_HASH_PREFIX_RE = re.compile(r"^[0-9a-f]{8,64}$")
 
 router = APIRouter(tags=["Audit"])
 
@@ -159,22 +167,28 @@ class AuditExportRequest(BaseModel):
     """Request body for filtered slice → signed PDF export."""
     rows: List[Dict[str, Any]] = Field(
         ...,
+        max_length=10000,
         description="The filtered rows the user wants in the PDF.",
     )
     project_name: str = Field(
         default="Untitled Project",
+        max_length=200,
         description="Project / system name for the cover page.",
     )
     signer_name:  str = Field(
         ...,
+        min_length=1,
+        max_length=200,
         description="Approver full name for Manifestation of Signature.",
     )
     meaning:      str = Field(
         default="Audit Trail Inspection Export",
+        max_length=200,
         description="Meaning of the electronic signature.",
     )
     filter_summary: str = Field(
         default="",
+        max_length=500,
         description="Human-readable summary of the active filters.",
     )
 
@@ -267,10 +281,13 @@ def get_logic_archive(hash_prefix: str):
     :requirement: URS-27.2
     """
     prefix = (hash_prefix or "").strip().lower()
-    if len(prefix) < 8:
+    if not _HASH_PREFIX_RE.match(prefix):
         raise HTTPException(
             status_code=400,
-            detail="hash_prefix must be at least 8 characters",
+            detail=(
+                "hash_prefix must be 8-64 hexadecimal "
+                "characters."
+            ),
         )
 
     short = prefix[:8]
@@ -293,9 +310,16 @@ def get_logic_archive(hash_prefix: str):
     try:
         payload = json.loads(chosen.read_text(encoding="utf-8"))
     except Exception as exc:
+        _logger.exception(
+            "[CSV-003] Could not parse logic archive %s: %s",
+            chosen.name, exc,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Could not parse archive {chosen.name}: {exc}",
+            detail=(
+                "[CSV-003] Logic archive could not be parsed. "
+                "See server log for details."
+            ),
         )
 
     return {
@@ -457,7 +481,10 @@ def export_audit_slice_pdf(body: AuditExportRequest):
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Audit export failed: {exc}",
+            detail=(
+                "[CSV-003] Audit export failed. "
+                "See server audit log for details."
+            ),
         )
 
     log_audit_event(

@@ -9,6 +9,7 @@ Endpoint:
 """
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -19,17 +20,19 @@ from pydantic import BaseModel, Field
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+_logger = logging.getLogger("evolv.generate_script")
+
 router = APIRouter(tags=["Verify"])
 
 
 class RiskRow(BaseModel):
-    id:            str
-    type:          str = "UR"
-    statement:     str = ""
-    impact:        str = "GxP Indirect"
-    implMethod:    str = "Configured"
-    testAssurance: str = "Scripted"
-    riskLevel:     Optional[str] = None
+    id:            str = Field(max_length=60)
+    type:          str = Field("UR", max_length=10)
+    statement:     str = Field("", max_length=4000)
+    impact:        str = Field("GxP Indirect", max_length=30)
+    implMethod:    str = Field("Configured", max_length=30)
+    testAssurance: str = Field("Scripted", max_length=30)
+    riskLevel:     Optional[str] = Field(None, max_length=30)
 
 
 class GenerateScriptRequest(BaseModel):
@@ -41,10 +44,14 @@ class GenerateScriptRequest(BaseModel):
 
     :requirement: URS-17.1 - Generate CSA test scripts from UR/FR documents.
     """
-    project_name:  str = Field("Untitled Project")
-    gamp_category: str = ""
-    rows:          List[RiskRow] = Field(..., min_length=1)
-    test_type:     str = "Informal"
+    project_name:  str = Field(
+        "Untitled Project", max_length=200,
+    )
+    gamp_category: str = Field("", max_length=60)
+    rows:          List[RiskRow] = Field(
+        ..., min_length=1, max_length=500,
+    )
+    test_type:     str = Field("Informal", max_length=30)
 
 
 def _calc_risk(impact: str, impl: str) -> str:
@@ -126,9 +133,15 @@ def generate_script(body: GenerateScriptRequest) -> dict:
         from Agents.delta_agent import DeltaAgent
         agent = DeltaAgent()
     except Exception as exc:
+        _logger.exception(
+            "[CSV-003] DeltaAgent unavailable: %s", exc,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"DeltaAgent unavailable: {exc}",
+            detail=(
+                "[CSV-003] DeltaAgent unavailable. "
+                "See server log for details."
+            ),
         ) from exc
 
     ur_fr = _build_ur_fr(body.rows, body.project_name)
@@ -136,9 +149,15 @@ def generate_script(body: GenerateScriptRequest) -> dict:
     try:
         script = agent.generate_csa_test_from_ur_fr(ur_fr, body.test_type)
     except Exception as exc:
+        _logger.exception(
+            "[CSV-003] Script generation failed: %s", exc,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Script generation failed: {exc}",
+            detail=(
+                "[CSV-003] Script generation failed. "
+                "See server log for details."
+            ),
         ) from exc
 
     return script

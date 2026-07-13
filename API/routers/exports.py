@@ -22,7 +22,9 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from API.security import sanitize_filename_component
 
 router = APIRouter(tags=["Exports"])
 
@@ -175,19 +177,21 @@ class StepResultIn(BaseModel):
 
 
 class VerifyReportRequest(BaseModel):
-    script_id:      str
-    urs_id:         Optional[str] = ""
-    ur_id:          Optional[str] = ""
-    test_type:      Optional[str] = ""
-    risk_level:     Optional[str] = ""
-    test_strategy:  Optional[str] = ""
-    project_name:   Optional[str] = ""
-    gamp_category:  Optional[str] = ""
-    run_id:         Optional[str] = ""
+    script_id:      str = Field(..., min_length=1, max_length=100)
+    urs_id:         Optional[str] = Field("", max_length=60)
+    ur_id:          Optional[str] = Field("", max_length=60)
+    test_type:      Optional[str] = Field("", max_length=60)
+    risk_level:     Optional[str] = Field("", max_length=30)
+    test_strategy:  Optional[str] = Field("", max_length=100)
+    project_name:   Optional[str] = Field("", max_length=200)
+    gamp_category:  Optional[str] = Field("", max_length=60)
+    run_id:         Optional[str] = Field("", max_length=100)
     started_at:     Optional[str] = None
     locked_at:      Optional[str] = None
-    signer_name:    str
-    signing_meaning: Optional[str] = "Approval of Test Execution"
+    signer_name:    str = Field(..., min_length=1, max_length=200)
+    signing_meaning: Optional[str] = Field(
+        "Approval of Test Execution", max_length=200,
+    )
     reasoning_hash: Optional[str] = ""
     pass_count:     int = 0
     fail_count:     int = 0
@@ -199,16 +203,18 @@ class VerifyReportRequest(BaseModel):
 
 
 class ApprovalIn(BaseModel):
-    name:          str
-    role:          Optional[str] = ""
-    meaning:       Optional[str] = ""
+    name:          str = Field(..., max_length=200)
+    role:          Optional[str] = Field("", max_length=100)
+    meaning:       Optional[str] = Field("", max_length=200)
     signed_at:     Optional[str] = None
-    reasoning_hash: Optional[str] = ""
+    reasoning_hash: Optional[str] = Field("", max_length=64)
 
 
 class ReleasePackageRequest(BaseModel):
-    project_name:    str
-    gamp_category:   Optional[str] = ""
+    project_name:    str = Field(
+        ..., min_length=1, max_length=200,
+    )
+    gamp_category:   Optional[str] = Field("", max_length=60)
     released_at:     Optional[str] = None
     approvals:       List[ApprovalIn] = []
     phase_completion: Optional[Dict[str, bool]] = None
@@ -220,8 +226,12 @@ class ReleasePackageRequest(BaseModel):
 class ValidationPlanRequest(BaseModel):
     """Request payload for POST /exports/validation-plan."""
     plan_data:    Dict[str, Any]
-    signer_name:  str
-    meaning:      Optional[str] = "Approval of Validation Plan"
+    signer_name:  str = Field(
+        ..., min_length=1, max_length=200,
+    )
+    meaning:      Optional[str] = Field(
+        "Approval of Validation Plan", max_length=200,
+    )
 
 
 class DesignSpecRequest(BaseModel):
@@ -231,8 +241,12 @@ class DesignSpecRequest(BaseModel):
     requirements: List[Dict[str, Any]] = []
     risk_data:    Dict[str, Dict[str, Any]] = {}
     test_bundles: Dict[str, Dict[str, Any]] = {}
-    signer_name:  str
-    meaning:      Optional[str] = "Approval of Design Specification"
+    signer_name:  str = Field(
+        ..., min_length=1, max_length=200,
+    )
+    meaning:      Optional[str] = Field(
+        "Approval of Design Specification", max_length=200,
+    )
 
 
 class ValidationSummaryRequest(BaseModel):
@@ -244,9 +258,11 @@ class ValidationSummaryRequest(BaseModel):
     defects:      Dict[str, List[Dict[str, Any]]] = {}
     qa_reviews:   Dict[str, Dict[str, Any]] = {}
     release_data: Dict[str, Any] = {}
-    signer_name:  str
-    meaning: Optional[str] = (
-        "Approval of Validation Summary Report"
+    signer_name:  str = Field(
+        ..., min_length=1, max_length=200,
+    )
+    meaning: Optional[str] = Field(
+        "Approval of Validation Summary Report", max_length=200,
     )
 
 
@@ -416,13 +432,16 @@ def export_verify_report(body: VerifyReportRequest):
 
     buf = BytesIO()
     pdf.output(buf)
+    safe_script = sanitize_filename_component(
+        body.script_id, default="script",
+    )
     return Response(
         content=buf.getvalue(),
         media_type="application/pdf",
         headers={
             "Content-Disposition":
                 f'attachment; filename="test-report-'
-                f'{body.script_id}.pdf"',
+                f'{safe_script}.pdf"',
         },
     )
 
@@ -650,7 +669,10 @@ def export_validation_plan(body: ValidationPlanRequest):
         from fastapi import HTTPException
         raise HTTPException(
             status_code=500,
-            detail=f"VP generation failed: {exc}",
+            detail=(
+                "[CSV-003] Validation Plan export failed. "
+                "See server audit log for details."
+            ),
         )
 
     log_audit_event(
@@ -729,7 +751,10 @@ def export_design_specification(body: DesignSpecRequest):
         from fastapi import HTTPException
         raise HTTPException(
             status_code=500,
-            detail=f"Design Spec generation failed: {exc}",
+            detail=(
+                "[CSV-003] Design Specification export failed. "
+                "See server audit log for details."
+            ),
         )
 
     log_audit_event(
@@ -816,7 +841,10 @@ def export_validation_summary_report(
         from fastapi import HTTPException
         raise HTTPException(
             status_code=500,
-            detail=f"VSR generation failed: {exc}",
+            detail=(
+                "[CSV-003] Validation Summary Report export "
+                "failed. See server audit log for details."
+            ),
         )
 
     log_audit_event(

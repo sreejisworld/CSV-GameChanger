@@ -32,6 +32,7 @@ class TraceabilityExportRequest(BaseModel):
 
     rows: List[Dict[str, Any]] = Field(
         ...,
+        max_length=10000,
         description=(
             "The filtered traceability rows the user wants "
             "in the PDF. Shape matches the React "
@@ -40,21 +41,25 @@ class TraceabilityExportRequest(BaseModel):
     )
     project_name: str = Field(
         default="Untitled Project",
+        max_length=200,
         description="Project / system name for the cover page.",
     )
     signer_name: str = Field(
         ...,
         min_length=1,
+        max_length=200,
         description=(
             "Approver full name for Manifestation of Signature."
         ),
     )
     meaning: str = Field(
         default="Traceability Matrix Inspection Export",
+        max_length=200,
         description="Meaning of the electronic signature.",
     )
     filter_summary: str = Field(
         default="",
+        max_length=500,
         description="Human-readable summary of the active filters.",
     )
 
@@ -158,7 +163,10 @@ def export_traceability_matrix_pdf(
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Traceability export failed: {exc}",
+            detail=(
+                "[CSV-003] Traceability export failed. "
+                "See server audit log for details."
+            ),
         )
 
     log_audit_event(

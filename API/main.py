@@ -36,6 +36,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from API.agent_controller import AgentController
 from API.middleware import TenantDictionaryMiddleware
 from API.sandbox import AuditGuard, get_sandbox_mode
+from API.security import (
+    get_cors_origins,
+    require_platform_key,
+    warn_if_auth_disabled,
+)
 from API.key_store import (
     ScopedAPIKey,
     KeyStore,
@@ -169,7 +174,15 @@ app = FastAPI(
     openapi_url=(
         "/openapi.json" if _env != "production" else None
     ),
+    # Global optional API-key gate (2026-07-11 security audit).
+    # When EVOLV_API_KEY is set, every path operation requires a
+    # matching X-API-Key header; when unset (dev), requests pass
+    # through and a startup warning is logged.
+    dependencies=[Depends(require_platform_key)],
 )
+
+# Emit a loud warning when running with authentication disabled.
+warn_if_auth_disabled()
 
 # TenantDictionaryMiddleware — rewrites JSON response labels
 # to match the active tenant nomenclature map.
@@ -194,27 +207,22 @@ app.include_router(regulatory_drift_router)
 app.include_router(trustworthiness_router)
 app.include_router(bap_router)
 
-# CORSMiddleware — allow React (default 5173, parallel-worktree
-# 5174-5180), legacy React (3000), and Streamlit (8501).
+# CORSMiddleware — restricted to known dev origins (React on
+# 5173/5174, legacy React on 3000).  Additional origins (extra
+# worktree ports, Streamlit on 8501, or production frontends)
+# must be supplied via the EVOLV_CORS_ORIGINS env var
+# (comma-separated).  Wildcard origins are never permitted.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "http://localhost:5179",
-        "http://127.0.0.1:5179",
-        "http://localhost:5180",
-        "http://127.0.0.1:5180",
-        "http://localhost:3000",
-        "http://localhost:8501",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8501",
-    ],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "Authorization", "Accept"],
+    allow_headers=[
+        "Content-Type",
+        "X-API-Key",
+        "Authorization",
+        "Accept",
+    ],
 )
 
 
@@ -656,11 +664,13 @@ async def receive_servicenow_change(
         )
 
     except AuditLogError as exc:
+        # Details stay server-side (audit log); client gets a
+        # generic message + error code only.
         raise HTTPException(
             status_code=500,
             detail=(
-                f"[{exc.error_code}] Audit logging failed: "
-                f"{exc}"
+                f"[{exc.error_code}] Audit logging failed. "
+                "See server audit log for details."
             ),
         ) from exc
     except Exception as exc:
@@ -680,7 +690,8 @@ async def receive_servicenow_change(
             status_code=500,
             detail=(
                 f"[{ProcessingError.error_code}] "
-                f"Processing failed: {exc}"
+                "Change request processing failed. "
+                "See server audit log for details."
             ),
         ) from exc
 
@@ -837,7 +848,8 @@ async def trigger_sentinel_scan(
             status_code=500,
             detail=(
                 f"[{ProcessingError.error_code}] "
-                f"Sentinel scan failed: {exc}"
+                "Sentinel scan failed. "
+                "See server audit log for details."
             ),
         ) from exc
 
@@ -1101,6 +1113,7 @@ async def create_api_key(
     response_model=ScopedAPIKeyOut,
     tags=["Admin"],
     summary="Retrieve API key metadata",
+    dependencies=[Depends(require_api_key)],
 )
 async def get_api_key(
     key_id: str,

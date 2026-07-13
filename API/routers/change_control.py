@@ -19,6 +19,7 @@ The principle: AI proposes, human signs, revalidation runs.
 """
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -26,6 +27,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+_logger = logging.getLogger("evolv.change_control")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
@@ -55,14 +58,17 @@ class _RequirementInSnapshot(BaseModel):
 class CIARequest(BaseModel):
     """POST /change-control/cia request body."""
     cr_id:           str = Field(
+        max_length=60,
         description=(
             "ServiceNow Change Request ID, e.g. 'CR-2026-0421'."
         ),
     )
     cr_text:         str = Field(
+        max_length=8000,
         description="Free-text description of the proposed change.",
     )
     project_name:    str = Field(
+        max_length=200,
         description="Active project name from planData.",
     )
     requirements:    List[_RequirementInSnapshot] = Field(
@@ -124,18 +130,23 @@ class CIARequest(BaseModel):
 
 class CCRRequest(BaseModel):
     """POST /change-control/ccr request body."""
-    cia_id:      str
-    cr_id:       str
-    signer_name: str = Field(min_length=1)
-    role:        str = "QA Director"
-    meaning:     str = "Approval of Change Impact Assessment"
+    cia_id:      str = Field(max_length=100)
+    cr_id:       str = Field(max_length=60)
+    signer_name: str = Field(min_length=1, max_length=200)
+    role:        str = Field(
+        "QA Director", max_length=100,
+    )
+    meaning:     str = Field(
+        "Approval of Change Impact Assessment", max_length=200,
+    )
     decision:    str = Field(
+        max_length=40,
         description=(
             "'approve_revalidation' | 'approve_no_revalidation' "
             "| 'reject'"
         ),
     )
-    user_id:     str = "demo"
+    user_id:     str = Field("demo", max_length=100)
 
 
 # ── Endpoints ────────────────────────────────────────────────────────
@@ -177,14 +188,22 @@ def generate_cia(payload: CIARequest) -> JSONResponse:
             detail=f"Invalid project snapshot: {e}",
         )
     except ChangeImpactError as e:
+        _logger.exception("[CSV-003] CIA generation failed: %s", e)
         raise HTTPException(
             status_code=500,
-            detail=f"CIA generation failed: {e}",
+            detail=(
+                "[CSV-003] CIA generation failed. "
+                "See server audit log for details."
+            ),
         )
     except Exception as e:
+        _logger.exception("[CSV-003] Unexpected CIA error: %s", e)
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected CIA error: {e}",
+            detail=(
+                "[CSV-003] Unexpected error during CIA "
+                "generation. See server log for details."
+            ),
         )
 
 
@@ -210,12 +229,18 @@ def sign_ccr_endpoint(payload: CCRRequest) -> JSONResponse:
         )
         return JSONResponse(ccr)
     except ChangeImpactError as e:
+        # Typed validation error — curated message is safe to
+        # return to the caller (400-class, not internal state).
         raise HTTPException(
             status_code=400,
             detail=f"CCR sign-off failed: {e}",
         )
     except Exception as e:
+        _logger.exception("[CSV-003] Unexpected CCR error: %s", e)
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected CCR error: {e}",
+            detail=(
+                "[CSV-003] Unexpected error during CCR "
+                "sign-off. See server log for details."
+            ),
         )

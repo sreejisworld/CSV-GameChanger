@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["Plan Bridge"])
 
@@ -32,12 +32,22 @@ _store: dict = {
 
 # ── Request / response models ────────────────────────────────────────
 class SavePlanRequest(BaseModel):
-    projectName:         Optional[str] = None
-    gampCategory:        Optional[str] = None
-    systemDescription:   Optional[str] = None
-    projectScope:        Optional[str] = None
+    projectName:         Optional[str] = Field(
+        None, max_length=200,
+    )
+    gampCategory:        Optional[str] = Field(
+        None, max_length=60,
+    )
+    systemDescription:   Optional[str] = Field(
+        None, max_length=20000,
+    )
+    projectScope:        Optional[str] = Field(
+        None, max_length=20000,
+    )
     regulatoryFrameworks: Optional[list] = None
-    source:              Optional[str] = "streamlit"
+    source:              Optional[str] = Field(
+        "streamlit", max_length=60,
+    )
 
 
 class PlanResponse(BaseModel):

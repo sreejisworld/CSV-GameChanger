@@ -10,6 +10,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,8 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+_logger = logging.getLogger("evolv.verify")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from Agents.integrity_manager import log_audit_event
@@ -41,12 +44,20 @@ class SignOffRequest(BaseModel):
     :requirement: URS-2.1 - Audit trail must capture signer, timestamp,
                   meaning of signature per 21 CFR Part 11 §11.50.
     """
-    script_id:      str = Field(..., description="DeltaAgent script ID")
-    run_id:         str = Field(..., description="TestRun ID from React store")
-    urs_id:         str = Field("", description="Source URS ID")
-    signer_name:    str = Field(..., min_length=1)
+    script_id:      str = Field(
+        ..., max_length=100, description="DeltaAgent script ID",
+    )
+    run_id:         str = Field(
+        ..., max_length=100,
+        description="TestRun ID from React store",
+    )
+    urs_id:         str = Field(
+        "", max_length=60, description="Source URS ID",
+    )
+    signer_name:    str = Field(..., min_length=1, max_length=200)
     meaning:        str = Field(
         "Approval of Test Execution",
+        max_length=200,
         description=(
             "Meaning of electronic signature per 21 CFR Part 11 §11.50"
         ),
@@ -144,9 +155,15 @@ def sign_off_test_run(body: SignOffRequest) -> SignOffResponse:
             thought_process=thought_process,
         )
     except Exception as exc:
+        _logger.exception(
+            "[CSV-002] Audit trail write failed: %s", exc,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Audit trail write failed: {exc}",
+            detail=(
+                "[CSV-002] Audit trail write failed. "
+                "See server log for details."
+            ),
         ) from exc
 
     return SignOffResponse(

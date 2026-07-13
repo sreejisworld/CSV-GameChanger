@@ -16,6 +16,7 @@ results are accessible at any time via ``GET /bulk/status/{job_id}``.
 """
 from __future__ import annotations
 
+import logging
 import threading
 import uuid
 from dataclasses import dataclass, field
@@ -25,6 +26,8 @@ from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     # Import only for type hints — avoids circular import at runtime.
     from API.agent_controller import AgentController
+
+_logger = logging.getLogger("evolv.job_store")
 
 
 # -----------------------------------------------------------------
@@ -247,8 +250,17 @@ def run_bulk_validate(
                 item_result["verification"] = verification
                 item_result["status"] = "success"
             except Exception as item_exc:
+                # Full detail stays server-side; the polled
+                # status payload gets a generic message only.
+                _logger.exception(
+                    "[CSV-003] Bulk item %d failed in job %s: "
+                    "%s", idx, job_id, item_exc,
+                )
                 item_result["status"] = "failed"
-                item_result["error"] = str(item_exc)
+                item_result["error"] = (
+                    "[CSV-003] Item processing failed. "
+                    "See server log for details."
+                )
 
             store._append_result(job_id, item_result)
 
@@ -265,10 +277,16 @@ def run_bulk_validate(
             )
 
     except Exception as exc:
+        _logger.exception(
+            "[CSV-003] Bulk job %s failed: %s", job_id, exc,
+        )
         store._update(
             job_id,
             status="failed",
-            error=str(exc),
+            error=(
+                "[CSV-003] Bulk validation job failed. "
+                "See server log for details."
+            ),
         )
         if not sandbox:
             log_audit_event(

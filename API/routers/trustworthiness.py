@@ -26,6 +26,7 @@ trustworthiness reporting loop.
 """
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -33,6 +34,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
+
+from API.security import sanitize_filename_component
+
+_logger = logging.getLogger("evolv.trustworthiness")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
@@ -60,32 +65,39 @@ router = APIRouter(tags=["AI Trustworthiness"])
 
 class _ContextOfUseModel(BaseModel):
     """Per-deployment Context of Use — the unit of assessment."""
-    customer_name:       str
+    customer_name:       str = Field(max_length=200)
     statement:           str = Field(
+        max_length=4000,
         description="What the AI does in this deployment — one "
                     "sentence. e.g. 'EVOLV drafts URs and FRs for "
                     "a GxP-Direct LIMS at a CDMO; outputs require "
                     "QA sign-off before being persisted to Vault.'",
     )
     deployment_region:   str = Field(
+        max_length=30,
         description="'US' | 'EU' | 'UK' | 'India' | 'APAC' | "
                     "'Global'",
     )
     gxp_classification:  str = Field(
+        max_length=30,
         description="'GxP Direct' | 'GxP Indirect' | 'Non-GxP'",
     )
     risk_level:          str = Field(
+        max_length=30,
         description="'High' | 'Medium' | 'Low'",
     )
     decision_authority:  str = Field(
         default="AI proposes, human signs",
+        max_length=500,
         description="Who has the last word on AI-drafted outputs.",
     )
-    target_system:       str = ""
+    target_system:       str = Field("", max_length=200)
     integrates_with:     List[str] = Field(default_factory=list)
     triggers_detected:   List[str] = Field(default_factory=list)
-    poc_or_production:   str = "POC"
-    cou_id:              Optional[str] = None
+    poc_or_production:   str = Field("POC", max_length=30)
+    cou_id:              Optional[str] = Field(
+        None, max_length=100,
+    )
 
 
 class GenerateReportRequest(BaseModel):
@@ -244,7 +256,10 @@ def get_frameworks() -> JSONResponse:
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Framework canon load failed: {e}",
+            detail=(
+                "[CSV-003] Framework canon load failed. "
+                "See server audit log for details."
+            ),
         )
 
 
@@ -273,9 +288,15 @@ def post_detect_triggers(
             "report_required": len(fired_ids) > 0,
         })
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] Trigger detection failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Trigger detection failed: {e}",
+            detail=(
+                "[CSV-003] Trigger detection failed. "
+                "See server log for details."
+            ),
         )
 
 
@@ -308,14 +329,26 @@ def post_generate(payload: GenerateReportRequest) -> JSONResponse:
             detail=f"Invalid Context of Use: {e}",
         )
     except TrustworthinessReportError as e:
+        _logger.exception(
+            "[CSV-003] TWR generation failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Report generation failed: {e}",
+            detail=(
+                "[CSV-003] Report generation failed. "
+                "See server audit log for details."
+            ),
         )
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] Unexpected TWR error: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected error: {e}",
+            detail=(
+                "[CSV-003] Unexpected error during report "
+                "generation. See server log for details."
+            ),
         )
 
 
@@ -353,13 +386,16 @@ def post_generate_pdf(
             meaning=payload.meaning,
         )
         # fpdf2 returns bytearray; Response expects bytes.
+        safe_report = sanitize_filename_component(
+            report.report_id, default="twr-report",
+        )
         return Response(
             content=bytes(pdf_bytes),
             media_type="application/pdf",
             headers={
                 "Content-Disposition":
                     f'attachment; filename="'
-                    f'{report.report_id}.pdf"',
+                    f'{safe_report}.pdf"',
             },
         )
 
@@ -369,12 +405,24 @@ def post_generate_pdf(
             detail=f"Invalid Context of Use: {e}",
         )
     except TrustworthinessReportError as e:
+        _logger.exception(
+            "[CSV-003] TWR generation failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Report generation failed: {e}",
+            detail=(
+                "[CSV-003] Report generation failed. "
+                "See server audit log for details."
+            ),
         )
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] TWR PDF generation failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"PDF generation failed: {e}",
+            detail=(
+                "[CSV-003] PDF generation failed. "
+                "See server log for details."
+            ),
         )

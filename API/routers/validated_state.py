@@ -18,6 +18,7 @@ the validation-continuity loop.
 """
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -25,6 +26,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+_logger = logging.getLogger("evolv.validated_state")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
@@ -49,7 +52,7 @@ class _RequirementInSnapshot(BaseModel):
 
 class StateAssessRequest(BaseModel):
     """POST /validated-state/assess request body."""
-    project_name:   str
+    project_name:   str = Field(max_length=200)
     requirements:   List[_RequirementInSnapshot] = Field(
         default_factory=list,
         description="UR + FR records to assess.",
@@ -150,12 +153,24 @@ def assess_validated_state(payload: StateAssessRequest) -> JSONResponse:
             detail=f"Invalid project snapshot: {e}",
         )
     except ValidatedStateError as e:
+        _logger.exception(
+            "[CSV-003] State assessment failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"State assessment failed: {e}",
+            detail=(
+                "[CSV-003] State assessment failed. "
+                "See server audit log for details."
+            ),
         )
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] Unexpected VSE error: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected VSE error: {e}",
+            detail=(
+                "[CSV-003] Unexpected error during state "
+                "assessment. See server log for details."
+            ),
         )

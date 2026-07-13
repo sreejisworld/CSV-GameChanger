@@ -28,6 +28,7 @@ autonomy applied to the assurance diagnostic itself.
 """
 from __future__ import annotations
 
+import logging
 import re
 import sys
 from pathlib import Path
@@ -36,6 +37,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
+
+from API.security import sanitize_filename_component
+
+_logger = logging.getLogger("evolv.bap")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
@@ -65,8 +70,9 @@ class _ContextOfUseModel(BaseModel):
     Same shape as Sprint 39's Trustworthiness Report COU so the
     two engines can be invoked from a single React call.
     """
-    customer_name:       str
+    customer_name:       str = Field(max_length=200)
     statement:           str = Field(
+        max_length=4000,
         description=(
             "What the AI does in this deployment - one "
             "sentence. e.g. 'EVOLV drafts URs and FRs for a "
@@ -76,21 +82,27 @@ class _ContextOfUseModel(BaseModel):
     )
     deployment_region:   str = Field(
         default="US",
+        max_length=30,
         description="'US' | 'EU' | 'UK' | 'India' | 'APAC' | 'Global'",
     )
     gxp_classification:  str = Field(
+        max_length=30,
         description="'GxP Direct' | 'GxP Indirect' | 'Non-GxP'",
     )
     risk_level:          str = Field(
+        max_length=30,
         description="'High' | 'Medium' | 'Low'",
     )
     decision_authority:  str = Field(
         default="AI proposes, human signs",
+        max_length=500,
     )
-    target_system:       str = ""
+    target_system:       str = Field("", max_length=200)
     integrates_with:     List[str] = Field(default_factory=list)
-    poc_or_production:   str = "POC"
-    cou_id:              Optional[str] = None
+    poc_or_production:   str = Field("POC", max_length=30)
+    cou_id:              Optional[str] = Field(
+        None, max_length=100,
+    )
 
 
 class BAPAssessRequest(BaseModel):
@@ -149,6 +161,7 @@ class ExclusionCheckRequest(BaseModel):
     our exclusion rules before we commit to a full assessment.'
     """
     statement:          str = Field(
+        max_length=8000,
         description=(
             "Free-text deployment description to be screened "
             "against the exclusion rules."
@@ -156,6 +169,7 @@ class ExclusionCheckRequest(BaseModel):
     )
     decision_authority: str = Field(
         default="AI proposes, human signs",
+        max_length=500,
         description=(
             "Who has the last word on AI-drafted outputs. "
             "Words like 'autonomous' here change the result."
@@ -238,7 +252,10 @@ def get_tiers() -> JSONResponse:
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Tier ladder load failed: {e}",
+            detail=(
+                "[CSV-003] Tier ladder load failed. "
+                "See server audit log for details."
+            ),
         )
 
 
@@ -291,7 +308,10 @@ def get_exclusion_rules() -> JSONResponse:
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Exclusion-rule load failed: {e}",
+            detail=(
+                "[CSV-003] Exclusion-rule load failed. "
+                "See server audit log for details."
+            ),
         )
 
 
@@ -321,14 +341,26 @@ def post_assess(payload: BAPAssessRequest) -> JSONResponse:
             detail=f"Invalid Context of Use: {e}",
         )
     except BoundedAutonomyProfileError as e:
+        _logger.exception(
+            "[CSV-003] BAP assessment failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"BAP assessment failed: {e}",
+            detail=(
+                "[CSV-003] BAP assessment failed. "
+                "See server audit log for details."
+            ),
         )
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] Unexpected BAP error: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected error: {e}",
+            detail=(
+                "[CSV-003] Unexpected error during BAP "
+                "assessment. See server log for details."
+            ),
         )
 
 
@@ -358,13 +390,16 @@ def post_assess_pdf(payload: BAPAssessPDFRequest) -> Response:
             signers=payload.signers.model_dump(),
             meaning=payload.meaning,
         )
+        safe_profile = sanitize_filename_component(
+            profile.profile_id, default="bap-profile",
+        )
         return Response(
             content=bytes(pdf_bytes),   # fpdf2 returns bytearray
             media_type="application/pdf",
             headers={
                 "Content-Disposition":
                     f'attachment; filename="'
-                    f'{profile.profile_id}.pdf"',
+                    f'{safe_profile}.pdf"',
             },
         )
     except InvalidProfileInputError as e:
@@ -373,14 +408,26 @@ def post_assess_pdf(payload: BAPAssessPDFRequest) -> Response:
             detail=f"Invalid Context of Use: {e}",
         )
     except BoundedAutonomyProfileError as e:
+        _logger.exception(
+            "[CSV-003] BAP assessment failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"BAP assessment failed: {e}",
+            detail=(
+                "[CSV-003] BAP assessment failed. "
+                "See server audit log for details."
+            ),
         )
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] BAP PDF generation failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"PDF generation failed: {e}",
+            detail=(
+                "[CSV-003] BAP PDF generation failed. "
+                "See server log for details."
+            ),
         )
 
 
@@ -429,7 +476,13 @@ def post_check_exclusion(
                 "the deployment into BAP-2 or BAP-3.",
         })
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] Exclusion check failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Exclusion check failed: {e}",
+            detail=(
+                "[CSV-003] Exclusion check failed. "
+                "See server log for details."
+            ),
         )

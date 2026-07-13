@@ -17,6 +17,7 @@ agent never modifies records, never triggers tests.
 """
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -24,6 +25,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+_logger = logging.getLogger("evolv.regulatory_drift")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
@@ -53,7 +56,7 @@ class _RequirementInSnapshot(BaseModel):
 
 class DriftScanRequest(BaseModel):
     """POST /regulatory-drift/scan request body."""
-    project_name:    str
+    project_name:    str = Field(max_length=200)
     requirements:    List[_RequirementInSnapshot] = Field(
         default_factory=list,
         description="UR + FR records to scan for citation drift.",
@@ -129,7 +132,10 @@ def get_corpus_versions() -> JSONResponse:
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Corpus registry load failed: {e}",
+            detail=(
+                "[CSV-003] Corpus registry load failed. "
+                "See server audit log for details."
+            ),
         )
 
 
@@ -164,17 +170,35 @@ def scan_for_drift(payload: DriftScanRequest) -> JSONResponse:
         return JSONResponse(report.to_dict())
 
     except CorpusRegistryError as e:
+        _logger.exception(
+            "[CSV-003] Corpus registry error: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Corpus registry error: {e}",
+            detail=(
+                "[CSV-003] Corpus registry error. "
+                "See server audit log for details."
+            ),
         )
     except RegulatoryDriftError as e:
+        _logger.exception(
+            "[CSV-003] Drift scan failed: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Drift scan failed: {e}",
+            detail=(
+                "[CSV-003] Drift scan failed. "
+                "See server audit log for details."
+            ),
         )
     except Exception as e:
+        _logger.exception(
+            "[CSV-003] Unexpected drift scan error: %s", e,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected scan error: {e}",
+            detail=(
+                "[CSV-003] Unexpected error during drift "
+                "scan. See server log for details."
+            ),
         )

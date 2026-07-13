@@ -12,6 +12,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +20,8 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+_logger = logging.getLogger("evolv.release")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from Agents.integrity_manager import log_audit_event
@@ -49,13 +52,15 @@ class ApprovalRequest(BaseModel):
 
     :requirement: URS-2.1 - Electronic signature per 21 CFR Part 11.
     """
-    project_name:  str = Field(..., min_length=1)
-    gamp_category: str = ""
-    approver_name: str = Field(..., min_length=1)
-    approver_role: str = Field(..., min_length=1)
-    meaning:       str = Field("Approval for Release")
-    test_verdict:  str = ""
-    risk_summary:  str = ""
+    project_name:  str = Field(..., min_length=1, max_length=200)
+    gamp_category: str = Field("", max_length=60)
+    approver_name: str = Field(..., min_length=1, max_length=200)
+    approver_role: str = Field(..., min_length=1, max_length=100)
+    meaning:       str = Field(
+        "Approval for Release", max_length=200,
+    )
+    test_verdict:  str = Field("", max_length=60)
+    risk_summary:  str = Field("", max_length=2000)
 
 
 class ApprovalResponse(BaseModel):
@@ -71,11 +76,15 @@ class GoLiveRequest(BaseModel):
 
     :requirement: URS-2.1 - Final release event logged to audit trail.
     """
-    project_name:    str = Field(..., min_length=1)
-    gamp_category:   str = ""
+    project_name:    str = Field(
+        ..., min_length=1, max_length=200,
+    )
+    gamp_category:   str = Field("", max_length=60)
     approvals_count: int = 0
-    test_verdict:    str = ""
-    released_by:     str = Field(..., min_length=1)
+    test_verdict:    str = Field("", max_length=60)
+    released_by:     str = Field(
+        ..., min_length=1, max_length=200,
+    )
 
 
 class GoLiveResponse(BaseModel):
@@ -151,9 +160,15 @@ def record_approval(body: ApprovalRequest) -> ApprovalResponse:
             thought_process=thought_process,
         )
     except Exception as exc:
+        _logger.exception(
+            "[CSV-002] Audit trail write failed: %s", exc,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Audit trail write failed: {exc}",
+            detail=(
+                "[CSV-002] Audit trail write failed. "
+                "See server log for details."
+            ),
         ) from exc
 
     return ApprovalResponse(
@@ -216,9 +231,15 @@ def go_live(body: GoLiveRequest) -> GoLiveResponse:
             thought_process=thought_process,
         )
     except Exception as exc:
+        _logger.exception(
+            "[CSV-002] Audit trail write failed: %s", exc,
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Audit trail write failed: {exc}",
+            detail=(
+                "[CSV-002] Audit trail write failed. "
+                "See server log for details."
+            ),
         ) from exc
 
     return GoLiveResponse(

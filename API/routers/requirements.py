@@ -265,16 +265,19 @@ class GenerateRequirementsRequest(BaseModel):
     """
     project_name: Optional[str] = Field(
         default=None,
+        max_length=200,
         description="Display name for the workshop project.",
     )
     system_description: Optional[str] = Field(
         default=None,
+        max_length=20000,
         description=(
             "Free-text description of the system being validated."
         ),
     )
     workshop_notes: Optional[str] = Field(
         default=None,
+        max_length=20000,
         description=(
             "Stakeholder workshop notes, process owner inputs, "
             "etc. Becomes part of additional_context."
@@ -282,14 +285,17 @@ class GenerateRequirementsRequest(BaseModel):
     )
     lucidchart_url: Optional[str] = Field(
         default=None,
+        max_length=2000,
         description="Diagram URL (Lucid, Visio, draw.io, etc.).",
     )
     lucidchart_content: Optional[str] = Field(
         default=None,
+        max_length=100000,
         description="Optional decoded text content from a diagram.",
     )
     workflow_process: Optional[str] = Field(
         default=None,
+        max_length=20000,
         description=(
             "Bulleted/numbered list of workflow steps to translate "
             "into UR/FR rows."
@@ -297,10 +303,12 @@ class GenerateRequirementsRequest(BaseModel):
     )
     role: Optional[str] = Field(
         default="User",
+        max_length=100,
         description="UR persona (e.g. Lab Technician).",
     )
     risk_assessment: Optional[str] = Field(
         default="GxP Indirect",
+        max_length=30,
         description=(
             "GxP Direct | GxP Indirect | GxP None — drives the "
             "UR/FR risk matrix."
@@ -308,6 +316,7 @@ class GenerateRequirementsRequest(BaseModel):
     )
     implementation_method: Optional[str] = Field(
         default="Configured",
+        max_length=30,
         description="Out of the Box | Configured | Custom.",
     )
     min_score: float = Field(
@@ -572,9 +581,23 @@ def generate_from_workshop(body: GenerateRequirementsRequest):
             })
             continue
         except Exception as exc:
+            # Internal error details stay server-side only.
+            log_audit_event(
+                agent_name="RequirementsBridge",
+                action="WORKSHOP_GENERATE_FAILED",
+                decision_logic=(
+                    f"generate_urs failed for line "
+                    f"{raw_line[:80]!r}: "
+                    f"{type(exc).__name__}: {exc} [CSV-027]"
+                ),
+                compliance_impact="Audit Trail",
+            )
             skipped.append({
                 "line": raw_line,
-                "reason": f"{type(exc).__name__}: {exc}",
+                "reason": (
+                    "[CSV-027] URS generation failed for this "
+                    "line. See server audit log for details."
+                ),
             })
             continue
 
@@ -590,11 +613,21 @@ def generate_from_workshop(body: GenerateRequirementsRequest):
                 additional_context=additional_context or None,
             )
         except Exception as exc:
+            log_audit_event(
+                agent_name="RequirementsBridge",
+                action="WORKSHOP_GENERATE_FAILED",
+                decision_logic=(
+                    f"transform_urs_to_ur_fr failed for line "
+                    f"{raw_line[:80]!r}: "
+                    f"{type(exc).__name__}: {exc} [CSV-027]"
+                ),
+                compliance_impact="Audit Trail",
+            )
             skipped.append({
                 "line": raw_line,
                 "reason": (
-                    f"transform_urs_to_ur_fr failed: "
-                    f"{type(exc).__name__}: {exc}"
+                    "[CSV-027] UR/FR transformation failed for "
+                    "this line. See server audit log for details."
                 ),
             })
             continue
@@ -697,10 +730,12 @@ class RefineSmartRequest(BaseModel):
     requirement: str = Field(
         ...,
         min_length=3,
+        max_length=4000,
         description="Raw requirement text to refine to SMART format.",
     )
     requirement_id: Optional[str] = Field(
         default=None,
+        max_length=60,
         description=(
             "Originating row id (UR-1 / FR-2 / etc.) — echoed back "
             "so the React store can patch the right row."
@@ -708,6 +743,7 @@ class RefineSmartRequest(BaseModel):
     )
     category: Optional[str] = Field(
         default="general",
+        max_length=60,
         description=(
             "GxP category bucket (general | functional | data | "
             "security | etc.). Drives the acceptance-criteria template."
@@ -715,6 +751,7 @@ class RefineSmartRequest(BaseModel):
     )
     system_description: Optional[str] = Field(
         default="",
+        max_length=20000,
         description=(
             "Optional system context to pass to the engine for richer "
             "rewrites (only used when LLM mode is available)."
@@ -833,7 +870,10 @@ def refine_to_smart(body: RefineSmartRequest):
         )
         raise HTTPException(
             status_code=500,
-            detail=f"SMART refinement failed: {exc}",
+            detail=(
+                "[CSV-028] SMART refinement failed. "
+                "See server audit log for details."
+            ),
         ) from exc
 
     if not result.requirements:

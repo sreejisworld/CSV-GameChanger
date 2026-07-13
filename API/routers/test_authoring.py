@@ -51,8 +51,13 @@ def _get_engine() -> TestAuthoringEngine:
 
 
 class FunctionalRequirement(BaseModel):
-    fr_id: str = Field(..., description="Functional requirement ID")
-    statement: str = Field("", description="FR statement")
+    fr_id: str = Field(
+        ..., max_length=60,
+        description="Functional requirement ID",
+    )
+    statement: str = Field(
+        "", max_length=4000, description="FR statement",
+    )
 
 
 class RiskAssessment(BaseModel):
@@ -108,25 +113,26 @@ class GenerateBundleRequest(BaseModel):
         }
     )
 
-    project_name: str = Field("Untitled Project")
-    requirement_id: str = Field(...)
-    statement: str = Field("")
+    project_name: str = Field("Untitled Project", max_length=200)
+    requirement_id: str = Field(..., max_length=60)
+    statement: str = Field("", max_length=4000)
     functional_requirements: List[FunctionalRequirement] = Field(
         default_factory=list,
+        max_length=200,
     )
     risk_assessment: RiskAssessment = Field(
         default_factory=RiskAssessment,
     )
-    mode: str = Field("hybrid")
-    test_type: str = Field("Informal")
+    mode: str = Field("hybrid", max_length=30)
+    test_type: str = Field("Informal", max_length=30)
     persist: bool = Field(True)
 
 
 class RequirementRow(BaseModel):
-    id: str
-    type: str = "UR"
-    statement: str = ""
-    parentId: Optional[str] = None
+    id: str = Field(max_length=60)
+    type: str = Field("UR", max_length=10)
+    statement: str = Field("", max_length=4000)
+    parentId: Optional[str] = Field(None, max_length=60)
 
 
 class GenerateBatchRequest(BaseModel):
@@ -136,8 +142,10 @@ class GenerateBatchRequest(BaseModel):
     :requirement: URS-22.8 - Support batch test bundle generation.
     """
 
-    project_name: str = Field("Untitled Project")
-    requirements: List[RequirementRow] = Field(..., min_length=1)
+    project_name: str = Field("Untitled Project", max_length=200)
+    requirements: List[RequirementRow] = Field(
+        ..., min_length=1, max_length=500,
+    )
     risk_data: Dict[str, RiskAssessment] = Field(
         default_factory=dict,
     )
@@ -209,7 +217,11 @@ def generate_bundle(body: GenerateBundleRequest) -> Dict[str, Any]:
             decision_logic=str(exc),
         )
         raise HTTPException(
-            status_code=500, detail=str(exc),
+            status_code=500,
+            detail=(
+                "[CSV-003] Test bundle generation failed. "
+                "See server audit log for details."
+            ),
         ) from exc
     except Exception as exc:  # pragma: no cover - defensive
         log_audit_event(
@@ -219,7 +231,10 @@ def generate_bundle(body: GenerateBundleRequest) -> Dict[str, Any]:
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected error: {exc}",
+            detail=(
+                "[CSV-003] Unexpected error during bundle "
+                "generation. See server audit log for details."
+            ),
         ) from exc
 
     log_audit_event(
@@ -274,7 +289,11 @@ def generate_batch(body: GenerateBatchRequest) -> Dict[str, Any]:
             decision_logic=str(exc),
         )
         raise HTTPException(
-            status_code=500, detail=str(exc),
+            status_code=500,
+            detail=(
+                "[CSV-003] Batch bundle generation failed. "
+                "See server audit log for details."
+            ),
         ) from exc
 
     log_audit_event(

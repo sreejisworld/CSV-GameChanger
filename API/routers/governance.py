@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from API.key_store import require_api_key
 
@@ -32,23 +32,29 @@ router = APIRouter(tags=["Governance"])
 
 class PushDecisionRequest(BaseModel):
     """AI system submits a new decision for human review."""
-    urs_id:         str
-    decision_type:  str   # URS_GENERATION | RISK_CLASSIFICATION |
-    #                       TEST_SCRIPT_GENERATED | URS_VERIFICATION
+    urs_id:         str = Field(max_length=60)
+    decision_type:  str = Field(max_length=60)
+    #  URS_GENERATION | RISK_CLASSIFICATION |
+    #  TEST_SCRIPT_GENERATED | URS_VERIFICATION
     ai_output:      Dict[str, Any]
-    ai_reasoning:   str
-    gamp5_reference: Optional[str] = None
+    ai_reasoning:   str = Field(max_length=8000)
+    gamp5_reference: Optional[str] = Field(
+        None, max_length=2000,
+    )
     confidence:     Optional[float] = None
-    agent_name:     Optional[str] = None
+    agent_name:     Optional[str] = Field(None, max_length=100)
 
 
 class ReviewRequest(BaseModel):
     """Human reviewer submits their verdict."""
-    action:       str          # approve | override | reject
-    reviewer_name: str
-    reviewer_role: str
-    reason:        Optional[str] = None
-    new_value:     Optional[str] = None   # Only for override
+    action:       str = Field(max_length=30)
+    #  approve | override | reject
+    reviewer_name: str = Field(max_length=200)
+    reviewer_role: str = Field(max_length=100)
+    reason:        Optional[str] = Field(None, max_length=2000)
+    new_value:     Optional[str] = Field(
+        None, max_length=4000,   # Only for override
+    )
 
 
 # ── In-memory stores ────────────────────────────────────────────────
