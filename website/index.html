@@ -715,31 +715,31 @@ const demoHref = mailto(
 const EXCLUSION_RULES = [
   {
     id: 'EX-1-SIGN',
-    pattern: /\bai\b.*?\b(sign|signs|signing|signed|authorize|authorizes|authorizing|authorized)\b.*?(electronic signature|e-signature|approval signature|manifestation of signature|digital signature)/i,
+    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(sign|signs|signing|signed|authorize|authorizes|authorizing|authorized|authorise|authorises|authorising|authorised|puts?|places?|placing|apply|applies|applying)\b[^.;|]*?(electronic signature|e-signature|approval signature|manifestation of signature|digital signature|approvals?\b|signatures?\b)/i,
     violation: 'AI executes an electronic signature',
     why: '21 CFR Part 11 §11.50 binds an electronic signature to a named human. An AI cannot be the named signatory.'
   },
   {
     id: 'EX-2-RELEASE',
-    pattern: /\bai\b.*?\b(release|releases|releasing|released|approve|approves|approving|approved|authorization|authorizes? release)\b.*?(batch|lot|product|manufacturing)/i,
+    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(release|releases|releasing|released|approve|approves|approving|approved|authorization|authorizes? release|authorises? release)\b[^.;|]*?(batch|lot|product|manufacturing)/i,
     violation: 'AI releases a batch / lot autonomously',
     why: 'Batch / lot release is a Qualified Person (QP) responsibility under GMP. It cannot be delegated to an AI in any shape.'
   },
   {
     id: 'EX-3-CAPA',
-    pattern: /\bai\b.*?\b(close|closes|closing|closed|resolve|resolves|resolving|resolved|marks? complete|closes? out)\b.*?(capa|deviation|complaint|investigation|effectiveness)/i,
+    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(close|closes|closing|closed|resolve|resolves|resolving|resolved|marks? complete|closes? out|signs? off|signing off|signed off)\b[^.;|]*?(capa|deviation|complaint|investigation|effectiveness)/i,
     violation: 'AI closes a CAPA / deviation autonomously',
     why: 'CAPA closure requires independent review and effectiveness assessment under 21 CFR Part 820 §820.100.'
   },
   {
     id: 'EX-4-CLINICAL',
-    pattern: /\bai\b.*?\b(diagnose|diagnoses|diagnosed|diagnosing|prescribe|prescribes|prescribed|prescribing|dose|dosing|dosed|dosage|calculates? dosing|sets? dosing|makes? treatment|recommend treatment|makes? clinical decisions?|determines? therapy|clinical decision|clinical judgment|patient decision)/i,
+    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(diagnose|diagnoses|diagnosed|diagnosing|prescribe|prescribes|prescribed|prescribing|dose|dosing|dosed|dosage|calculates? dosing|sets? dosing|makes? treatment|recommends? treatment|recommended treatment|recommending treatment|makes? clinical decisions?|determines? therapy|clinical decision|clinical judgment|patient decision)/i,
     violation: 'AI makes a clinical decision affecting a patient',
     why: 'Direct clinical decision-making is FDA SaMD territory — a different product with a different regulatory pathway.'
   },
   {
     id: 'EX-5-VALIDATED-WRITE',
-    pattern: /\bai\b.*?\b(modify|modifies|modified|modifying|alter|alters|altered|altering|update|updates|updated|updating|writes? to|written to|persist|persists|persisted|auto-corrects?|corrects?)\b.*?(validated record|gxp record|controlled document|controlled records|batch record|validated records)(?!.*?(?:after|with|requires?|prior to).*?(?:human|review|sign-?off|signature|approval|qa))/is,
+    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(modify|modifies|modified|modifying|alter|alters|altered|altering|update|updates|updated|updating|writes? to|written to|persist|persists|persisted|auto-corrects?|corrects?)\b[^.;|]*?(validated record|gxp record|controlled document|controlled records|batch record|validated records)(?![^.;|]*?(?:after|\bwith\b|requires?|prior to)[^.;|]*?(?:human|review|sign-?off|signature|approval|qa))/i,
     violation: 'AI writes directly to a validated record without a human signature gate',
     why: '21 CFR Part 11 §11.10(e) requires that every modification to a controlled record carries an accountable signature.'
   }

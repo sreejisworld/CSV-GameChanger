@@ -162,14 +162,33 @@ BAP_TIERS: Dict[str, Dict[str, str]] = {
 # Each rule has: pattern (regex), violation (named hazard), why
 # (one-line rationale shown to the customer).
 
+# Matching notes (Sprint 44 Trusted Evals hardening):
+# - Subject widened from \bai\b to (ai|llm|model) so "The LLM
+#   alters each validated record" fires like its AI twin.
+# - Middles use [^.;|]*? (clause-bounded) instead of .*? so a
+#   rule can never straddle a sentence boundary or leak into the
+#   appended decision_authority segment ("... | AI proposes,
+#   human signs"). Fixes false positives like "AI signs a
+#   summary email; the CSV lead signs the electronic signature."
+# - EX-5's human-gate suppressor is clause-bounded too, and
+#   'with' is word-bounded so "withOUT review" no longer
+#   suppresses the rule.
+
+_SUBJ = r"\b(?:ai|llm|model)\b"
+
 EXCLUSION_RULES: List[Dict[str, Any]] = [
     {
         "id":       "EX-1-SIGN",
         "pattern":  re.compile(
-            r"\bai\b.*?\b(sign|signs|signing|signed|authorize|"
-            r"authorizes|authorizing|authorized)\b.*?"
-            r"(electronic signature|e-signature|approval signature|"
-            r"manifestation of signature|digital signature)",
+            _SUBJ + r"[^.;|]*?"
+            r"\b(sign|signs|signing|signed|authorize|"
+            r"authorizes|authorizing|authorized|authorise|"
+            r"authorises|authorising|authorised|puts?|"
+            r"places?|placing|apply|applies|applying)\b"
+            r"[^.;|]*?"
+            r"(electronic signature|e-signature|"
+            r"approval signature|manifestation of signature|"
+            r"digital signature|approvals?\b|signatures?\b)",
             re.IGNORECASE,
         ),
         "violation": "AI executes an electronic signature",
@@ -181,9 +200,11 @@ EXCLUSION_RULES: List[Dict[str, Any]] = [
     {
         "id":       "EX-2-RELEASE",
         "pattern":  re.compile(
-            r"\bai\b.*?\b(release|releases|releasing|released|"
+            _SUBJ + r"[^.;|]*?"
+            r"\b(release|releases|releasing|released|"
             r"approve|approves|approving|approved|authorization|"
-            r"authorizes? release)\b.*?"
+            r"authorizes? release|authorises? release)\b"
+            r"[^.;|]*?"
             r"(batch|lot|product|manufacturing)",
             re.IGNORECASE,
         ),
@@ -196,10 +217,13 @@ EXCLUSION_RULES: List[Dict[str, Any]] = [
     {
         "id":       "EX-3-CAPA",
         "pattern":  re.compile(
-            r"\bai\b.*?\b(close|closes|closing|closed|resolve|"
+            _SUBJ + r"[^.;|]*?"
+            r"\b(close|closes|closing|closed|resolve|"
             r"resolves|resolving|resolved|marks? complete|"
-            r"closes? out)\b.*?"
-            r"(capa|deviation|complaint|investigation|effectiveness)",
+            r"closes? out|signs? off|signing off|signed off)\b"
+            r"[^.;|]*?"
+            r"(capa|deviation|complaint|investigation|"
+            r"effectiveness)",
             re.IGNORECASE,
         ),
         "violation": "AI closes a CAPA / deviation autonomously",
@@ -211,12 +235,16 @@ EXCLUSION_RULES: List[Dict[str, Any]] = [
     {
         "id":       "EX-4-CLINICAL",
         "pattern":  re.compile(
-            r"\bai\b.*?\b(diagnose|diagnoses|diagnosed|diagnosing|"
+            _SUBJ + r"[^.;|]*?"
+            r"\b(diagnose|diagnoses|diagnosed|diagnosing|"
             r"prescribe|prescribes|prescribed|prescribing|"
             r"dose|dosing|dosed|dosage|calculates? dosing|"
-            r"sets? dosing|makes? treatment|recommend treatment|"
+            r"sets? dosing|makes? treatment|"
+            r"recommends? treatment|recommended treatment|"
+            r"recommending treatment|"
             r"makes? clinical decisions?|determines? therapy|"
-            r"clinical decision|clinical judgment|patient decision)",
+            r"clinical decision|clinical judgment|"
+            r"patient decision)",
             re.IGNORECASE,
         ),
         "violation": "AI makes a clinical decision affecting a patient",
@@ -228,15 +256,18 @@ EXCLUSION_RULES: List[Dict[str, Any]] = [
     {
         "id":       "EX-5-VALIDATED-WRITE",
         "pattern":  re.compile(
-            r"\bai\b.*?\b(modify|modifies|modified|modifying|"
+            _SUBJ + r"[^.;|]*?"
+            r"\b(modify|modifies|modified|modifying|"
             r"alter|alters|altered|altering|update|updates|"
             r"updated|updating|writes? to|written to|persist|"
-            r"persists|persisted|auto-corrects?|corrects?)\b.*?"
+            r"persists|persisted|auto-corrects?|corrects?)\b"
+            r"[^.;|]*?"
             r"(validated record|gxp record|controlled document|"
             r"controlled records|batch record|validated records)"
-            r"(?!.*?(?:after|with|requires?|prior to).*?"
-            r"(human|review|sign-?off|signature|approval|qa))",
-            re.IGNORECASE | re.DOTALL,
+            r"(?![^.;|]*?(?:after|\bwith\b|requires?|prior to)"
+            r"[^.;|]*?(?:human|review|sign-?off|signature|"
+            r"approval|qa))",
+            re.IGNORECASE,
         ),
         "violation":
             "AI writes directly to a validated record without "
