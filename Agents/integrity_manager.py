@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import threading
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -167,12 +168,35 @@ _IMPACT_MAP = {
     "DRIFT_SCAN_COMPLETED":        "Regulatory Surveillance + Validation Continuity",
     "DRIFT_SCAN_FAILED":           "Regulatory Surveillance",
     "CORPUS_VERSION_BUMPED":       "Regulatory Surveillance + Configuration Change",
+    # Sprint 45 — audit-trail chain verification (SEC-9 closure)
+    "AUDIT_CHAIN_VERIFY_RECEIVED":  "Data Integrity",
+    "AUDIT_CHAIN_VERIFY_COMPLETED": "Data Integrity",
+    "AUDIT_CHAIN_VERIFY_FAILED":    "Data Integrity",
 }
 
 DEFAULT_IMPACT = "Operational"
 
 # Module-level lock for thread-safe writes.
 _write_lock = threading.Lock()
+
+# ── Hash chaining (Sprint 45 — closes security finding SEC-9) ────
+# Every row's Reasoning_Hash now incorporates the previous row's
+# hash, upgrading the trail from per-row tamper evidence to a
+# linked chain: silently deleting, reordering, or editing any
+# chained row breaks every hash after it. Rows written before
+# this upgrade ("legacy rows") verify against the original
+# per-row formula; the verifier reports both segments.
+#
+# Known limitation (documented, not hidden): truncating the TAIL
+# of the chain is not detectable from the file alone. Anchor the
+# chain head externally (e.g. record verify_audit_chain().head_hash
+# in a periodic QA log) to close that gap operationally.
+
+CHAIN_GENESIS_HASH = "0" * 64
+
+# Last-written hash per audit file, so we don't re-read the file
+# on every append. Guarded by _write_lock.
+_last_hash_cache: Dict[str, str] = {}
 
 
 def _compute_reasoning_hash(
@@ -210,6 +234,86 @@ def _compute_reasoning_hash(
         compliance_impact,
     ])
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _compute_chained_hash(
+    prev_hash: str,
+    timestamp: str,
+    user_id: str,
+    agent_name: str,
+    action: str,
+    decision_logic: str,
+    compliance_impact: str,
+) -> str:
+    """
+    Compute a chained SHA-256 hash over the previous row's hash
+    plus this row's fields.
+
+    Any modification to an earlier chained row changes its hash,
+    which invalidates this hash and every one after it — the
+    property that makes the trail a verifiable chain rather than
+    a collection of individually-hashed rows.
+
+    :param prev_hash: Reasoning_Hash of the previous row, or
+                      ``CHAIN_GENESIS_HASH`` for the first row.
+    :param timestamp: ISO-8601 timestamp of the event.
+    :param user_id: Identifier of the acting user or SYSTEM.
+    :param agent_name: Name of the agent performing the action.
+    :param action: The action performed.
+    :param decision_logic: Human-readable reasoning summary.
+    :param compliance_impact: Classified compliance impact.
+    :return: Hex-encoded SHA-256 digest.
+    :requirement: URS-45.1 - Audit rows shall be hash-chained.
+    """
+    payload = "|".join([
+        prev_hash,
+        timestamp,
+        user_id,
+        agent_name,
+        action,
+        decision_logic,
+        compliance_impact,
+    ])
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _read_last_row_hash(path: Path) -> str:
+    """
+    Return the Reasoning_Hash of the last data row in *path*,
+    or ``CHAIN_GENESIS_HASH`` when the file is missing/empty.
+
+    :param path: Path to the audit trail CSV file.
+    :return: Hex hash string to chain the next row onto.
+    :requirement: URS-45.1 - Audit rows shall be hash-chained.
+    """
+    if (not path.exists()) or path.stat().st_size == 0:
+        return CHAIN_GENESIS_HASH
+    hash_idx = CSV_COLUMNS.index("Reasoning_Hash")
+    last_hash = CHAIN_GENESIS_HASH
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.reader(f):
+            if not row or row == CSV_COLUMNS:
+                continue
+            if len(row) > hash_idx:
+                last_hash = row[hash_idx]
+    return last_hash
+
+
+def _get_prev_hash(path: Path) -> str:
+    """
+    Cached lookup of the previous row's hash for *path*.
+
+    Must be called while holding ``_write_lock`` so the cache
+    stays coherent with concurrent appends in this process.
+
+    :param path: Path to the audit trail CSV file.
+    :return: Hash to chain the next row onto.
+    :requirement: URS-45.1 - Audit rows shall be hash-chained.
+    """
+    key = str(path.resolve())
+    if key not in _last_hash_cache:
+        _last_hash_cache[key] = _read_last_row_hash(path)
+    return _last_hash_cache[key]
 
 
 def _validate_thought_process(
@@ -382,29 +486,35 @@ def log_audit_event(
     if compliance_impact is None:
         compliance_impact = _IMPACT_MAP.get(action, DEFAULT_IMPACT)
 
-    reasoning_hash = _compute_reasoning_hash(
-        timestamp, user_id, agent_name, action,
-        decision_logic, compliance_impact,
-    )
-
-    row = [
-        timestamp,
-        user_id,
-        agent_name,
-        action,
-        decision_logic,
-        reasoning_hash,
-        compliance_impact,
-    ]
-
     with _write_lock:
         _ensure_csv_header(audit_path)
+
+        # Chain this row onto the previous row's hash (Sprint 45,
+        # SEC-9). Computed inside the lock so the prev-hash read
+        # and the append are atomic per process.
+        prev_hash = _get_prev_hash(audit_path)
+        reasoning_hash = _compute_chained_hash(
+            prev_hash, timestamp, user_id, agent_name, action,
+            decision_logic, compliance_impact,
+        )
+
+        row = [
+            timestamp,
+            user_id,
+            agent_name,
+            action,
+            decision_logic,
+            reasoning_hash,
+            compliance_impact,
+        ]
 
         with open(
             audit_path, mode="a", newline="", encoding="utf-8"
         ) as f:
             writer = csv.writer(f)
             writer.writerow(row)
+
+        _last_hash_cache[str(audit_path.resolve())] = reasoning_hash
 
         if thought_process is not None:
             _validate_thought_process(thought_process)
@@ -415,3 +525,157 @@ def log_audit_event(
             )
 
     return reasoning_hash
+
+
+# ── Chain verification (Sprint 45 — SEC-9) ───────────────────────
+
+@dataclass
+class ChainRowIssue:
+    """One problem row found during chain verification."""
+    row_number:  int          # 1-based, excluding the header
+    action:      str
+    timestamp:   str
+    reason:      str
+
+
+@dataclass
+class ChainVerificationReport:
+    """Outcome of walking the full audit trail chain."""
+    audit_path:    str
+    total_rows:    int
+    chained_ok:    int
+    legacy_ok:     int
+    issues:        List[ChainRowIssue] = field(default_factory=list)
+    head_hash:     str = CHAIN_GENESIS_HASH
+    verified_at:   str = ""
+
+    @property
+    def intact(self) -> bool:
+        return len(self.issues) == 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "audit_path":  self.audit_path,
+            "verified_at": self.verified_at,
+            "intact":      self.intact,
+            "total_rows":  self.total_rows,
+            "chained_ok":  self.chained_ok,
+            "legacy_ok":   self.legacy_ok,
+            "head_hash":   self.head_hash,
+            "issues": [
+                {
+                    "row_number": i.row_number,
+                    "action":     i.action,
+                    "timestamp":  i.timestamp,
+                    "reason":     i.reason,
+                }
+                for i in self.issues
+            ],
+        }
+
+
+def verify_audit_chain(
+    audit_path: Path = AUDIT_TRAIL_PATH,
+) -> ChainVerificationReport:
+    """
+    Walk the audit trail and verify every row's hash.
+
+    Each row must satisfy one of two formulas:
+
+    - **Chained** (rows written from Sprint 45 onward):
+      ``sha256(prev_hash | fields)`` — links the row to its
+      predecessor, so any edit/delete/reorder upstream breaks it.
+    - **Legacy** (rows written before the upgrade):
+      ``sha256(fields)`` — per-row tamper evidence only.
+
+    A legacy-format row appearing AFTER a chained row is flagged:
+    that pattern is what a downgrade/tamper attempt looks like.
+
+    Record ``head_hash`` externally (QA log, ticket) to detect
+    tail truncation, which no file-internal scheme can catch.
+
+    :param audit_path: CSV to verify (defaults to the central
+                       audit trail).
+    :return: ChainVerificationReport with per-row issues.
+    :requirement: URS-45.2 - Full-chain verification an inspector
+                  can run on demand.
+    """
+    report = ChainVerificationReport(
+        audit_path=str(audit_path),
+        total_rows=0,
+        chained_ok=0,
+        legacy_ok=0,
+        verified_at=datetime.now(timezone.utc).isoformat(),
+    )
+    if (not audit_path.exists()) or audit_path.stat().st_size == 0:
+        return report
+
+    hash_idx = CSV_COLUMNS.index("Reasoning_Hash")
+    prev_hash = CHAIN_GENESIS_HASH
+    seen_chained = False
+
+    with open(audit_path, newline="", encoding="utf-8") as f:
+        for row in csv.reader(f):
+            if not row or row == CSV_COLUMNS:
+                continue
+            report.total_rows += 1
+            if len(row) != len(CSV_COLUMNS):
+                report.issues.append(ChainRowIssue(
+                    row_number=report.total_rows,
+                    action=row[3] if len(row) > 3 else "?",
+                    timestamp=row[0] if row else "?",
+                    reason=(
+                        f"Malformed row: {len(row)} columns, "
+                        f"expected {len(CSV_COLUMNS)}."
+                    ),
+                ))
+                prev_hash = (
+                    row[hash_idx] if len(row) > hash_idx
+                    else prev_hash
+                )
+                continue
+
+            (timestamp, user_id, agent_name, action,
+             decision_logic, row_hash,
+             compliance_impact) = row
+
+            chained_expected = _compute_chained_hash(
+                prev_hash, timestamp, user_id, agent_name,
+                action, decision_logic, compliance_impact,
+            )
+            legacy_expected = _compute_reasoning_hash(
+                timestamp, user_id, agent_name, action,
+                decision_logic, compliance_impact,
+            )
+
+            if row_hash == chained_expected:
+                report.chained_ok += 1
+                seen_chained = True
+            elif row_hash == legacy_expected:
+                report.legacy_ok += 1
+                if seen_chained:
+                    report.issues.append(ChainRowIssue(
+                        row_number=report.total_rows,
+                        action=action,
+                        timestamp=timestamp,
+                        reason=(
+                            "Legacy-format hash after chained "
+                            "rows — possible downgrade/tamper."
+                        ),
+                    ))
+            else:
+                report.issues.append(ChainRowIssue(
+                    row_number=report.total_rows,
+                    action=action,
+                    timestamp=timestamp,
+                    reason=(
+                        "Hash matches neither chained nor "
+                        "legacy formula — row content or order "
+                        "has been altered."
+                    ),
+                ))
+
+            prev_hash = row_hash
+
+    report.head_hash = prev_hash
+    return report

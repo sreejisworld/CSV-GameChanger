@@ -266,6 +266,62 @@ def get_all_audit():
     return enriched
 
 
+@router.get("/audit/verify-chain")
+def verify_chain():
+    """Verify the SHA-256 hash chain of the central audit trail.
+
+    Walks every row and checks it against the chained formula
+    (Sprint 45) or the legacy per-row formula (pre-upgrade rows).
+    Returns per-row issues, segment counts, and the chain head
+    hash — record the head externally to detect tail truncation.
+
+    The verification itself is audited (RECEIVED / COMPLETED /
+    FAILED triplet); the rows it appends are chained like any
+    other, so verifying the trail extends the trail.
+
+    :requirement: URS-45.3 - Expose chain verification via API.
+    """
+    from Agents.integrity_manager import (
+        log_audit_event,
+        verify_audit_chain,
+    )
+    log_audit_event(
+        agent_name="IntegrityManager",
+        action="AUDIT_CHAIN_VERIFY_RECEIVED",
+        decision_logic="Chain verification requested via API",
+    )
+    try:
+        report = verify_audit_chain()
+        log_audit_event(
+            agent_name="IntegrityManager",
+            action="AUDIT_CHAIN_VERIFY_COMPLETED",
+            decision_logic=(
+                f"Chain {'INTACT' if report.intact else 'BROKEN'}"
+                f" · {report.total_rows} rows "
+                f"({report.chained_ok} chained, "
+                f"{report.legacy_ok} legacy) · head "
+                f"{report.head_hash[:12]}…"
+            ),
+        )
+        return report.to_dict()
+    except Exception as exc:
+        _logger.exception(
+            "[CSV-002] Audit chain verification failed: %s", exc,
+        )
+        log_audit_event(
+            agent_name="IntegrityManager",
+            action="AUDIT_CHAIN_VERIFY_FAILED",
+            decision_logic="Chain verification raised an error.",
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "[CSV-002] Chain verification failed. "
+                "See server audit log for details."
+            ),
+        ) from exc
+
+
 @router.get("/audit/archive/{hash_prefix}")
 def get_logic_archive(hash_prefix: str):
     """Return the matching logic_archive JSON for a reasoning hash.

@@ -837,6 +837,171 @@ def run_bap_exclusion_evals(
     return _make_run("BAPExclusionScreen", results)
 
 
+# ── IntegrityManager chain evals (Sprint 45 — SEC-9) ────────────────
+
+def run_integrity_manager_evals() -> EvalRun:
+    """Eval the audit-trail hash chain: growth, tamper detection,
+    reorder detection, and legacy-row coexistence. Uses temp CSV
+    files via the ``audit_path`` parameter — never touches the
+    central trail.
+
+    :requirement: URS-45.1 - Audit rows shall be hash-chained.
+    :requirement: URS-45.2 - Full-chain verification.
+    """
+    import csv as _csv
+    import tempfile
+    from Agents.integrity_manager import (
+        CHAIN_GENESIS_HASH,
+        CSV_COLUMNS,
+        _compute_reasoning_hash,
+        log_audit_event,
+        verify_audit_chain,
+    )
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="evolv-chain-eval-"))
+
+    def _fresh_trail(name: str, n_rows: int = 3) -> Path:
+        path = tmp_dir / f"{name}.csv"
+        for i in range(n_rows):
+            log_audit_event(
+                agent_name="EvalFixture",
+                action="RISK_ASSESSMENT_COMPLETED",
+                user_id=EVAL_USER_ID,
+                decision_logic=f"fixture row {i + 1}",
+                audit_path=path,
+            )
+        return path
+
+    def _rows(path: Path) -> List[List[str]]:
+        with open(path, newline="", encoding="utf-8") as f:
+            return [r for r in _csv.reader(f) if r]
+
+    def _write_rows(path: Path, rows: List[List[str]]) -> None:
+        with open(
+            path, "w", newline="", encoding="utf-8",
+        ) as f:
+            _csv.writer(f).writerows(rows)
+
+    results: List[EvalResult] = []
+
+    def _eval(eval_id: str, name: str, fn: Any) -> None:
+        result = EvalResult(
+            eval_id=eval_id, eval_name=name,
+            input_text=name, output_summary=None,
+        )
+        try:
+            fn(result)
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+        results.append(_finish(result))
+
+    # IM-EVAL-001 — clean chain verifies intact
+    def _clean(result: EvalResult) -> None:
+        path = _fresh_trail("clean", 5)
+        rep = verify_audit_chain(path)
+        result.output_summary = (
+            f"{rep.chained_ok}/{rep.total_rows} chained"
+        )
+        result.checks.append(_eq("intact", rep.intact, True))
+        result.checks.append(_eq("chained_ok", rep.chained_ok, 5))
+        result.checks.append(_eq("legacy_ok", rep.legacy_ok, 0))
+        result.checks.append(EvalCheck(
+            name="head_hash_set",
+            passed=rep.head_hash != CHAIN_GENESIS_HASH,
+            detail=f"head={rep.head_hash[:12]}…",
+        ))
+    _eval("IM-EVAL-001", "clean_chain_intact", _clean)
+
+    # IM-EVAL-002 — editing a field breaks the chain from that row
+    def _tamper(result: EvalResult) -> None:
+        path = _fresh_trail("tamper", 4)
+        rows = _rows(path)
+        rows[2][4] = "FALSIFIED decision logic"  # row 2 of 4
+        _write_rows(path, rows)
+        rep = verify_audit_chain(path)
+        result.output_summary = f"{len(rep.issues)} issue(s)"
+        result.checks.append(_eq("intact", rep.intact, False))
+        result.checks.append(_ge("issues", len(rep.issues), 1))
+        result.checks.append(EvalCheck(
+            name="tampered_row_named",
+            passed=any(i.row_number == 2 for i in rep.issues),
+            detail=(
+                f"Issue rows: "
+                f"{[i.row_number for i in rep.issues]}"
+            ),
+        ))
+    _eval("IM-EVAL-002", "field_edit_detected", _tamper)
+
+    # IM-EVAL-003 — deleting a middle row breaks the chain
+    def _delete(result: EvalResult) -> None:
+        path = _fresh_trail("delete", 4)
+        rows = _rows(path)
+        del rows[2]  # drop the 2nd data row
+        _write_rows(path, rows)
+        rep = verify_audit_chain(path)
+        result.output_summary = f"{len(rep.issues)} issue(s)"
+        result.checks.append(_eq("intact", rep.intact, False))
+        result.checks.append(_ge("issues", len(rep.issues), 1))
+    _eval("IM-EVAL-003", "middle_deletion_detected", _delete)
+
+    # IM-EVAL-004 — swapping two rows breaks the chain
+    def _swap(result: EvalResult) -> None:
+        path = _fresh_trail("swap", 4)
+        rows = _rows(path)
+        rows[2], rows[3] = rows[3], rows[2]
+        _write_rows(path, rows)
+        rep = verify_audit_chain(path)
+        result.output_summary = f"{len(rep.issues)} issue(s)"
+        result.checks.append(_eq("intact", rep.intact, False))
+        result.checks.append(_ge("issues", len(rep.issues), 1))
+    _eval("IM-EVAL-004", "reorder_detected", _swap)
+
+    # IM-EVAL-005 — legacy rows before the upgrade still verify
+    def _legacy(result: EvalResult) -> None:
+        path = tmp_dir / "legacy.csv"
+        ts = datetime.now(timezone.utc).isoformat()
+        legacy_hash = _compute_reasoning_hash(
+            ts, EVAL_USER_ID, "EvalFixture",
+            "RISK_ASSESSMENT_COMPLETED", "legacy row",
+            "Patient Safety",
+        )
+        _write_rows(path, [
+            list(CSV_COLUMNS),
+            [ts, EVAL_USER_ID, "EvalFixture",
+             "RISK_ASSESSMENT_COMPLETED", "legacy row",
+             legacy_hash, "Patient Safety"],
+        ])
+        # Chained rows appended after the legacy row
+        log_audit_event(
+            agent_name="EvalFixture",
+            action="RISK_ASSESSMENT_COMPLETED",
+            user_id=EVAL_USER_ID,
+            decision_logic="chained after legacy",
+            audit_path=path,
+        )
+        rep = verify_audit_chain(path)
+        result.output_summary = (
+            f"{rep.legacy_ok} legacy + {rep.chained_ok} chained"
+        )
+        result.checks.append(_eq("intact", rep.intact, True))
+        result.checks.append(_eq("legacy_ok", rep.legacy_ok, 1))
+        result.checks.append(_eq("chained_ok", rep.chained_ok, 1))
+    _eval("IM-EVAL-005", "legacy_rows_coexist", _legacy)
+
+    # IM-EVAL-006 — empty / missing file verifies trivially
+    def _empty(result: EvalResult) -> None:
+        rep = verify_audit_chain(tmp_dir / "does-not-exist.csv")
+        result.output_summary = "0 rows"
+        result.checks.append(_eq("intact", rep.intact, True))
+        result.checks.append(_eq("total_rows", rep.total_rows, 0))
+        result.checks.append(
+            _eq("head_genesis", rep.head_hash,
+                CHAIN_GENESIS_HASH))
+    _eval("IM-EVAL-006", "empty_file_trivially_intact", _empty)
+
+    return _make_run("IntegrityManager", results)
+
+
 # ── Optional LLM-as-judge layer ─────────────────────────────────────
 
 _JUDGE_MODEL = "claude-haiku-4-5-20251001"
@@ -928,6 +1093,7 @@ AGENT_RUNNERS: Dict[str, Callable[[], EvalRun]] = {
     "ChangeImpactAgent":    run_change_impact_evals,
     "ValidatedStateEngine": run_validated_state_evals,
     "BAPExclusionScreen":   run_bap_exclusion_evals,
+    "IntegrityManager":     run_integrity_manager_evals,
 }
 
 
