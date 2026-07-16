@@ -172,6 +172,10 @@ _IMPACT_MAP = {
     "AUDIT_CHAIN_VERIFY_RECEIVED":  "Data Integrity",
     "AUDIT_CHAIN_VERIFY_COMPLETED": "Data Integrity",
     "AUDIT_CHAIN_VERIFY_FAILED":    "Data Integrity",
+    # Sprint 46 — Trusted Evals suite runs from the Dev Portal
+    "EVAL_SUITE_RUN_RECEIVED":  "Platform Quality + Regression",
+    "EVAL_SUITE_RUN_COMPLETED": "Platform Quality + Regression",
+    "EVAL_SUITE_RUN_FAILED":    "Platform Quality + Regression",
 }
 
 DEFAULT_IMPACT = "Operational"

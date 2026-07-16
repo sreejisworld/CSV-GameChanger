@@ -75,6 +75,7 @@ from API.routers.governance       import router as governance_router
 from API.routers.test_authoring   import router as test_authoring_router
 from API.routers.traceability     import router as traceability_router
 from API.routers.agents           import router as agents_router
+from API.routers.evals            import router as evals_router
 from API.routers.change_control   import router as change_control_router
 from API.routers.validated_state  import router as validated_state_router
 from API.routers.regulatory_drift import router as regulatory_drift_router
@@ -201,6 +202,7 @@ app.include_router(governance_router)
 app.include_router(test_authoring_router, prefix="/test-authoring")
 app.include_router(traceability_router)
 app.include_router(agents_router)
+app.include_router(evals_router)
 app.include_router(change_control_router)
 app.include_router(validated_state_router)
 app.include_router(regulatory_drift_router)

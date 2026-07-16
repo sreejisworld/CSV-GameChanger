@@ -10,7 +10,7 @@
  *  5. ReDoc    — alternative reference docs.
  *  6. Webhooks — register event endpoints with HMAC secret.
  */
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { Fragment, useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { API_BASE as _EVOLV_API_BASE } from '../config.js'
 
@@ -1070,6 +1070,234 @@ function ServiceNowDemoPanel() {
 // ── Agent Passports Panel (Sprint 35.7) ────────────────────────────
 //
 // Surfaces the explicit Permission Envelopes from
+// ── Trusted Evals panel (Sprint 46, URS-46.2) ────────────────────
+// Runs the deterministic eval suite (Agents/eval_suite.py) via
+// POST /evals/run and renders the scoreboard a pharma evaluator
+// sees in demos. Also surfaces audit-chain verification
+// (GET /audit/verify-chain, Sprint 45 / SEC-9) so "the trail is
+// a verifiable chain" is a button, not a slide.
+
+function TrustedEvalsPanel() {
+  const [agents,   setAgents]   = useState(null)
+  const [result,   setResult]   = useState(null)
+  const [running,  setRunning]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [expanded, setExpanded] = useState(null)
+  const [chain,    setChain]    = useState(null)
+  const [chainBusy, setChainBusy] = useState(false)
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    fetch(`${EVOLV_API}/evals/agents`, { signal: ctrl.signal })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then(setAgents)
+      .catch(e => { if (e.name !== 'AbortError') setError(e.message) })
+    return () => ctrl.abort()
+  }, [])
+
+  const runSuite = async () => {
+    setRunning(true); setError(''); setResult(null); setExpanded(null)
+    try {
+      const r = await fetch(`${EVOLV_API}/evals/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      setResult(await r.json())
+    } catch (e) {
+      setError(e.message || 'Eval run failed')
+    } finally { setRunning(false) }
+  }
+
+  const verifyChain = async () => {
+    setChainBusy(true); setChain(null)
+    try {
+      const r = await fetch(`${EVOLV_API}/audit/verify-chain`)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      setChain(await r.json())
+    } catch (e) {
+      setChain({ error: e.message || 'Verification failed' })
+    } finally { setChainBusy(false) }
+  }
+
+  const failuresFor = (agentName) => {
+    const run = result?.runs?.find(r => r.agent_name === agentName)
+    return (run?.results ?? []).filter(x => !x.passed)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-text-primary font-semibold text-sm mb-1">
+          Trusted Evals
+        </h2>
+        <p className="text-text-secondary text-xs leading-relaxed max-w-3xl">
+          The standing eval sets every EVOLV specialist function runs
+          against on every change — deterministic, zero LLM tokens.
+          {agents && (
+            <> Currently registered:{' '}
+            <span className="font-mono text-text-primary">
+              {agents.total_evals} evals
+            </span> across {agents.agents?.length} agents.</>
+          )}
+          {' '}The same suite gates CI on every push.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={runSuite}
+          disabled={running}
+          className="px-4 py-2 rounded-lg text-xs font-semibold
+                     bg-brand-blue text-white hover:opacity-90
+                     disabled:opacity-40 transition-opacity">
+          {running ? 'Running 131 evals…' : '▶ Run full eval suite'}
+        </button>
+        {result && (
+          <span className={`text-xs font-mono px-3 py-1.5 rounded-full border
+            ${result.all_passed
+              ? 'text-lime-600 border-lime-500/40 bg-lime-500/10'
+              : 'text-red-500 border-red-500/40 bg-red-500/10'}`}>
+            {result.all_passed ? '✓' : '✗'}{' '}
+            {result.total_passed}/{result.total_evals} passed
+          </span>
+        )}
+      </div>
+
+      {error && (
+        <div className="px-4 py-3 rounded border border-red-500/30
+                        bg-red-500/5 text-[11px] text-red-400">
+          {error}. Ensure FastAPI is running on port 8000.
+        </div>
+      )}
+
+      {result && (
+        <div className="rounded-lg border border-border-base overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-text-muted bg-bg-hover">
+                <th className="px-4 py-2 font-medium">Agent</th>
+                <th className="px-4 py-2 font-medium">Evals</th>
+                <th className="px-4 py-2 font-medium">Passed</th>
+                <th className="px-4 py-2 font-medium">Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.scoreboard.map(row => {
+                const fails = failuresFor(row.agent_name)
+                const isOpen = expanded === row.agent_name
+                return (
+                  <Fragment key={row.agent_name}>
+                    <tr
+                      onClick={() => fails.length &&
+                        setExpanded(isOpen ? null : row.agent_name)}
+                      className={`border-t border-border-base
+                        ${fails.length ? 'cursor-pointer hover:bg-bg-hover' : ''}`}>
+                      <td className="px-4 py-2 font-mono text-text-primary">
+                        {row.passed === row.eval_count ? '✓' : '✗'}{' '}
+                        {row.agent_name}
+                      </td>
+                      <td className="px-4 py-2 text-text-secondary">
+                        {row.eval_count}
+                      </td>
+                      <td className="px-4 py-2 text-text-secondary">
+                        {row.passed}
+                      </td>
+                      <td className={`px-4 py-2 font-mono
+                        ${row.passed === row.eval_count
+                          ? 'text-lime-600' : 'text-red-500'}`}>
+                        {(row.pass_rate * 100).toFixed(1)}%
+                        {fails.length > 0 && (
+                          <span className="ml-2 text-text-muted">
+                            {isOpen ? '▼' : '▶'} {fails.length} failing
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                    {isOpen && fails.map(f => (
+                      <tr key={f.eval_id}
+                          className="border-t border-border-base bg-red-500/5">
+                        <td colSpan={4} className="px-6 py-2">
+                          <span className="font-mono text-[11px] text-red-500">
+                            {f.eval_id}
+                          </span>
+                          <span className="text-[11px] text-text-secondary ml-2">
+                            {f.error ||
+                              f.checks.filter(c => !c.passed)
+                               .map(c => `${c.name}: ${c.detail}`)
+                               .join(' · ')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Audit chain verification (Sprint 45 / SEC-9) ── */}
+      <div className="pt-2 border-t border-border-base space-y-3">
+        <div>
+          <h3 className="text-text-primary font-semibold text-xs mb-1">
+            Audit Trail Chain Verification
+          </h3>
+          <p className="text-text-secondary text-[11px] max-w-3xl">
+            Every audit row's hash is chained onto the previous row's
+            hash — editing, deleting, or reordering any row breaks
+            every hash after it. Verify the full chain on demand.
+          </p>
+        </div>
+        <button
+          onClick={verifyChain}
+          disabled={chainBusy}
+          className="px-4 py-2 rounded-lg text-xs font-semibold
+                     border border-border-base text-text-primary
+                     hover:bg-bg-hover disabled:opacity-40">
+          {chainBusy ? 'Walking the chain…' : '🔗 Verify audit chain'}
+        </button>
+        {chain && !chain.error && (
+          <div className={`px-4 py-3 rounded-lg border text-[11px] space-y-1
+            ${chain.intact
+              ? 'border-lime-500/40 bg-lime-500/5'
+              : 'border-red-500/40 bg-red-500/5'}`}>
+            <div className={`font-semibold
+              ${chain.intact ? 'text-lime-600' : 'text-red-500'}`}>
+              {chain.intact ? '✓ CHAIN INTACT' : '✗ CHAIN BROKEN'}
+              <span className="text-text-secondary font-normal ml-2">
+                {chain.total_rows} rows · {chain.chained_ok} chained ·{' '}
+                {chain.legacy_ok} legacy (pre-upgrade)
+              </span>
+            </div>
+            <div className="font-mono text-text-muted break-all">
+              head: {chain.head_hash}
+            </div>
+            <div className="text-text-muted">
+              Record the head hash externally (QA log) — comparing
+              heads across runs detects tail truncation.
+            </div>
+            {(chain.issues ?? []).map(i => (
+              <div key={i.row_number} className="text-red-500 font-mono">
+                row {i.row_number} [{i.action}]: {i.reason}
+              </div>
+            ))}
+          </div>
+        )}
+        {chain?.error && (
+          <div className="px-4 py-3 rounded border border-red-500/30
+                          bg-red-500/5 text-[11px] text-red-400">
+            {chain.error}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
 // Agents/agent_passports.py. Each card is an agent's machine-readable
 // declaration of what it may do, what data it may see, and what
 // outputs require human sign-off.
@@ -1368,6 +1596,9 @@ export default function DevPortal() {
     // for every specialist function. Salim Ismail ExO 3.0 / Nuno
     // Valério Trust Architecture alignment artefact.
     { id: 'passports', label: 'Agent Passports' },
+    // Sprint 46 — Trusted Evals tab. Run the 131-check suite +
+    // audit-chain verification from the UI (URS-46.2).
+    { id: 'evals',     label: 'Trusted Evals' },
     { id: 'keys',      label: 'API Keys' },
     { id: 'connect',   label: 'EVOLV Connect' },
     { id: 'swagger',   label: 'API Docs' },
@@ -1413,6 +1644,7 @@ export default function DevPortal() {
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
         {activeTab === 'sn-demo'   && <ServiceNowDemoPanel />}
         {activeTab === 'passports' && <AgentPassportsPanel />}
+        {activeTab === 'evals'     && <TrustedEvalsPanel />}
         {activeTab === 'keys'      && <ApiKeyManager />}
         {activeTab === 'webhooks'  && <WebhooksPanel />}
 
