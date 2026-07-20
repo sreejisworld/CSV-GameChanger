@@ -252,7 +252,7 @@ audit_logger.addHandler(_log_handler)
 # -----------------------------------------------------------------
 
 class CSVEngineError(Exception):
-    """Base exception for CSV Engine errors."""
+    """Base exception for EVOLV platform errors."""
 
 
 class ValidationError(CSVEngineError):

@@ -1108,6 +1108,19 @@ results = agent.generate_csa_test_batch([ur_fr], "Informal")
 | URS-45.3 | Expose chain verification via JSON API with the standard 3-event audit triplet (AUDIT_CHAIN_VERIFY_RECEIVED / COMPLETED / FAILED) — the verification rows are themselves chained, so verifying the trail extends the trail. | `API/routers/audit.py` (`GET /audit/verify-chain`), `Agents/integrity_manager.py` (`_IMPACT_MAP` AUDIT_CHAIN_VERIFY_*) |
 | URS-46.1 | Expose the Trusted Evals suite via JSON API — `GET /evals/agents` (registered agents + counts) and `POST /evals/run` (full suite or single agent, synchronous, deterministic) with the EVAL_SUITE_RUN_* audit triplet. Eval runs invoke real agents, so every Dev Portal run appends chained audit evidence. | `API/routers/evals.py` (`list_eval_agents()`, `run_eval_suite()`), `API/main.py` (router registration), `Agents/integrity_manager.py` (`_IMPACT_MAP` EVAL_SUITE_RUN_*) |
 | URS-46.2 | Trusted Evals tab in the Dev Portal — run the 131-check suite from the UI with live scoreboard (per-agent pass rates, expandable failing-eval drill-down) plus one-click audit-chain verification showing intact/broken status, chained-vs-legacy row counts, and the chain head hash for external anchoring. | `react-platform/src/apps/DevPortal.jsx` (`TrustedEvalsPanel`, `evals` tab) |
+| URS-43.1 | Platform security hardening (Sprint 43): optional app-wide API-key gate, filename sanitisation, CORS allow-list — renumbered from URS-SEC-1 so the compliance gate's numeric tag matcher recognises it | `API/security.py` (all public functions) |
+| URS-47.1 | Deployment-context regulatory configuration | `Agents/compliance_context.py` |
+| URS-47.2 | Tenant nomenclature mapping | `Agents/metadata_mapper.py` |
+| URS-47.3 | Sentinel change impact analysis | `Agents/sentinel/impact_engine.py`, `Agents/sentinel_impact_agent.py` |
+| URS-47.4 | Sentinel impact assessment report generation | `Agents/sentinel/justification_engine.py` |
+| URS-47.5 | Test Pilot execution and reporting | `Agents/test_pilot.py` |
+| URS-47.6 | Audit logging decorator | `utils/audit_decorator.py` |
+| URS-47.7 | Bulk job progress tracking | `API/job_store.py` |
+| URS-47.8 | Scoped API key lookup | `API/key_store.py` |
+| URS-47.9 | Project persistence store | `API/project_store.py` |
+| URS-47.10 | Plan data lifecycle (reset endpoint) | `API/routers/plan.py:clear_plan()` |
+| URS-47.11 | Webhook delivery records | `API/webhook_registry.py` |
+| URS-47.12 | AST-based compliance gate: URS tags checked in the full docstring (not a 10-line window); boilerplate names, properties, and overload stubs exempt; retired-brand scan word-bounded; CI pip-audit runs in requirements mode | `scripts/compliance_check.sh`, `scripts/validate_urs_tag.py`, `.github/workflows/compliance-check.yml` |
 
 ## Coding Standards (GAMP 5 / CSA / 21 CFR Part 11)
 

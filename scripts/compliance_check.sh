@@ -25,32 +25,63 @@ section() { echo; echo "▶ $1"; }
 # ── 1. URS Traceability Tags ───────────────────────────────────────
 section "URS Traceability — public functions in Agents/ and utils/"
 
-# Find all public functions (def name — not _name) in Agents/ and utils/
-# Check that the function is followed by a :requirement: tag within 10 lines
+# Every public function's DOCSTRING must contain a
+# :requirement: URS-X.Y tag. AST-based so long signatures and
+# thorough docstrings are handled correctly (the old 10-line
+# text window produced false positives on both).
 python3 - <<'PYEOF'
+import ast
 import re
 import sys
 from pathlib import Path
 
-TAG_RE  = re.compile(r":requirement:\s*URS-\d+\.\d+")
-FUNC_RE = re.compile(r"^def\s+([a-zA-Z][a-zA-Z0-9_]*)\s*\(")
+TAG_RE = re.compile(r":requirement:\s*URS-\d+\.\d+")
+
+# Boilerplate exempt from URS tagging: serialization plumbing,
+# singleton accessors, and framework overrides (fpdf header/
+# footer). Traceability applies to behavior, not ceremony.
+EXEMPT_NAMES = {
+    "to_dict", "from_dict", "to_json", "to_list",
+    "to_full_dict", "get_instance", "header", "footer",
+}
 
 dirs = ["Agents", "utils", "API"]
 missing = []
 
+
+def _is_exempt_decorated(node):
+    for dec in node.decorator_list:
+        name = getattr(dec, "id", "") or getattr(
+            dec, "attr", ""
+        )
+        if name in ("property", "cached_property", "overload"):
+            return True
+    return False
+
+
 for d in dirs:
     for pyfile in sorted(Path(d).rglob("*.py")):
-        lines = pyfile.read_text(encoding="utf-8").splitlines()
-        for i, line in enumerate(lines):
-            m = FUNC_RE.match(line.strip())
-            if not m:
+        try:
+            tree = ast.parse(
+                pyfile.read_text(encoding="utf-8")
+            )
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(
+                node, (ast.FunctionDef, ast.AsyncFunctionDef)
+            ):
                 continue
-            func = m.group(1)
-            if func.startswith("_") or func.startswith("test_"):
+            name = node.name
+            if name.startswith("_") or name.startswith("test_"):
                 continue
-            window = "\n".join(lines[i:i+10])
-            if not TAG_RE.search(window):
-                missing.append(f"{pyfile}:{i+1} — {func}()")
+            if name in EXEMPT_NAMES or _is_exempt_decorated(node):
+                continue
+            doc = ast.get_docstring(node) or ""
+            if not TAG_RE.search(doc):
+                missing.append(
+                    f"{pyfile}:{node.lineno} — {name}()"
+                )
 
 if missing:
     for item in missing:
@@ -162,8 +193,11 @@ section "Branding — no retired names in source files"
 RETIRED_NAMES=("Trustme AI" "trustme-ai" "CSV Engine" "csv-engine")
 BRAND_FAIL=0
 for name in "${RETIRED_NAMES[@]}"; do
+    # \b so 'CSV Engine' does not match the job title
+    # 'CSV Engineer'. Internal class names like CSVEngineError
+    # are exempt per CLAUDE.md (kept to avoid breaking imports).
     matches=$(grep -r --include="*.py" --include="*.jsx" --include="*.js" \
-              -l "$name" . \
+              -lE "${name}\b" . \
               --exclude-dir=node_modules \
               --exclude-dir=.git \
               2>/dev/null || true)

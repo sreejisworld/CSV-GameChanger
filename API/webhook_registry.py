@@ -230,7 +230,10 @@ class WebhookRegistry:
     def get_record(
         self, webhook_id: str
     ) -> Optional[WebhookRecord]:
-        """Return a webhook record by ID."""
+        """Return a webhook record by ID.
+
+        :requirement: URS-47.11 - Webhook delivery records.
+        """
         return self._records.get(webhook_id)
 
     # ----------------------------------------------------------

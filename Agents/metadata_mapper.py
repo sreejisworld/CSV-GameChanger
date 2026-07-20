@@ -179,7 +179,10 @@ class MetadataMapper:
         return result
 
     def get_all_labels(self) -> Dict[str, str]:
-        """Return a copy of the full label dictionary."""
+        """Return a copy of the full label dictionary.
+
+        :requirement: URS-47.2 - Tenant nomenclature mapping.
+        """
         return dict(self._labels)
 
     @property
@@ -228,7 +231,10 @@ class MetadataMapper:
 
     @classmethod
     def default(cls) -> "MetadataMapper":
-        """Return a mapper with no overrides (EVOLV defaults)."""
+        """Return a mapper with no overrides (EVOLV defaults).
+
+        :requirement: URS-47.2 - Tenant nomenclature mapping.
+        """
         return cls(config=None)
 
 
@@ -291,7 +297,10 @@ class ConfigService:
         return self
 
     def reset(self) -> "ConfigService":
-        """Reset to default EVOLV labels."""
+        """Reset to default EVOLV labels.
+
+        :requirement: URS-47.2 - Tenant nomenclature mapping.
+        """
         self._mapper = MetadataMapper.default()
         return self
 
@@ -301,9 +310,15 @@ class ConfigService:
         return self._mapper
 
     def label(self, key: str) -> str:
-        """Shortcut — delegates to mapper.label()."""
+        """Shortcut — delegates to mapper.label().
+
+        :requirement: URS-47.2 - Tenant nomenclature mapping.
+        """
         return self._mapper.label(key)
 
     def apply(self, text: str) -> str:
-        """Shortcut — delegates to mapper.apply()."""
+        """Shortcut — delegates to mapper.apply().
+
+        :requirement: URS-47.2 - Tenant nomenclature mapping.
+        """
         return self._mapper.apply(text)

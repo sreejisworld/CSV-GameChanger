@@ -53,7 +53,10 @@ class BulkJob:
     error: Optional[str] = None
 
     def progress_pct(self) -> float:
-        """Return percentage of items completed (0.0–100.0)."""
+        """Return percentage of items completed (0.0–100.0).
+
+        :requirement: URS-47.7 - Bulk job progress tracking.
+        """
         if self.total == 0:
             return 100.0
         return round((self.completed / self.total) * 100.0, 1)

@@ -167,6 +167,8 @@ class DiffParser:
         :param diff_text: Raw output of ``git diff`` or ``git diff HEAD~1``.
         :return: List of DiffModule, one per changed file.
         :requirement: EVOLV Sentinel — diff parsing
+
+        :requirement: URS-47.3 - Sentinel change impact analysis.
         """
         modules: List[DiffModule] = []
         current: Optional[DiffModule] = None
@@ -268,6 +270,8 @@ class ImpactEngine:
         :param path: Path to the populated traceability graph JSON.
         :return: Configured ImpactEngine instance.
         :requirement: EVOLV Sentinel — graph loading
+
+        :requirement: URS-47.3 - Sentinel change impact analysis.
         """
         with open(path, "r", encoding="utf-8") as fh:
             graph = json.load(fh)
@@ -280,6 +284,8 @@ class ImpactEngine:
 
         :param json_str: Serialised traceability graph.
         :return: Configured ImpactEngine instance.
+
+        :requirement: URS-47.3 - Sentinel change impact analysis.
         """
         return cls(json.loads(json_str))
 
@@ -361,6 +367,8 @@ class ImpactEngine:
         :param diff_text: Raw git diff string.
         :return: Fully populated ImpactReport.
         :requirement: EVOLV Sentinel — end-to-end impact pipeline
+
+        :requirement: URS-47.3 - Sentinel change impact analysis.
         """
         diff_hash = hashlib.sha256(diff_text.encode()).hexdigest()[:16]
         diff_modules = self._parser.parse(diff_text)
@@ -519,6 +527,8 @@ class ImpactEngine:
 
         :param report: ImpactReport produced by :meth:`analyze`.
         :requirement: EVOLV Sentinel — report output
+
+        :requirement: URS-47.3 - Sentinel change impact analysis.
         """
         sep = "=" * 72
         thin = "-" * 72

@@ -37,32 +37,55 @@ def _in_scope(file_path: str) -> bool:
     return any(p in file_path for p in SCOPED_PATHS)
 
 
+# Boilerplate exempt from URS tagging — mirrors the CI gate
+# (scripts/compliance_check.sh). Traceability applies to
+# behavior, not serialization plumbing or framework overrides.
+_EXEMPT_NAMES = {
+    "to_dict", "from_dict", "to_json", "to_list",
+    "to_full_dict", "get_instance", "header", "footer",
+}
+
+_EXEMPT_DECORATORS = {"property", "cached_property", "overload"}
+
+
 def _check_content(content: str) -> list[str]:
     """
-    Return a list of function names that have NO :requirement: tag.
+    Return a list of function names that have NO :requirement:
+    tag in their docstring.
 
-    Simple heuristic: scan line by line; when we see `def foo(`,
-    look ahead up to 10 lines for a docstring containing :requirement:.
+    AST-based (same semantics as the CI compliance gate): the
+    tag may appear anywhere in the docstring; properties,
+    overload stubs, and serialization boilerplate are exempt.
+    Falls back to no findings on syntax errors — the hook must
+    never block on code that is mid-edit.
     """
-    lines = content.splitlines()
+    import ast
+
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return []
+
     missing: list[str] = []
-
-    for i, line in enumerate(lines):
-        if not _FUNC_RE.match(line):
+    for node in ast.walk(tree):
+        if not isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
             continue
-
-        # Extract function name
-        m = re.search(r"def\s+(\w+)", line)
-        func_name = m.group(1) if m else "?"
-
-        # Skip private helpers and test functions
-        if func_name.startswith("_") or func_name.startswith("test_"):
+        name = node.name
+        if name.startswith("_") or name.startswith("test_"):
             continue
-
-        # Look ahead for :requirement: tag within next 10 lines
-        window = "\n".join(lines[i : i + 10])
-        if not _TAG_RE.search(window):
-            missing.append(func_name)
+        if name in _EXEMPT_NAMES:
+            continue
+        dec_names = {
+            getattr(d, "id", "") or getattr(d, "attr", "")
+            for d in node.decorator_list
+        }
+        if dec_names & _EXEMPT_DECORATORS:
+            continue
+        doc = ast.get_docstring(node) or ""
+        if not _TAG_RE.search(doc):
+            missing.append(name)
 
     return missing
 

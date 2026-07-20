@@ -170,6 +170,8 @@ class KeyStore:
 
         :param key_hash: SHA-256 hex digest of the raw key.
         :return: ScopedAPIKey or None.
+
+        :requirement: URS-47.8 - Scoped API key lookup.
         """
         for record in self._records.values():
             if record.key_hash == key_hash and record.active:
@@ -184,6 +186,8 @@ class KeyStore:
 
         :param key_id: UUID key identifier.
         :return: ScopedAPIKey or None.
+
+        :requirement: URS-47.8 - Scoped API key lookup.
         """
         return self._records.get(key_id)
 

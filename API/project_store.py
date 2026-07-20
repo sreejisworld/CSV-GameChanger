@@ -123,7 +123,10 @@ class Release:
     def get_items(
         self, folder: str
     ) -> List[FolderItem]:
-        """Return FolderItem list for *folder*."""
+        """Return FolderItem list for *folder*.
+
+        :requirement: URS-47.9 - Project persistence store.
+        """
         return [
             FolderItem.from_dict(d)
             for d in self.folders.get(folder, [])
@@ -132,7 +135,10 @@ class Release:
     def add_item(
         self, folder: str, item: FolderItem
     ) -> None:
-        """Append *item* to *folder*, creating it if needed."""
+        """Append *item* to *folder*, creating it if needed.
+
+        :requirement: URS-47.9 - Project persistence store.
+        """
         if folder not in self.folders:
             self.folders[folder] = []
         self.folders[folder].append(item.to_dict())
@@ -143,6 +149,8 @@ class Release:
         """
         Remove and return the item with *item_id* from
         *folder*.  Returns None if not found.
+
+        :requirement: URS-47.9 - Project persistence store.
         """
         items = self.folders.get(folder, [])
         for i, d in enumerate(items):
@@ -152,7 +160,10 @@ class Release:
         return None
 
     def item_count(self) -> int:
-        """Total items across all folders."""
+        """Total items across all folders.
+
+        :requirement: URS-47.9 - Project persistence store.
+        """
         return sum(
             len(v) for v in self.folders.values()
         )
@@ -225,7 +236,10 @@ class Project:
     def get_release(
         self, release_id: str
     ) -> Optional[Release]:
-        """Return Release by id or None."""
+        """Return Release by id or None.
+
+        :requirement: URS-47.9 - Project persistence store.
+        """
         d = self.releases.get(release_id)
         return Release.from_dict(d) if d else None
 
@@ -326,12 +340,18 @@ class ProjectStore:
     def get_project(
         self, project_id: str
     ) -> Optional[Project]:
-        """Return Project by id or None."""
+        """Return Project by id or None.
+
+        :requirement: URS-47.9 - Project persistence store.
+        """
         d = self._projects.get(project_id)
         return Project.from_dict(d) if d else None
 
     def list_projects(self) -> List[Project]:
-        """Return all projects sorted by creation date."""
+        """Return all projects sorted by creation date.
+
+        :requirement: URS-47.9 - Project persistence store.
+        """
         return sorted(
             [
                 Project.from_dict(d)

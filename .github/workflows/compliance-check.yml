@@ -103,18 +103,20 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install platform dependencies
+      - name: Install pip-audit
         run: |
-          pip install --quiet -r requirements.txt
+          python -m pip install --quiet --upgrade pip
           pip install --quiet pip-audit
 
       # Blocking by design: a new CVE in the dependency tree
-      # should stop the pipeline, not hide in a warning. If a
-      # finding has no fix yet, add a documented
-      # --ignore-vuln ID flag here with a link to the advisory.
+      # should stop the pipeline, not hide in a warning.
+      # Requirements mode audits EVOLV's resolved dependency
+      # tree only — the runner's own toolchain (old pip etc.)
+      # is out of scope. If a finding has no fix yet, add a
+      # documented --ignore-vuln ID flag with an advisory link.
       - name: Run pip-audit
         run: |
-          python -m pip_audit --skip-editable \
+          python -m pip_audit -r requirements.txt \
             --progress-spinner off
 
   python-lint:

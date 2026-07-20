@@ -232,6 +232,8 @@ class JustificationEngine:
         :param api_key: Anthropic API key (optional).
         :return: Configured JustificationEngine.
         :requirement: EVOLV Sentinel — graph loading
+
+        :requirement: URS-47.4 - Sentinel impact assessment report.
         """
         with open(path, "r", encoding="utf-8") as fh:
             graph = json.load(fh)
@@ -243,7 +245,10 @@ class JustificationEngine:
         json_str: str,
         api_key: Optional[str] = None,
     ) -> "JustificationEngine":
-        """Load from a raw JSON string."""
+        """Load from a raw JSON string.
+
+        :requirement: URS-47.4 - Sentinel impact assessment report.
+        """
         return cls(json.loads(json_str), api_key=api_key)
 
     # ------------------------------------------------------------------
@@ -729,6 +734,8 @@ GxP document language suitable for FDA/EMA regulatory inspection.
         :param dry_run:       If True, skip Claude and use template mode.
         :return: Structured ImpactAssessmentReport.
         :requirement: EVOLV Sentinel — IAR generation entry point
+
+        :requirement: URS-47.4 - Sentinel impact assessment report.
         """
         if not impact_report.at_risk_requirements:
             raise ValueError(
@@ -769,6 +776,8 @@ GxP document language suitable for FDA/EMA regulatory inspection.
         :return:    Markdown string suitable for saving as .md or rendering
                     in Streamlit.
         :requirement: EVOLV Sentinel — IAR Markdown rendering
+
+        :requirement: URS-47.4 - Sentinel impact assessment report.
         """
         cs = iar.change_summary
         lines = [

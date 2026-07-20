@@ -108,7 +108,10 @@ def get_plan():
     summary="Clear saved plan metadata",
 )
 def clear_plan():
-    """Resets the plan store."""
+    """Resets the plan store.
+
+    :requirement: URS-47.10 - Plan data lifecycle.
+    """
     _store["plan"]     = {}
     _store["saved_at"] = None
     _store["source"]   = None

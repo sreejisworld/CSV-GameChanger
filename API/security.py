@@ -17,7 +17,7 @@ Centralises the platform-level security controls introduced by the
    known dev origins with an ``EVOLV_CORS_ORIGINS`` env override
    (comma-separated) for staging / production deployments.
 
-:requirement: URS-SEC-1 - Platform security hardening.
+:requirement: URS-43.1 - Platform security hardening.
 """
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ def platform_key_configured() -> bool:
     Return True when a platform API key is configured.
 
     :return: True if the EVOLV_API_KEY env var is non-empty.
-    :requirement: URS-SEC-1 - Platform security hardening.
+    :requirement: URS-43.1 - Platform security hardening.
     """
     return bool(os.getenv(_API_KEY_ENV, "").strip())
 
@@ -90,7 +90,7 @@ def warn_if_auth_disabled() -> None:
     Called once from ``API.main`` at application start so the
     operator sees an unmissable log line in dev mode.
 
-    :requirement: URS-SEC-1 - Platform security hardening.
+    :requirement: URS-43.1 - Platform security hardening.
     """
     if not platform_key_configured():
         logger.warning(
@@ -110,7 +110,7 @@ def _matches_scoped_key(api_key: str) -> bool:
 
     :param api_key: Raw key from the X-API-Key header.
     :return: True when the key hash matches an active record.
-    :requirement: URS-SEC-1 - Platform security hardening.
+    :requirement: URS-43.1 - Platform security hardening.
     """
     try:
         from API.key_store import KeyStore
@@ -149,7 +149,7 @@ async def require_platform_key(
     :param request: FastAPI request (for denial logging).
     :param api_key: Value of the X-API-Key header, if present.
     :raises HTTPException 401: When the key is missing/invalid.
-    :requirement: URS-SEC-1 - Platform security hardening.
+    :requirement: URS-43.1 - Platform security hardening.
     """
     configured = os.getenv(_API_KEY_ENV, "").strip()
     if not configured:
@@ -198,7 +198,7 @@ def sanitize_filename_component(
     :param default: Fallback slug when nothing safe remains.
     :param max_length: Maximum length of the returned slug.
     :return: Safe filename component, never empty.
-    :requirement: URS-SEC-1 - Platform security hardening.
+    :requirement: URS-43.1 - Platform security hardening.
     """
     cleaned = _FILENAME_UNSAFE_RE.sub("-", str(value or ""))
     while ".." in cleaned:
@@ -242,7 +242,7 @@ def get_cors_origins() -> List[str]:
     production frontend URL).
 
     :return: List of allowed origins. Never contains ``"*"``.
-    :requirement: URS-SEC-1 - Platform security hardening.
+    :requirement: URS-43.1 - Platform security hardening.
     """
     raw = os.getenv(_CORS_ENV, "").strip()
     if not raw:

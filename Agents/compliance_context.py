@@ -317,19 +317,31 @@ class ComplianceContext:
     # ----------------------------------------------------------
 
     def get_primary_regulation(self) -> str:
-        """Return the primary regulation citation string."""
+        """Return the primary regulation citation string.
+
+        :requirement: URS-47.1 - Deployment-context regulatory configuration.
+        """
         return self._profile().primary
 
     def get_secondary_regulations(self) -> List[str]:
-        """Return list of secondary regulation citations."""
+        """Return list of secondary regulation citations.
+
+        :requirement: URS-47.1 - Deployment-context regulatory configuration.
+        """
         return list(self._profile().secondary)
 
     def get_focus_keywords(self) -> List[str]:
-        """Return focus keywords for this compliance mode."""
+        """Return focus keywords for this compliance mode.
+
+        :requirement: URS-47.1 - Deployment-context regulatory configuration.
+        """
         return list(self._profile().focus_keywords)
 
     def get_description(self) -> str:
-        """Return a one-line description of this mode."""
+        """Return a one-line description of this mode.
+
+        :requirement: URS-47.1 - Deployment-context regulatory configuration.
+        """
         return self._profile().description
 
     def to_dict(self) -> Dict:

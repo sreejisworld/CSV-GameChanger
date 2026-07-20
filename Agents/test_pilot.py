@@ -276,7 +276,10 @@ class TestPilotAgent:
         scenarios: List[BAPScenario],
         user_id: str = "test-pilot",
     ) -> TestRun:
-        """Sync wrapper around run_async - convenient for CLI."""
+        """Sync wrapper around run_async - convenient for CLI.
+
+        :requirement: URS-47.5 - Test Pilot execution and reporting.
+        """
         return asyncio.run(self.run_async(scenarios, user_id))
 
     # -- Internals ---------------------------------------------
@@ -669,7 +672,10 @@ def save_html_report(
     run: TestRun,
     out_dir: str = "output/test_pilot_reports",
 ) -> Path:
-    """Write the HTML report to disk. Returns the path."""
+    """Write the HTML report to disk. Returns the path.
+
+    :requirement: URS-47.5 - Test Pilot execution and reporting.
+    """
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     fname = f"{run.run_id}.html"
     path = Path(out_dir) / fname
@@ -681,7 +687,10 @@ def save_json_report(
     run: TestRun,
     out_dir: str = "output/test_pilot_reports",
 ) -> Path:
-    """Write the JSON report to disk. Returns the path."""
+    """Write the JSON report to disk. Returns the path.
+
+    :requirement: URS-47.5 - Test Pilot execution and reporting.
+    """
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     fname = f"{run.run_id}.json"
     path = Path(out_dir) / fname

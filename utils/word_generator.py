@@ -1,5 +1,5 @@
 """
-Word Template Injection for the CSV Engine.
+Word Template Injection for the EVOLV platform.
 
 Accepts a user-uploaded .docx template containing {{PLACEHOLDER}}
 markers, injects generated validation data (UR/FR, test scripts,
