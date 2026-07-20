@@ -88,8 +88,9 @@ radius. With SLAs.
 
 Two clauses you won't find in most vendor runbooks: an incident
 only closes when **a new eval pins the failure permanently**
-(the bug becomes a regression test — we did exactly this in
-public last issue, 11 gaps → 11 evals), and a written
+(the bug becomes a regression test — exactly what happened
+earlier this month when our own suite found 11 gaps in our
+exclusion rules; all 11 are now permanent evals), and a written
 **walk-away trigger**. A governance framework without a
 walk-away threshold is a brochure.
 
