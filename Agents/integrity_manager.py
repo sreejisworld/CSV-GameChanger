@@ -176,6 +176,11 @@ _IMPACT_MAP = {
     "EVAL_SUITE_RUN_RECEIVED":  "Platform Quality + Regression",
     "EVAL_SUITE_RUN_COMPLETED": "Platform Quality + Regression",
     "EVAL_SUITE_RUN_FAILED":    "Platform Quality + Regression",
+    # Sprint 48 — Governable Vendor (version registry + dossier)
+    "UPSTREAM_MODEL_CHANGED":   "Data Integrity + Ungoverned Change",
+    "DOSSIER_GENERATION_RECEIVED":  "Vendor Governance",
+    "DOSSIER_GENERATION_COMPLETED": "Vendor Governance",
+    "DOSSIER_GENERATION_FAILED":    "Vendor Governance",
 }
 
 DEFAULT_IMPACT = "Operational"

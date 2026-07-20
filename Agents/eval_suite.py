@@ -1049,6 +1049,17 @@ def _llm_judge(
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
+        # Upstream drift detection (URS-48.2): compare the
+        # model ID the API actually served against the
+        # registry declaration.
+        observed = data.get("model", "")
+        if observed:
+            from Agents.version_registry import (
+                record_model_observation,
+            )
+            record_model_observation(
+                "Anthropic judge model", observed,
+            )
         verdict = (
             data.get("content", [{}])[0].get("text", "")
         ).strip()

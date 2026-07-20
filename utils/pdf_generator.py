@@ -3445,3 +3445,299 @@ def generate_bounded_autonomy_profile_pdf(
     _bap_5_signer_page(pdf, profile_id, tier_id, signers, meaning)
 
     return pdf.output()
+
+
+# ---------------------------------------------------------------
+# Sprint 48 - AI Vendor Transparency Dossier
+# ---------------------------------------------------------------
+
+class _DossierPDF(FPDF):
+    """Branded FPDF subclass for the Transparency Dossier."""
+
+    def header(self) -> None:
+        self.set_fill_color(*NAVY)
+        self.rect(0, 0, 210, 18, "F")
+        self.set_font("Helvetica", "B", 11)
+        self.set_text_color(*WHITE)
+        self.set_xy(10, 4)
+        self.cell(
+            0, 10, "EVOLV  |  The Validation Factory",
+            align="L",
+        )
+        self.set_font("Helvetica", "", 9)
+        self.set_xy(-80, 4)
+        self.cell(70, 10, "AI Vendor Transparency Dossier",
+                  align="R")
+        self.ln(16)
+
+    def footer(self) -> None:
+        self.set_y(-15)
+        self.set_font("Helvetica", "I", 7)
+        self.set_text_color(140, 140, 140)
+        self.cell(
+            0, 10,
+            f"Page {self.page_no()}/{{nb}}  |  Generated "
+            f"{datetime.now(timezone.utc):%Y-%m-%d}  |  "
+            "Powered by EVOLV | A WingstarTech Inc. Product",
+            align="C",
+        )
+
+
+def _dossier_h(pdf: FPDF, text: str) -> None:
+    """Section heading for the dossier."""
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(*NAVY)
+    pdf.cell(0, 9, text, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(*NAVY)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    pdf.set_text_color(30, 30, 30)
+
+
+def _dossier_p(pdf: FPDF, text: str, size: int = 9) -> None:
+    """Body paragraph for the dossier."""
+    pdf.set_font("Helvetica", "", size)
+    pdf.multi_cell(0, 4.6, text,
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+
+def generate_transparency_dossier_pdf(
+    eval_summary: Dict[str, Any],
+    chain_report: Dict[str, Any],
+    registry: Dict[str, Any],
+    signer_name: str = "",
+    meaning: str = "Attestation of Dossier Accuracy",
+) -> bytes:
+    """
+    Generate the signed AI Vendor Transparency Dossier.
+
+    One document answering the five vendor-AI governance
+    questions a pharma sponsor must ask at procurement:
+    validation evidence, change notification, independent
+    testing, incident handling, and regulatory posture -
+    assembled from LIVE platform data (current eval results,
+    audit-chain status, version registry) so it can never be
+    stale marketing.
+
+    :param eval_summary: Output of POST /evals/run (scoreboard
+                         + totals).
+    :param chain_report: Output of verify_audit_chain().to_dict.
+    :param registry: Output of version_registry.get_registry().
+    :param signer_name: Optional signer for the attestation
+                        page (blank line rendered when empty).
+    :param meaning: Meaning of the signature.
+    :return: PDF bytes.
+    :requirement: URS-48.3 - One-click signed Transparency
+                  Dossier assembled from live platform data.
+    """
+    pdf = _DossierPDF(orientation="P", unit="mm", format="A4")
+    pdf.alias_nb_pages()
+    pdf.set_auto_page_break(auto=True, margin=20)
+
+    # -- Page 1: cover + the five questions --------------------
+    pdf.add_page()
+    pdf.ln(8)
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_text_color(*NAVY)
+    pdf.cell(0, 12, "AI Vendor Transparency Dossier",
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(90, 90, 90)
+    pdf.cell(
+        0, 7,
+        f"EVOLV platform v{registry.get('platform_version')} "
+        f"- generated {registry.get('generated_at', '')[:19]}Z",
+        new_x="LMARGIN", new_y="NEXT",
+    )
+    pdf.ln(6)
+    pdf.set_text_color(30, 30, 30)
+    _dossier_p(
+        pdf,
+        "Pharma sponsors are accountable for the outputs of AI "
+        "systems they did not build. Meaningful governance "
+        "therefore requires vendor transparency: validation "
+        "evidence, change notification, independent "
+        "testability, incident accountability, and regulatory "
+        "posture. This dossier is EVOLV's standing answer - "
+        "generated from live platform data, signed, and "
+        "reproducible on request.",
+        size=10,
+    )
+    pdf.ln(2)
+    total = eval_summary.get("total_evals", 0)
+    passed = eval_summary.get("total_passed", 0)
+    answers = [
+        ("1. How was it validated - can we review the "
+         "documentation?",
+         f"Yes - this dossier. {passed}/{total} standing evals "
+         "passing (section 2), independent verification of "
+         "every AI draft, chained audit trail (section 4)."),
+        ("2. How will we be notified when the model is "
+         "updated?",
+         "Versioned component registry + customer-facing "
+         "changelog (section 3). Upstream foundation-model "
+         "changes are detected at runtime and logged as "
+         "UPSTREAM_MODEL_CHANGED audit events."),
+        ("3. Can we run independent testing on our own data?",
+         "Yes - the eval harness is deterministic, requires "
+         "no vendor keys, and accepts customer golden sets. "
+         "Pilot success criteria are agreed in writing."),
+        ("4. What happens when an output is wrong in our "
+         "process?",
+         "Every output is human-signed before entering the "
+         "validated record; rejections are logged Compliance "
+         "Exceptions; any decision is re-derivable from its "
+         "Logic Archive for investigation."),
+        ("5. Regulatory posture?",
+         "GAMP 5 / 21 CFR Part 11 / EU Annex 11 / ICH Q9 / "
+         "FDA CSA alignment; NIST AI RMF + FDA GMLP mapping "
+         "via the Trustworthiness Report; Bounded Autonomy "
+         "Profile tiering with five hard exclusions."),
+    ]
+    for q, a in answers:
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.multi_cell(0, 5, q,
+                       new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(60, 60, 60)
+        pdf.multi_cell(0, 4.4, a,
+                       new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(30, 30, 30)
+        pdf.ln(1.5)
+
+    # -- Page 2: live eval evidence ----------------------------
+    pdf.add_page()
+    _dossier_h(pdf, "2. Standing Validation Evidence (live)")
+    _dossier_p(
+        pdf,
+        "Deterministic eval sets pin the behaviour of every "
+        "specialist function. The suite gates CI on every "
+        "change and was executed live to produce this page.",
+    )
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_fill_color(235, 238, 245)
+    pdf.cell(70, 7, "Agent", border=1, fill=True)
+    pdf.cell(30, 7, "Evals", border=1, fill=True)
+    pdf.cell(30, 7, "Passed", border=1, fill=True)
+    pdf.cell(30, 7, "Rate", border=1, fill=True,
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    for row in eval_summary.get("scoreboard", []):
+        pdf.cell(70, 6.5, str(row.get("agent_name", "")),
+                 border=1)
+        pdf.cell(30, 6.5, str(row.get("eval_count", "")),
+                 border=1)
+        pdf.cell(30, 6.5, str(row.get("passed", "")), border=1)
+        pdf.cell(
+            30, 6.5,
+            f"{row.get('pass_rate', 0) * 100:.1f}%",
+            border=1, new_x="LMARGIN", new_y="NEXT",
+        )
+    pdf.ln(3)
+    _dossier_p(
+        pdf,
+        f"Aggregate: {passed}/{total} passing. Suite is "
+        "stdlib-only and customer-runnable: "
+        "python -m Agents.eval_suite",
+    )
+
+    # -- Page 3: version registry + changelog ------------------
+    pdf.add_page()
+    _dossier_h(pdf, "3. Component & Model Version Registry")
+    pdf.set_font("Helvetica", "B", 8.5)
+    pdf.set_fill_color(235, 238, 245)
+    pdf.cell(58, 7, "Component", border=1, fill=True)
+    pdf.cell(52, 7, "Version", border=1, fill=True)
+    pdf.cell(80, 7, "Independently governed by", border=1,
+             fill=True, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 8)
+    for comp in registry.get("components", []):
+        pdf.multi_cell(
+            58, 4.4, str(comp.get("component", "")),
+            border=1, new_x="RIGHT", new_y="TOP",
+            max_line_height=4.4,
+        )
+        pdf.multi_cell(
+            52, 4.4, str(comp.get("version", "")),
+            border=1, new_x="RIGHT", new_y="TOP",
+            max_line_height=4.4,
+        )
+        pdf.multi_cell(
+            80, 4.4, str(comp.get("governed_by", "")),
+            border=1, max_line_height=4.4,
+        )
+    pdf.ln(4)
+    _dossier_h(pdf, "Change Log (customer-facing)")
+    for entry in registry.get("changelog", []):
+        pdf.set_font("Helvetica", "B", 8.5)
+        pdf.multi_cell(
+            0, 4.6,
+            f"{entry.get('date')} - "
+            f"{entry.get('component')} (Sprint "
+            f"{entry.get('sprint')})",
+            new_x="LMARGIN", new_y="NEXT",
+        )
+        pdf.set_font("Helvetica", "", 8.5)
+        pdf.set_text_color(60, 60, 60)
+        pdf.multi_cell(
+            0, 4.4,
+            f"{entry.get('change')} Impact: "
+            f"{entry.get('impact')}",
+            new_x="LMARGIN", new_y="NEXT",
+        )
+        pdf.set_text_color(30, 30, 30)
+        pdf.ln(1.5)
+
+    # -- Page 4: audit-chain status + attestation --------------
+    pdf.add_page()
+    _dossier_h(pdf, "4. Audit Trail Chain Status (live)")
+    intact = chain_report.get("intact")
+    _dossier_p(
+        pdf,
+        f"Chain status: "
+        f"{'INTACT' if intact else 'ISSUES FOUND'} - "
+        f"{chain_report.get('total_rows', 0)} rows "
+        f"({chain_report.get('chained_ok', 0)} chained, "
+        f"{chain_report.get('legacy_ok', 0)} legacy "
+        "pre-upgrade). Every row hash incorporates its "
+        "predecessor; edits, deletions, or reordering are "
+        "detectable. Chain head hash (record externally to "
+        "detect tail truncation):",
+    )
+    pdf.set_font("Courier", "", 8)
+    pdf.multi_cell(0, 4.4,
+                   str(chain_report.get("head_hash", "")),
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+
+    _dossier_h(pdf, "5. Manifestation of Signature")
+    _dossier_p(
+        pdf,
+        "The undersigned attests that this dossier was "
+        "generated from live platform data without manual "
+        "alteration (21 CFR Part 11 Sec. 11.50).",
+    )
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "", 9.5)
+    ts = datetime.now(timezone.utc).strftime(
+        "%Y-%m-%d %H:%M UTC"
+    )
+    sig_rows = [
+        ("Document", "AI Vendor Transparency Dossier"),
+        ("Signer Name", signer_name or "_" * 40),
+        ("Timestamp (UTC)", ts),
+        ("Meaning", meaning),
+    ]
+    for label, value in sig_rows:
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.cell(45, 8, label, border=1)
+        pdf.set_font("Helvetica", "", 9.5)
+        pdf.cell(145, 8, value, border=1,
+                 new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(10)
+    pdf.cell(90, 7, "Signature: " + "_" * 30)
+    pdf.cell(0, 7, "Date: " + "_" * 20,
+             new_x="LMARGIN", new_y="NEXT")
+
+    return bytes(pdf.output())
