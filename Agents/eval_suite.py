@@ -1108,6 +1108,71 @@ AGENT_RUNNERS: Dict[str, Callable[[], EvalRun]] = {
 }
 
 
+EVAL_HISTORY_PATH = (
+    Path(__file__).parent.parent / "output" / "eval_history.jsonl"
+)
+
+
+def _persist_history(runs: List[EvalRun]) -> None:
+    """Append one summary line per suite run to the history
+    log (JSON lines) so pass rates can be trended over time —
+    the 'track performance over time' vendor-governance
+    requirement."""
+    total = sum(r.eval_count for r in runs)
+    passed = sum(
+        sum(1 for x in r.results if x.passed) for r in runs
+    )
+    record = {
+        "ran_at": datetime.now(timezone.utc).isoformat(),
+        "total_evals": total,
+        "total_passed": passed,
+        "pass_rate": passed / total if total else 0.0,
+        "agents": {
+            r.agent_name: {
+                "eval_count": r.eval_count,
+                "passed": sum(
+                    1 for x in r.results if x.passed
+                ),
+            }
+            for r in runs
+        },
+    }
+    try:
+        EVAL_HISTORY_PATH.parent.mkdir(
+            parents=True, exist_ok=True,
+        )
+        with open(
+            EVAL_HISTORY_PATH, "a", encoding="utf-8",
+        ) as f:
+            f.write(json.dumps(record) + "\n")
+    except OSError:
+        pass  # History is best-effort; never fail a run.
+
+
+def get_eval_history(
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """Return the most recent eval-run summaries (oldest
+    first) for trend display.
+
+    :param limit: Maximum records returned.
+    :return: List of run-summary dicts.
+    :requirement: URS-49.2 - Eval pass-rate history/trending.
+    """
+    if not EVAL_HISTORY_PATH.exists():
+        return []
+    records: List[Dict[str, Any]] = []
+    with open(EVAL_HISTORY_PATH, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    return records[-limit:]
+
+
 def run_suite(
     agents: Optional[List[str]] = None,
     include_llm_agents: bool = False,
@@ -1139,6 +1204,7 @@ def run_suite(
     if include_llm_agents:
         from Agents.agent_evals import run_evals
         runs.append(run_evals("RequirementArchitect"))
+    _persist_history(runs)
     return runs
 
 

@@ -88,6 +88,20 @@ def list_eval_agents() -> Dict[str, Any]:
     }
 
 
+@router.get("/evals/history")
+def eval_history(limit: int = 100) -> Dict[str, Any]:
+    """Return recent eval-run summaries for trend display -
+    the 'track performance over time' vendor-governance
+    requirement. Every suite run (CLI, CI, Dev Portal,
+    dossier generation) appends here.
+
+    :requirement: URS-49.2 - Eval pass-rate history/trending.
+    """
+    from Agents.eval_suite import get_eval_history
+    records = get_eval_history(limit=max(1, min(limit, 500)))
+    return {"count": len(records), "runs": records}
+
+
 @router.post("/evals/run")
 def run_eval_suite(body: EvalRunRequest) -> Dict[str, Any]:
     """Run the deterministic Trusted Evals suite and return the
