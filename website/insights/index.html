@@ -1,8 +1,8 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Insights - EVOLV | The Validation Factory</title>
-<meta name="description" content="Field notes on validating AI in GxP - architecture, governance, and the problems we're solving in Computer System Validation.">
+<title>The Validation Edge - EVOLV | The Validation Factory</title>
+<meta name="description" content="The Validation Edge - field notes on validating AI in GxP: architecture, governance, and the problems we're solving in Computer System Validation.">
 <meta name="robots" content="index,follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,13 +49,14 @@
   text-transform:uppercase;color:var(--blue);margin-bottom:14px;}
   h1{font-family:var(--serif);font-weight:600;
   font-size:clamp(34px,5vw,52px);line-height:1.08;letter-spacing:-.015em;}
-  .sub{margin-top:16px;font-size:18px;color:var(--muted);max-width:640px;}
+  .sub{margin-top:16px;font-size:18px;color:var(--muted);max-width:660px;}
+  .sublink{margin-top:14px;font-size:14px;}
   .cover{aspect-ratio:16/9;border-radius:12px;display:flex;
   flex-direction:column;justify-content:center;align-items:center;
-  gap:4px;overflow:hidden;}
-  .cover-ed{font-family:var(--serif);font-size:52px;font-weight:600;
-  line-height:1;}
-  .cover-lbl{font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  gap:6px;overflow:hidden;text-align:center;padding:12px;}
+  .cover-topic{font-family:var(--serif);font-size:26px;font-weight:600;
+  line-height:1.1;}
+  .cover-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;
   color:var(--faint);}
   .featured{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;
   align-items:center;background:var(--card);border:1px solid var(--border);
@@ -64,7 +65,7 @@
   .featured:hover{box-shadow:0 12px 34px rgba(42,40,37,.08);
   transform:translateY(-2px);}
   .featured .cover{aspect-ratio:16/10;}
-  .featured .cover-ed{font-size:72px;}
+  .featured .cover-topic{font-size:34px;}
   .feat-tag{font-family:var(--mono);font-size:11px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--lime);margin-bottom:8px;}
   .feat-title{font-family:var(--serif);font-size:27px;font-weight:600;
@@ -80,13 +81,14 @@
   .card:hover{box-shadow:0 12px 30px rgba(42,40,37,.08);
   transform:translateY(-3px);}
   .card .cover{border-radius:0;}
-  .card-body{padding:18px 20px 20px;}
+  .card-body{padding:18px 20px 20px;display:flex;flex-direction:column;
+  flex:1;}
   .card-meta{font-family:var(--mono);font-size:11px;color:var(--faint);
   margin-bottom:8px;}
-  .card-title{font-family:var(--serif);font-size:19px;font-weight:600;
-  line-height:1.2;margin-bottom:8px;}
-  .card-hook{font-size:14px;color:var(--muted);line-height:1.5;
-  margin-bottom:12px;}
+  .card-title{font-family:var(--serif);font-size:18px;font-weight:600;
+  line-height:1.22;margin-bottom:8px;}
+  .card-hook{font-size:13.5px;color:var(--muted);line-height:1.5;
+  margin-bottom:12px;flex:1;}
   .card-read{font-size:13px;font-weight:600;color:var(--blue);}
   .cta-band{margin:56px 0 0;background:var(--ink);border-radius:18px;
   padding:40px;text-align:center;}
@@ -111,19 +113,21 @@
   </div></div></nav>
 
 <header class="hero"><div class="wrap">
-  <div class="eyebrow">EVOLV Insights</div>
+  <div class="eyebrow">The Validation Edge &middot; Newsletter</div>
   <h1>Field notes on validating AI in GxP.</h1>
   <p class="sub">Architecture, governance, and the problems we're
   solving in Computer System Validation - written for the QA and
   CSV leads who have to defend this work in an inspection.</p>
+  <p class="sublink"><a href="https://www.linkedin.com/newsletters/the-validation-edge-7135749272163004416/" target="_blank"
+  rel="noopener">Subscribe on LinkedIn &rarr;</a></p>
 </div></header>
 <div class="wrap">
   <a class="featured" href="edition-12.html">
     <div class="cover" style="background:#EEF1FF;">
-      <div class="cover-ed" style="color:#3B5BFF;">#12</div>
-      <div class="cover-lbl">EVOLV &middot; INSIGHTS</div></div>
+      <div class="cover-topic" style="color:#3B5BFF;">Self-Validation</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
     <div>
-      <div class="feat-tag">Latest edition &middot; #12</div>
+      <div class="feat-tag">Latest edition</div>
       <div class="feat-title">Who Validated the Tool That Validates Everything Else?</div>
       <div class="feat-hook">A validation platform is itself GAMP Category 5 software. So who validated it? We made EVOLV generate its own validation package - live.</div>
       <div class="feat-read">Read &rarr;</div>
@@ -132,23 +136,103 @@
   <div class="sec-label">All editions</div>
   <div class="grid"><a class="card" href="edition-11.html">
       <div class="cover" style="background:#F2F8E7;">
-      <div class="cover-ed" style="color:#65A30D;">#11</div>
-      <div class="cover-lbl">EVOLV &middot; INSIGHTS</div></div>
+      <div class="cover-topic" style="color:#65A30D;">Vendor Governance</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
       <div class="card-body">
-        <div class="card-meta">Edition 11 &middot; Jul 2026</div>
+        <div class="card-meta">Jul 2026</div>
         <div class="card-title">We Built the Vendor Side of the Framework</div>
         <div class="card-hook">Five questions every pharma buyer should ask their AI vendor - answered with product artifacts, not promises.</div>
         <div class="card-read">Read &rarr;</div>
       </div></a>
 <a class="card" href="edition-10.html">
       <div class="cover" style="background:#FDF3E7;">
-      <div class="cover-ed" style="color:#D97706;">#10</div>
-      <div class="cover-lbl">EVOLV &middot; INSIGHTS</div></div>
+      <div class="cover-topic" style="color:#D97706;">Trusted Evals</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
       <div class="card-body">
-        <div class="card-meta">Edition 10 &middot; Jul 2026</div>
+        <div class="card-meta">Jul 2026</div>
         <div class="card-title">Our Test Suite Found 11 Holes in Our Own Safety Rules. Good.</div>
         <div class="card-hook">We built an eval suite that attacks every EVOLV agent on every change. Its first run found 11 real gaps in our own AI safety rules.</div>
         <div class="card-read">Read &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/diagnostic-gap-nobody-filling-answer-we-shipped-week-kanhirangadan-fjxec/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#EEF1FF;">
+      <div class="cover-topic" style="color:#3B5BFF;">Bounded Autonomy</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">Jul 1, 2026</div>
+        <div class="card-title">The Diagnostic Gap Nobody Is Filling - and the Answer We Shipped This Week</div>
+        <div class="card-hook">Between &#x27;what&#x27;s the risk class&#x27; and &#x27;are we mature enough&#x27; sits a gap nobody fills. The Bounded Autonomy Profile: a three-layer diagnostic for AI deployment.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/question-every-pharma-ai-vendor-face-ours-sreejith-kanhirangadan-nbp1c/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#F2F8E7;">
+      <div class="cover-topic" style="color:#65A30D;">Trustworthiness</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">Jun 24, 2026</div>
+        <div class="card-title">The Question Every Pharma AI Vendor Is About to Face - and Ours</div>
+        <div class="card-hook">Our answer: the AI Trustworthiness Credibility Assessment Report, mapping AI controls to frameworks, plus a 10-question vendor checklist.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/every-csv-platform-helps-you-reach-validated-state-kanhirangadan-c14hc/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#FDF3E7;">
+      <div class="cover-topic" style="color:#D97706;">Validated State</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">Jun 17, 2026</div>
+        <div class="card-title">Every CSV Platform Helps You REACH Validated State. EVOLV Is the First That Helps You STAY There.</div>
+        <div class="card-hook">Every CSV platform helps you reach a validated state. None help you stay there. Introducing the Validated State Confidence Engine.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/building-industry-i-came-from-sreejith-kanhirangadan-tpcue/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#EEF1FF;">
+      <div class="cover-topic" style="color:#3B5BFF;">Founder Story</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">Jun 10, 2026</div>
+        <div class="card-title">Building for the Industry I Came From</div>
+        <div class="card-hook">Twenty years in pharma validation, three roles, one conviction: compliance and audit integrity belong in the foundation, not bolted on.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/7-questions-every-pharma-security-team-ask-before-buy-kanhirangadan-rgmnc/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#F2F8E7;">
+      <div class="cover-topic" style="color:#65A30D;">Security</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">Jun 3, 2026</div>
+        <div class="card-title">The 7 Questions Every Pharma Security Team Will Ask Before They Buy AI</div>
+        <div class="card-hook">The seven security and compliance questions every pharma team asks before buying AI - answered in the open, recorder-first.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/what-i-shipped-today-after-listening-outside-my-kanhirangadan-jahoc/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#FDF3E7;">
+      <div class="cover-topic" style="color:#D97706;">Build Speed</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">May 30, 2026</div>
+        <div class="card-title">What I Shipped Today After Listening Outside My Industry</div>
+        <div class="card-hook">A podcast from outside pharma reshaped three parts of EVOLV&#x27;s architecture in a day. Speed of absorbing cross-industry insight is the moat.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/why-we-dont-train-your-data-actually-feature-sreejith-kanhirangadan-1iqrc/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#EEF1FF;">
+      <div class="cover-topic" style="color:#3B5BFF;">Data Privacy</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">May 27, 2026</div>
+        <div class="card-title">Why &quot;We Don&#x27;t Train On Your Data&quot; Is Actually a Feature</div>
+        <div class="card-hook">Why RAG beats fine-tuning for pharma: traceability, no data leakage, and an audit trail that survives inspection.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
+      </div></a>
+<a class="card" href="https://www.linkedin.com/pulse/how-deploy-ai-inside-pharma-without-losing-audit-kanhirangadan-1vrgc/" target="_blank" rel="noopener">
+      <div class="cover" style="background:#F2F8E7;">
+      <div class="cover-topic" style="color:#65A30D;">Architecture</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>
+      <div class="card-body">
+        <div class="card-meta">May 20, 2026</div>
+        <div class="card-title">How to Deploy AI Inside Pharma Without Losing the Audit Trail</div>
+        <div class="card-hook">A six-layer architecture for running AI in FDA-regulated environments while keeping every validation record auditable and inside your network.</div>
+        <div class="card-read">Read on LinkedIn &rarr;</div>
       </div></a></div>
   <div class="cta-band">
     <h2>See it on your own requirement.</h2>

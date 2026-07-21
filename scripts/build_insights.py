@@ -1,4 +1,6 @@
-"""Generate the EVOLV Insights archive (index + native editions)."""
+"""Generate the 'The Validation Edge' newsletter archive on the
+EVOLV website (index + native editions). Manifest-driven: add an
+edition by adding a dict below and re-running."""
 import html
 import re
 from pathlib import Path
@@ -8,47 +10,125 @@ GTM = ROOT / "docs/gtm-content"
 OUT = ROOT / "website/insights"
 OUT.mkdir(parents=True, exist_ok=True)
 
-LINKEDIN_SERIES = (
-    "https://www.linkedin.com/in/"
-    "sreejith-kanhirangadan-csv-advisor/recent-activity/"
+# The Validation Edge - LinkedIn newsletter home (subscribe/follow)
+LINKEDIN_NEWSLETTER = (
+    "https://www.linkedin.com/newsletters/"
+    "the-validation-edge-7135749272163004416/"
 )
 
-# ── Editions manifest ───────────────────────────────────────────
-# native=True  -> rendered from the markdown file (md)
-# native=False -> card links out to LinkedIn (url)
-# Editions 1-9: replace url + fill title/hook when Sree sends them.
+# ── Editions manifest (newest first) ────────────────────────────
+# native=True  -> full article rendered from markdown (md), file
+#                 written as edition-{num}.html
+# native=False -> card links out to the LinkedIn edition (url)
 EDITIONS = [
-    {"num": 12, "date": "Jul 2026", "native": True,
-     "md": "newsletter-12-draft.md",
+    {"num": 12, "native": True, "md": "newsletter-12-draft.md",
+     "topic": "Self-Validation", "date": "Jul 2026",
      "title": "Who Validated the Tool That Validates "
               "Everything Else?",
      "hook": "A validation platform is itself GAMP Category 5 "
              "software. So who validated it? We made EVOLV "
              "generate its own validation package - live."},
-    {"num": 11, "date": "Jul 2026", "native": True,
-     "md": "newsletter-11-draft.md",
+    {"num": 11, "native": True, "md": "newsletter-11-draft.md",
+     "topic": "Vendor Governance", "date": "Jul 2026",
      "title": "We Built the Vendor Side of the Framework",
      "hook": "Five questions every pharma buyer should ask "
              "their AI vendor - answered with product "
              "artifacts, not promises."},
-    {"num": 10, "date": "Jul 2026", "native": True,
-     "md": "newsletter-10-draft.md",
+    {"num": 10, "native": True, "md": "newsletter-10-draft.md",
+     "topic": "Trusted Evals", "date": "Jul 2026",
      "title": "Our Test Suite Found 11 Holes in Our Own "
               "Safety Rules. Good.",
      "hook": "We built an eval suite that attacks every EVOLV "
              "agent on every change. Its first run found 11 "
              "real gaps in our own AI safety rules."},
-    # ── Earlier editions (LinkedIn) - fill url/title/hook ──
-    # {"num": 9, "date": "...", "native": False,
-    #  "url": "https://www.linkedin.com/pulse/...",
-    #  "title": "...", "hook": "..."},
+    {"native": False, "topic": "Bounded Autonomy",
+     "date": "Jul 1, 2026",
+     "url": "https://www.linkedin.com/pulse/diagnostic-gap-"
+            "nobody-filling-answer-we-shipped-week-"
+            "kanhirangadan-fjxec/",
+     "title": "The Diagnostic Gap Nobody Is Filling - and the "
+              "Answer We Shipped This Week",
+     "hook": "Between 'what's the risk class' and 'are we "
+             "mature enough' sits a gap nobody fills. The "
+             "Bounded Autonomy Profile: a three-layer "
+             "diagnostic for AI deployment."},
+    {"native": False, "topic": "Trustworthiness",
+     "date": "Jun 24, 2026",
+     "url": "https://www.linkedin.com/pulse/question-every-"
+            "pharma-ai-vendor-face-ours-sreejith-"
+            "kanhirangadan-nbp1c/",
+     "title": "The Question Every Pharma AI Vendor Is About "
+              "to Face - and Ours",
+     "hook": "Our answer: the AI Trustworthiness Credibility "
+             "Assessment Report, mapping AI controls to "
+             "frameworks, plus a 10-question vendor checklist."},
+    {"native": False, "topic": "Validated State",
+     "date": "Jun 17, 2026",
+     "url": "https://www.linkedin.com/pulse/every-csv-platform-"
+            "helps-you-reach-validated-state-kanhirangadan-"
+            "c14hc/",
+     "title": "Every CSV Platform Helps You REACH Validated "
+              "State. EVOLV Is the First That Helps You STAY "
+              "There.",
+     "hook": "Every CSV platform helps you reach a validated "
+             "state. None help you stay there. Introducing the "
+             "Validated State Confidence Engine."},
+    {"native": False, "topic": "Founder Story",
+     "date": "Jun 10, 2026",
+     "url": "https://www.linkedin.com/pulse/building-industry-"
+            "i-came-from-sreejith-kanhirangadan-tpcue/",
+     "title": "Building for the Industry I Came From",
+     "hook": "Twenty years in pharma validation, three roles, "
+             "one conviction: compliance and audit integrity "
+             "belong in the foundation, not bolted on."},
+    {"native": False, "topic": "Security",
+     "date": "Jun 3, 2026",
+     "url": "https://www.linkedin.com/pulse/7-questions-every-"
+            "pharma-security-team-ask-before-buy-"
+            "kanhirangadan-rgmnc/",
+     "title": "The 7 Questions Every Pharma Security Team Will "
+              "Ask Before They Buy AI",
+     "hook": "The seven security and compliance questions "
+             "every pharma team asks before buying AI - "
+             "answered in the open, recorder-first."},
+    {"native": False, "topic": "Build Speed",
+     "date": "May 30, 2026",
+     "url": "https://www.linkedin.com/pulse/what-i-shipped-"
+            "today-after-listening-outside-my-kanhirangadan-"
+            "jahoc/",
+     "title": "What I Shipped Today After Listening Outside "
+              "My Industry",
+     "hook": "A podcast from outside pharma reshaped three "
+             "parts of EVOLV's architecture in a day. Speed of "
+             "absorbing cross-industry insight is the moat."},
+    {"native": False, "topic": "Data Privacy",
+     "date": "May 27, 2026",
+     "url": "https://www.linkedin.com/pulse/why-we-dont-train-"
+            "your-data-actually-feature-sreejith-"
+            "kanhirangadan-1iqrc/",
+     "title": "Why \"We Don't Train On Your Data\" Is Actually "
+              "a Feature",
+     "hook": "Why RAG beats fine-tuning for pharma: "
+             "traceability, no data leakage, and an audit "
+             "trail that survives inspection."},
+    {"native": False, "topic": "Architecture",
+     "date": "May 20, 2026",
+     "url": "https://www.linkedin.com/pulse/how-deploy-ai-"
+            "inside-pharma-without-losing-audit-"
+            "kanhirangadan-1vrgc/",
+     "title": "How to Deploy AI Inside Pharma Without Losing "
+              "the Audit Trail",
+     "hook": "A six-layer architecture for running AI in "
+             "FDA-regulated environments while keeping every "
+             "validation record auditable and inside your "
+             "network."},
 ]
 
 # Cover accent rotation (warm-light brand tones)
 ACCENTS = [
-    ("#3B5BFF", "#EEF1FF"),   # blue
-    ("#65A30D", "#F2F8E7"),   # lime
-    ("#D97706", "#FDF3E7"),   # amber
+    ("#3B5BFF", "#EEF1FF"),
+    ("#65A30D", "#F2F8E7"),
+    ("#D97706", "#FDF3E7"),
 ]
 
 TOKENS = """
@@ -104,19 +184,18 @@ def md_to_html(md):
     n = len(lines)
     out = []
     i = 0
-    first_h1_skipped = False
+    skipped_h1 = False
     while i < n:
         s = lines[i].strip()
         if not s:
             i += 1
             continue
-        # Skip the redundant build-log subtitle (shown in meta line)
         if re.match(r'^\*EVOLV build log', s):
             i += 1
             continue
         if s.startswith('# '):
-            if not first_h1_skipped:
-                first_h1_skipped = True
+            if not skipped_h1:
+                skipped_h1 = True
                 i += 1
                 continue
             out.append(f'<h2>{inline(s[2:])}</h2>')
@@ -189,12 +268,19 @@ var d=document.getElementById('demo');if(d)d.href=m;
 """
 
 
+def cover(ed, idx):
+    fg, bg = ACCENTS[idx % len(ACCENTS)]
+    return f"""<div class="cover" style="background:{bg};">
+      <div class="cover-topic" style="color:{fg};">{html.escape(ed['topic'])}</div>
+      <div class="cover-lbl">THE VALIDATION EDGE</div></div>"""
+
+
 def article_page(ed):
     body = md_to_html((GTM / ed["md"]).read_text(encoding="utf-8"))
     return f"""<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>{html.escape(ed['title'])} - EVOLV Insights</title>
+<title>{html.escape(ed['title'])} - The Validation Edge</title>
 <meta name="description" content="{html.escape(ed['hook'])}">
 <meta name="robots" content="index,follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -234,17 +320,17 @@ def article_page(ed):
 {NAV}
 <div class="wrap article">
   <a class="back" href="index.html">&larr; All editions</a>
-  <div class="eyebrow" style="margin-top:20px;">EVOLV Insights &middot; Edition {ed['num']}</div>
+  <div class="eyebrow" style="margin-top:20px;">The Validation Edge</div>
   <h1>{html.escape(ed['title'])}</h1>
-  <div class="meta">{ed['date']} &middot; EVOLV build log</div>
+  <div class="meta">{ed['date']} &middot; {html.escape(ed['topic'])}</div>
   <article>{body}</article>
-  <p class="li-note">Originally shared on LinkedIn.
-    <a href="{LINKEDIN_SERIES}" target="_blank" rel="noopener">
-    Subscribe there for new editions &rarr;</a></p>
+  <p class="li-note">Part of <em>The Validation Edge</em> on LinkedIn.
+    <a href="{LINKEDIN_NEWSLETTER}" target="_blank" rel="noopener">
+    Subscribe for new editions &rarr;</a></p>
   <div class="foot">
     <a class="btn btn-ink" id="demo" href="#">Book a 15-min demo</a>
     <a class="btn" style="border:1.5px solid var(--border2);
-    color:var(--ink);" href="index.html">More editions</a>
+    color:var(--ink);" href="index.html">All editions</a>
   </div>
 </div>
 <footer>Powered by EVOLV | A WingstarTech Inc. Product &middot; &copy; 2026</footer>
@@ -252,23 +338,16 @@ def article_page(ed):
 </body></html>"""
 
 
-def cover(ed, idx):
-    fg, bg = ACCENTS[idx % len(ACCENTS)]
-    return f"""<div class="cover" style="background:{bg};">
-      <div class="cover-ed" style="color:{fg};">#{ed['num']}</div>
-      <div class="cover-lbl">EVOLV &middot; INSIGHTS</div></div>"""
-
-
 def card(ed, idx):
     href = (f"edition-{ed['num']}.html" if ed["native"]
-            else ed.get("url", LINKEDIN_SERIES))
+            else ed.get("url", LINKEDIN_NEWSLETTER))
     ext = "" if ed["native"] else ' target="_blank" rel="noopener"'
     tag = ("Read &rarr;" if ed["native"]
            else "Read on LinkedIn &rarr;")
     return f"""<a class="card" href="{href}"{ext}>
       {cover(ed, idx)}
       <div class="card-body">
-        <div class="card-meta">Edition {ed['num']} &middot; {ed['date']}</div>
+        <div class="card-meta">{ed['date']}</div>
         <div class="card-title">{html.escape(ed['title'])}</div>
         <div class="card-hook">{html.escape(ed['hook'])}</div>
         <div class="card-read">{tag}</div>
@@ -280,12 +359,19 @@ def index_page():
     rest = EDITIONS[1:]
     cards = "\n".join(card(e, i + 1) for i, e in enumerate(rest))
     feat_href = (f"edition-{feat['num']}.html" if feat["native"]
-                 else feat.get("url", LINKEDIN_SERIES))
+                 else feat.get("url", LINKEDIN_NEWSLETTER))
+    feat_ext = "" if feat["native"] else ' target="_blank" rel="noopener"'
+    feat_read = ("Read &rarr;" if feat["native"]
+                 else "Read on LinkedIn &rarr;")
+    nav_i = (NAV.replace('../index.html#how', 'index.html#how')
+             .replace('../index.html', 'index.html')
+             .replace('href="index.html">Insights',
+                      'href="index.html" style="color:var(--ink)">Insights'))
     return f"""<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Insights - EVOLV | The Validation Factory</title>
-<meta name="description" content="Field notes on validating AI in GxP - architecture, governance, and the problems we're solving in Computer System Validation.">
+<title>The Validation Edge - EVOLV | The Validation Factory</title>
+<meta name="description" content="The Validation Edge - field notes on validating AI in GxP: architecture, governance, and the problems we're solving in Computer System Validation.">
 <meta name="robots" content="index,follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -297,13 +383,14 @@ def index_page():
   text-transform:uppercase;color:var(--blue);margin-bottom:14px;}}
   h1{{font-family:var(--serif);font-weight:600;
   font-size:clamp(34px,5vw,52px);line-height:1.08;letter-spacing:-.015em;}}
-  .sub{{margin-top:16px;font-size:18px;color:var(--muted);max-width:640px;}}
+  .sub{{margin-top:16px;font-size:18px;color:var(--muted);max-width:660px;}}
+  .sublink{{margin-top:14px;font-size:14px;}}
   .cover{{aspect-ratio:16/9;border-radius:12px;display:flex;
   flex-direction:column;justify-content:center;align-items:center;
-  gap:4px;overflow:hidden;}}
-  .cover-ed{{font-family:var(--serif);font-size:52px;font-weight:600;
-  line-height:1;}}
-  .cover-lbl{{font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  gap:6px;overflow:hidden;text-align:center;padding:12px;}}
+  .cover-topic{{font-family:var(--serif);font-size:26px;font-weight:600;
+  line-height:1.1;}}
+  .cover-lbl{{font-family:var(--mono);font-size:10px;letter-spacing:.16em;
   color:var(--faint);}}
   .featured{{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;
   align-items:center;background:var(--card);border:1px solid var(--border);
@@ -312,7 +399,7 @@ def index_page():
   .featured:hover{{box-shadow:0 12px 34px rgba(42,40,37,.08);
   transform:translateY(-2px);}}
   .featured .cover{{aspect-ratio:16/10;}}
-  .featured .cover-ed{{font-size:72px;}}
+  .featured .cover-topic{{font-size:34px;}}
   .feat-tag{{font-family:var(--mono);font-size:11px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--lime);margin-bottom:8px;}}
   .feat-title{{font-family:var(--serif);font-size:27px;font-weight:600;
@@ -328,13 +415,14 @@ def index_page():
   .card:hover{{box-shadow:0 12px 30px rgba(42,40,37,.08);
   transform:translateY(-3px);}}
   .card .cover{{border-radius:0;}}
-  .card-body{{padding:18px 20px 20px;}}
+  .card-body{{padding:18px 20px 20px;display:flex;flex-direction:column;
+  flex:1;}}
   .card-meta{{font-family:var(--mono);font-size:11px;color:var(--faint);
   margin-bottom:8px;}}
-  .card-title{{font-family:var(--serif);font-size:19px;font-weight:600;
-  line-height:1.2;margin-bottom:8px;}}
-  .card-hook{{font-size:14px;color:var(--muted);line-height:1.5;
-  margin-bottom:12px;}}
+  .card-title{{font-family:var(--serif);font-size:18px;font-weight:600;
+  line-height:1.22;margin-bottom:8px;}}
+  .card-hook{{font-size:13.5px;color:var(--muted);line-height:1.5;
+  margin-bottom:12px;flex:1;}}
   .card-read{{font-size:13px;font-weight:600;color:var(--blue);}}
   .cta-band{{margin:56px 0 0;background:var(--ink);border-radius:18px;
   padding:40px;text-align:center;}}
@@ -347,22 +435,24 @@ def index_page():
   @media(max-width:820px){{.grid{{grid-template-columns:1fr;}}
   .featured{{grid-template-columns:1fr;}}}}
 </style></head><body>
-{NAV.replace('../index.html','index.html').replace('href="index.html">Insights','href="index.html" style="color:var(--ink)">Insights').replace('../index.html#how','index.html#how')}
+{nav_i}
 <header class="hero"><div class="wrap">
-  <div class="eyebrow">EVOLV Insights</div>
+  <div class="eyebrow">The Validation Edge &middot; Newsletter</div>
   <h1>Field notes on validating AI in GxP.</h1>
   <p class="sub">Architecture, governance, and the problems we're
   solving in Computer System Validation - written for the QA and
   CSV leads who have to defend this work in an inspection.</p>
+  <p class="sublink"><a href="{LINKEDIN_NEWSLETTER}" target="_blank"
+  rel="noopener">Subscribe on LinkedIn &rarr;</a></p>
 </div></header>
 <div class="wrap">
-  <a class="featured" href="{feat_href}"{"" if feat["native"] else ' target="_blank" rel="noopener"'}>
+  <a class="featured" href="{feat_href}"{feat_ext}>
     {cover(feat, 0)}
     <div>
-      <div class="feat-tag">Latest edition &middot; #{feat['num']}</div>
+      <div class="feat-tag">Latest edition</div>
       <div class="feat-title">{html.escape(feat['title'])}</div>
       <div class="feat-hook">{html.escape(feat['hook'])}</div>
-      <div class="feat-read">{"Read &rarr;" if feat["native"] else "Read on LinkedIn &rarr;"}</div>
+      <div class="feat-read">{feat_read}</div>
     </div>
   </a>
   <div class="sec-label">All editions</div>
@@ -381,11 +471,10 @@ def index_page():
 </body></html>"""
 
 
-# ── Generate ────────────────────────────────────────────────────
 for ed in EDITIONS:
     if ed["native"]:
         (OUT / f"edition-{ed['num']}.html").write_text(
             article_page(ed), encoding="utf-8")
         print(f"wrote edition-{ed['num']}.html")
 (OUT / "index.html").write_text(index_page(), encoding="utf-8")
-print("wrote insights/index.html")
+print(f"wrote index.html ({len(EDITIONS)} editions)")
