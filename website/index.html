@@ -3,855 +3,590 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EVOLV | The Validation Factory</title>
-<meta name="description" content="AI-assisted Computer System Validation for pharma — every output verified against GAMP 5, every signature human, every decision inspectable. Screen your AI use case in 30 seconds.">
+<title>EVOLV | The Validation Factory — AI-assisted Computer System Validation</title>
+<meta name="description" content="EVOLV runs the full GAMP 5 lifecycle: AI drafts requirements, risk, and tests; an independent agent verifies each against the regulatory corpus; every output is human-signed and re-derivable in an inspection. Screen your AI use case in 30 seconds.">
 <meta name="robots" content="index,follow">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232A2825'/><text x='16' y='22' font-size='18' font-family='Georgia' font-weight='bold' fill='%23A3E635' text-anchor='middle'>E</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23161618'/><text x='16' y='22' font-size='17' font-family='monospace' font-weight='bold' fill='%230E9F6E' text-anchor='middle'>E</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #FAFAF7;
-    --card: #FFFFFF;
-    --ink: #2A2825;
-    --muted: #6B675F;
-    --faint: #8A867C;
-    --border: #EAE7E1;
-    --border2: #DDD9D0;
-    --blue: #3B5BFF;
-    --blue-soft: rgba(59,91,255,0.08);
-    --lime: #65A30D;
-    --lime-bright: #A3E635;
-    --amber: #D97706;
-    --red: #DC2626;
-    --red-soft: #FEF2F2;
-    --green-soft: #F0FDF4;
-    --serif: 'Fraunces', Georgia, serif;
-    --sans: 'Inter', system-ui, -apple-system, sans-serif;
-    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+  :root{
+    --paper:#F4F4F0; --paper2:#FBFBF9; --card:#FFFFFF;
+    --ink:#161618; --ink2:#3C3C40; --muted:#6E6E68; --faint:#94948C;
+    --line:#E4E4DE; --line2:#D6D6CE;
+    --accent:#0E9F6E; --accent-dk:#0A7D57; --signal:#3B5BFF; --red:#DC2626;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --sans:'Inter',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',monospace;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg); color: var(--ink);
-    font-family: var(--sans); font-size: 16px; line-height: 1.65;
-    -webkit-font-smoothing: antialiased;
-  }
-  ::selection { background: rgba(163,230,53,0.4); }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  ::selection{background:rgba(14,159,110,.22);}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px;}
+  .mono{font-family:var(--mono);}
+  .lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);}
 
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;background:rgba(244,244,240,.82);
+    backdrop-filter:blur(14px);border-bottom:1px solid var(--line);}
+  .nav-in{display:flex;align-items:center;gap:24px;max-width:1120px;
+    margin:0 auto;padding:15px 28px;}
+  .brand{display:flex;align-items:baseline;gap:10px;text-decoration:none;color:var(--ink);}
+  .brand b{font-family:var(--disp);font-size:21px;font-weight:700;letter-spacing:.01em;}
+  .brand span{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);}
+  .nav-links{display:flex;gap:22px;margin-left:auto;align-items:center;}
+  .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;}
+  .nav-links a:hover{color:var(--ink);}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;
+    border-radius:8px;font-size:14.5px;font-weight:600;text-decoration:none;
+    cursor:pointer;border:none;font-family:var(--sans);transition:all .16s;}
+  .btn-ink{background:var(--ink);color:#fff;}
+  .btn-ink:hover{background:#000;transform:translateY(-1px);box-shadow:0 6px 20px rgba(22,22,24,.22);}
+  .btn-line{background:transparent;color:var(--ink);border:1px solid var(--line2);}
+  .btn-line:hover{border-color:var(--ink);}
+  .btn-accent{background:var(--accent);color:#fff;}
+  .btn-accent:hover{background:var(--accent-dk);transform:translateY(-1px);}
+  .btn-sm{padding:8px 15px;font-size:13.5px;}
 
-  /* ── Nav ─────────────────────────────────────────── */
-  nav {
-    position: sticky; top: 0; z-index: 50;
-    background: rgba(250,250,247,0.85); backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-  }
-  .nav-inner { display: flex; align-items: center; gap: 28px; padding: 14px 24px; max-width: 1080px; margin: 0 auto; }
-  .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; color: var(--ink); }
-  .logo-word { font-family: var(--serif); font-size: 22px; font-weight: 600; letter-spacing: 0.02em; }
-  .logo-sub { font-size: 10px; font-family: var(--mono); color: var(--faint); letter-spacing: 0.12em; text-transform: uppercase; }
-  .nav-links { display: flex; gap: 22px; margin-left: auto; align-items: center; }
-  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; }
-  .nav-links a:hover { color: var(--ink); }
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 22px; border-radius: 100px; font-size: 15px;
-    font-weight: 600; text-decoration: none; cursor: pointer;
-    border: none; font-family: var(--sans); transition: all 0.18s;
-  }
-  .btn-ink { background: var(--ink); color: #fff; }
-  .btn-ink:hover { background: #000; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(42,40,37,0.25); }
-  .btn-ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--border2); }
-  .btn-ghost:hover { border-color: var(--ink); }
-  .btn-sm { padding: 8px 18px; font-size: 14px; }
+  /* hero */
+  .hero{padding:74px 0 20px;}
+  .hero-spec{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:26px;}
+  .hero-spec span{position:relative;padding-left:14px;}
+  .hero-spec span::before{content:"";position:absolute;left:0;top:50%;
+    width:5px;height:5px;background:var(--accent);border-radius:50%;transform:translateY(-50%);}
+  h1{font-family:var(--disp);font-weight:600;font-size:clamp(38px,5.6vw,62px);
+    line-height:1.04;letter-spacing:-.02em;max-width:880px;}
+  h1 .g{color:var(--accent);}
+  .hero-sub{margin-top:24px;font-size:19px;line-height:1.55;color:var(--ink2);max-width:640px;}
+  .hero-cta{display:flex;gap:13px;margin-top:32px;flex-wrap:wrap;align-items:center;}
+  .hero-note{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:16px;}
 
-  /* ── Hero ────────────────────────────────────────── */
-  .hero { position: relative; padding: 88px 0 64px; overflow: hidden; }
-  .hero-blob {
-    position: absolute; border-radius: 50%; filter: blur(90px);
-    opacity: 0.5; pointer-events: none;
-  }
-  .blob-1 { width: 480px; height: 480px; background: rgba(163,230,53,0.35); top: -180px; right: -120px; }
-  .blob-2 { width: 400px; height: 400px; background: rgba(59,91,255,0.18); bottom: -200px; left: -140px; }
-  .eyebrow {
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--blue); margin-bottom: 20px;
-  }
-  h1 {
-    font-family: var(--serif); font-weight: 600;
-    font-size: clamp(38px, 5.6vw, 62px); line-height: 1.08;
-    letter-spacing: -0.015em; max-width: 820px;
-  }
-  .hero-sub {
-    margin-top: 22px; font-size: 19px; color: var(--muted);
-    max-width: 640px; line-height: 1.6;
-  }
-  .hero-ctas { display: flex; gap: 14px; margin-top: 34px; flex-wrap: wrap; }
-  .hero-proof {
-    display: flex; gap: 26px; margin-top: 44px; flex-wrap: wrap;
-  }
-  .proof-item { display: flex; flex-direction: column; gap: 2px; }
-  .proof-num { font-family: var(--serif); font-size: 26px; font-weight: 600; }
-  .proof-label { font-size: 13px; color: var(--faint); }
+  /* numbers band */
+  .band{border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    margin-top:56px;background:var(--paper2);}
+  .band-in{display:grid;grid-template-columns:repeat(4,1fr);}
+  .stat{padding:30px 26px;border-right:1px solid var(--line);}
+  .stat:last-child{border-right:none;}
+  .stat .n{font-family:var(--disp);font-size:44px;font-weight:600;line-height:1;letter-spacing:-.02em;}
+  .stat .n em{font-style:normal;color:var(--accent);}
+  .stat .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);margin-top:10px;line-height:1.5;}
 
-  /* ── Framework strip ─────────────────────────────── */
-  .framework-strip {
-    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    padding: 18px 0; background: var(--card);
-  }
-  .framework-inner {
-    display: flex; gap: 12px 34px; justify-content: center; flex-wrap: wrap;
-    font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.08em;
-    color: var(--faint); text-transform: uppercase;
-  }
+  /* sections */
+  section{padding:78px 0;}
+  .seclbl{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .seclbl .num{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600;}
+  .seclbl .t{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);}
+  h2{font-family:var(--disp);font-weight:600;font-size:clamp(28px,3.6vw,40px);
+    line-height:1.1;letter-spacing:-.015em;max-width:760px;}
+  .lead{margin-top:16px;font-size:18px;color:var(--ink2);max-width:640px;}
 
-  /* ── Sections ────────────────────────────────────── */
-  section { padding: 84px 0; }
-  .section-eyebrow {
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--blue); margin-bottom: 14px;
-  }
-  h2 {
-    font-family: var(--serif); font-weight: 600;
-    font-size: clamp(28px, 3.6vw, 40px); line-height: 1.15;
-    letter-spacing: -0.01em; max-width: 720px;
-  }
-  .section-sub { margin-top: 16px; font-size: 17px; color: var(--muted); max-width: 620px; }
+  /* evidence dark band */
+  #evidence{background:var(--ink);color:#EDEDE9;}
+  #evidence .seclbl .t{color:rgba(255,255,255,.5);}
+  #evidence h2{color:#fff;}
+  .quote{font-family:var(--disp);font-size:clamp(22px,2.6vw,30px);font-weight:500;
+    line-height:1.28;letter-spacing:-.01em;max-width:840px;margin-top:8px;}
+  .quote em{font-style:normal;color:var(--accent);}
+  .ev-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;margin-top:44px;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1);}
+  .ev{background:var(--ink);padding:28px;}
+  .ev .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;}
+  .ev h3{font-family:var(--disp);font-size:19px;font-weight:600;margin-bottom:8px;color:#fff;}
+  .ev p{font-size:14.5px;color:rgba(237,237,233,.66);line-height:1.55;}
 
-  /* ── Screener ────────────────────────────────────── */
-  #screener { background: var(--ink); color: #F5F4F0; }
-  #screener .section-eyebrow { color: var(--lime-bright); }
-  #screener h2 { color: #fff; }
-  #screener .section-sub { color: rgba(245,244,240,0.7); }
-  .screener-card {
-    margin-top: 36px; background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12); border-radius: 18px;
-    padding: 28px;
-  }
-  .screener-card label {
-    display: block; font-family: var(--mono); font-size: 12px;
-    letter-spacing: 0.1em; text-transform: uppercase;
-    color: rgba(245,244,240,0.6); margin-bottom: 10px;
-  }
-  .screener-card textarea {
-    width: 100%; min-height: 92px; background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.15); border-radius: 12px;
-    color: #fff; font-size: 16px; padding: 16px 18px;
-    font-family: var(--sans); outline: none; resize: vertical;
-    line-height: 1.55; transition: border 0.15s;
-  }
-  .screener-card textarea:focus { border-color: var(--lime-bright); }
-  .screener-card textarea::placeholder { color: rgba(245,244,240,0.35); }
-  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-  .chip {
-    font-size: 13px; padding: 7px 14px; border-radius: 100px;
-    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
-    color: rgba(245,244,240,0.8); cursor: pointer; transition: all 0.15s;
-  }
-  .chip:hover { background: rgba(255,255,255,0.14); color: #fff; }
-  .screener-actions { display: flex; align-items: center; gap: 16px; margin-top: 20px; flex-wrap: wrap; }
-  .btn-lime { background: var(--lime-bright); color: #1A2E05; }
-  .btn-lime:hover { background: #B9F04C; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(163,230,53,0.3); }
-  .screener-note { font-size: 13px; color: rgba(245,244,240,0.45); }
+  /* product frames */
+  .frame{border:1px solid var(--line2);border-radius:12px;overflow:hidden;
+    background:var(--card);box-shadow:0 24px 60px rgba(22,22,24,.10);}
+  .frame-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;
+    border-bottom:1px solid var(--line);background:var(--paper2);}
+  .frame-bar i{width:10px;height:10px;border-radius:50%;background:var(--line2);display:block;}
+  .frame-url{margin-left:12px;font-family:var(--mono);font-size:11px;color:var(--faint);}
+  .frame img{display:block;width:100%;}
+  .prod-row{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;margin-top:38px;}
+  .prod-row.rev{direction:rtl;} .prod-row.rev>*{direction:ltr;}
+  .cap .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+  .cap h3{font-family:var(--disp);font-size:23px;font-weight:600;margin-bottom:10px;letter-spacing:-.01em;}
+  .cap p{font-size:15.5px;color:var(--ink2);}
+  .vwrap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:34px 26px;margin-top:26px;}
+  .v-caption{text-align:center;margin-top:14px;font-size:14px;color:var(--muted);}
+  .v-legend{display:flex;gap:22px;justify-content:center;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--faint);flex-wrap:wrap;}
+  .v-legend span{display:inline-flex;align-items:center;gap:7px;}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
 
-  /* Verdict */
-  .verdict { margin-top: 26px; border-radius: 14px; padding: 24px 26px; display: none; animation: rise 0.35s ease-out; }
-  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-  .verdict.show { display: block; }
-  .verdict-x { background: #2D1516; border: 1px solid rgba(220,38,38,0.5); }
-  .verdict-pass { background: #16210F; border: 1px solid rgba(163,230,53,0.4); }
-  .verdict-badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 13px; font-weight: 500;
-    letter-spacing: 0.08em; padding: 6px 14px; border-radius: 100px;
-    margin-bottom: 14px;
-  }
-  .badge-x { background: rgba(220,38,38,0.18); color: #FCA5A5; border: 1px solid rgba(220,38,38,0.4); }
-  .badge-pass { background: rgba(163,230,53,0.15); color: var(--lime-bright); border: 1px solid rgba(163,230,53,0.35); }
-  .verdict h3 { font-size: 19px; color: #fff; margin-bottom: 8px; font-weight: 600; }
-  .verdict p { font-size: 15px; color: rgba(245,244,240,0.75); }
-  .verdict .cite {
-    margin-top: 14px; font-family: var(--mono); font-size: 13px;
-    color: rgba(245,244,240,0.55); border-left: 2px solid rgba(255,255,255,0.2);
-    padding-left: 14px; line-height: 1.7;
-  }
-  .tier-pick { margin-top: 18px; }
-  .tier-pick select {
-    width: 100%; max-width: 560px; background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.18); border-radius: 10px;
-    color: #fff; font-size: 15px; padding: 12px 14px; font-family: var(--sans);
-    outline: none; cursor: pointer;
-  }
-  .tier-pick select option { background: #1F1E1B; }
-  .tier-result { margin-top: 18px; display: none; }
-  .tier-result.show { display: block; animation: rise 0.3s ease-out; }
-  .tier-badge {
-    display: inline-block; font-family: var(--mono); font-size: 14px;
-    font-weight: 600; padding: 8px 18px; border-radius: 10px; margin-bottom: 12px;
-  }
-  .verdict-cta { margin-top: 22px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  /* screener */
+  #screener{border-top:1px solid var(--line);background:var(--paper2);}
+  .sc-card{margin-top:30px;background:var(--card);border:1px solid var(--line2);
+    border-radius:16px;padding:28px;box-shadow:0 20px 50px rgba(22,22,24,.06);}
+  .sc-card label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .sc-card textarea{width:100%;min-height:88px;background:var(--paper);border:1px solid var(--line2);
+    border-radius:10px;color:var(--ink);font-size:16px;padding:14px 16px;font-family:var(--sans);
+    outline:none;resize:vertical;line-height:1.5;transition:border .15s;}
+  .sc-card textarea:focus{border-color:var(--accent);}
+  .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .chip{font-size:13px;padding:7px 13px;border-radius:100px;background:var(--paper);
+    border:1px solid var(--line2);color:var(--ink2);cursor:pointer;transition:all .15s;font-family:var(--sans);}
+  .chip:hover{border-color:var(--ink);color:var(--ink);}
+  .screener-actions{display:flex;align-items:center;gap:16px;margin-top:20px;flex-wrap:wrap;}
+  .screener-note{font-family:var(--mono);font-size:12px;color:var(--faint);}
+  .verdict{margin-top:24px;border-radius:12px;padding:24px 26px;display:none;animation:rise .32s ease-out;}
+  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .verdict.show{display:block;}
+  .verdict-x{background:#2C1618;border:1px solid rgba(220,38,38,.5);color:#F3E9E9;}
+  .verdict-pass{background:#0F1F18;border:1px solid rgba(14,159,110,.42);color:#E9F3EE;}
+  .verdict-badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;
+    font-weight:600;letter-spacing:.06em;padding:6px 13px;border-radius:100px;margin-bottom:14px;}
+  .badge-x{background:rgba(220,38,38,.18);color:#FCA5A5;border:1px solid rgba(220,38,38,.4);}
+  .badge-pass{background:rgba(14,159,110,.16);color:#6EE7B0;border:1px solid rgba(14,159,110,.4);}
+  .verdict h3{font-family:var(--disp);font-size:19px;color:#fff;margin-bottom:8px;font-weight:600;}
+  .verdict p{font-size:15px;opacity:.82;}
+  .verdict .cite{margin-top:14px;font-family:var(--mono);font-size:12.5px;opacity:.6;
+    border-left:2px solid rgba(255,255,255,.2);padding-left:14px;line-height:1.7;}
+  .tier-pick{margin-top:18px;}
+  .tier-pick select{width:100%;max-width:560px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;color:#fff;font-size:15px;padding:12px 14px;font-family:var(--sans);outline:none;cursor:pointer;}
+  .tier-pick select option{background:#1F1F22;}
+  .tier-result{margin-top:18px;display:none;} .tier-result.show{display:block;animation:rise .3s ease-out;}
+  .tier-badge{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:600;padding:7px 15px;border-radius:8px;margin-bottom:12px;}
+  .verdict-cta{margin-top:20px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
 
-  /* ── Problem ─────────────────────────────────────── */
-  .pain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 44px; }
-  .pain-card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 28px;
-  }
-  .pain-card .num { font-family: var(--serif); font-size: 34px; font-weight: 600; color: var(--blue); }
-  .pain-card h3 { font-size: 17px; margin: 12px 0 8px; font-weight: 600; }
-  .pain-card p { font-size: 14.5px; color: var(--muted); }
+  /* honesty */
+  .refuse-list{margin-top:38px;display:flex;flex-direction:column;gap:12px;max-width:900px;}
+  .refuse-item{display:flex;gap:18px;align-items:flex-start;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:20px 24px;}
+  .refuse-id{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--red);
+    background:#FDF1F1;border:1px solid rgba(220,38,38,.25);border-radius:7px;padding:5px 10px;
+    white-space:nowrap;flex-shrink:0;margin-top:2px;}
+  .refuse-item h4{font-family:var(--disp);font-size:16px;font-weight:600;margin-bottom:4px;}
+  .refuse-item p{font-size:14px;color:var(--muted);}
+  .honesty-close{margin-top:28px;font-size:16px;color:var(--ink2);max-width:720px;font-style:italic;}
 
-  /* ── V-model ─────────────────────────────────────── */
-  .vmodel-box {
-    margin-top: 46px; background: var(--card); border: 1px solid var(--border);
-    border-radius: 18px; padding: 40px 28px 28px; overflow-x: auto;
-  }
-  .v-caption { text-align: center; margin-top: 18px; font-size: 14px; color: var(--muted); }
-  .v-caption b { color: var(--ink); }
-  .legend { display: flex; gap: 24px; justify-content: center; margin-top: 14px; font-size: 13px; color: var(--faint); flex-wrap: wrap; }
-  .legend span { display: inline-flex; align-items: center; gap: 7px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  /* deliverables */
+  .deliver-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:38px;
+    background:var(--line);border:1px solid var(--line);}
+  .deliver-item{background:var(--card);padding:20px;font-size:14px;font-weight:600;font-family:var(--disp);}
+  .deliver-item span{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint);
+    margin-top:6px;font-weight:400;letter-spacing:.04em;}
 
-  /* ── Trust cards ─────────────────────────────────── */
-  .trust-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 44px; }
-  .trust-card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 30px; transition: all 0.2s;
-  }
-  .trust-card:hover { border-color: var(--border2); box-shadow: 0 10px 30px rgba(42,40,37,0.07); transform: translateY(-2px); }
-  .trust-icon {
-    width: 44px; height: 44px; border-radius: 12px; background: var(--blue-soft);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; margin-bottom: 18px;
-  }
-  .trust-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
-  .trust-card p { font-size: 15px; color: var(--muted); }
-  .trust-card .tag {
-    display: inline-block; margin-top: 16px; font-family: var(--mono);
-    font-size: 11.5px; color: var(--lime); background: var(--green-soft);
-    border: 1px solid rgba(101,163,13,0.25); padding: 4px 10px; border-radius: 6px;
-  }
+  /* founder */
+  #founder{border-top:1px solid var(--line);background:var(--paper2);}
+  .fdr{display:grid;grid-template-columns:180px 1fr;gap:40px;align-items:start;}
+  .fdr-photo{width:150px;height:150px;border-radius:14px;background:linear-gradient(150deg,#1f5f47,#0E9F6E);
+    display:flex;align-items:center;justify-content:center;position:relative;border:1px solid var(--line2);overflow:hidden;}
+  .fdr-photo .mono-init{font-family:var(--disp);font-size:52px;font-weight:600;color:#fff;}
+  .fdr h2{font-size:clamp(26px,3.2vw,34px);}
+  .fdr p{margin-top:16px;font-size:16.5px;color:var(--ink2);max-width:640px;line-height:1.62;}
+  .fdr .sig{margin-top:22px;font-family:var(--disp);font-size:18px;font-weight:600;}
+  .fdr .sig-sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:3px;}
+  .fdr .sig-sub a{color:var(--accent-dk);text-decoration:none;}
+  .cred{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}
+  .cred span{font-family:var(--mono);font-size:11px;color:var(--accent-dk);
+    background:rgba(14,159,110,.08);border:1px solid rgba(14,159,110,.25);border-radius:100px;padding:5px 12px;}
 
-  /* ── Honesty contract ────────────────────────────── */
-  #honesty { background: var(--card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .refuse-list { margin-top: 40px; display: flex; flex-direction: column; gap: 14px; max-width: 860px; }
-  .refuse-item {
-    display: flex; gap: 18px; align-items: flex-start;
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px 24px;
-  }
-  .refuse-id {
-    font-family: var(--mono); font-size: 12px; font-weight: 600;
-    color: var(--red); background: var(--red-soft);
-    border: 1px solid rgba(220,38,38,0.25); border-radius: 8px;
-    padding: 5px 10px; white-space: nowrap; flex-shrink: 0; margin-top: 2px;
-  }
-  .refuse-item h4 { font-size: 15.5px; font-weight: 600; margin-bottom: 4px; }
-  .refuse-item p { font-size: 14px; color: var(--muted); }
-  .honesty-close { margin-top: 30px; font-size: 16px; color: var(--muted); max-width: 720px; font-style: italic; }
+  /* final cta */
+  #cta-final{background:var(--ink);color:#fff;text-align:center;}
+  #cta-final h2{color:#fff;margin:0 auto;}
+  #cta-final p{color:rgba(237,237,233,.68);margin:16px auto 0;max-width:560px;font-size:17px;}
+  #cta-final .hero-cta{justify-content:center;margin-top:30px;}
 
-  /* ── Deliverables ────────────────────────────────── */
-  .deliver-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 40px; }
-  .deliver-item {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 20px; font-size: 14px; font-weight: 500;
-  }
-  .deliver-item span { display: block; font-family: var(--mono); font-size: 11px; color: var(--faint); margin-top: 6px; font-weight: 400; }
+  footer{border-top:1px solid var(--line);padding:34px 0;}
+  .foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);}
+  .foot a{color:var(--muted);text-decoration:none;}
+  .foot a:hover{color:var(--ink);}
+  .foot-links{display:flex;gap:20px;flex-wrap:wrap;}
 
-  /* ── Founder / CTA ───────────────────────────────── */
-  .founder {
-    margin-top: 44px; background: var(--card); border: 1px solid var(--border);
-    border-radius: 18px; padding: 36px; max-width: 760px;
-  }
-  .founder p { color: var(--muted); font-size: 16px; }
-  .founder .sig { margin-top: 20px; font-family: var(--serif); font-size: 18px; color: var(--ink); }
-  .founder .sig-sub { font-size: 13.5px; color: var(--faint); margin-top: 2px; }
+  .reveal{opacity:0;transform:translateY(20px);transition:opacity .55s ease,transform .55s ease;}
+  .reveal.in{opacity:1;transform:none;}
 
-  #cta-final { background: var(--ink); color: #fff; text-align: center; padding: 96px 0; }
-  #cta-final h2 { color: #fff; margin: 0 auto; }
-  #cta-final p { color: rgba(245,244,240,0.65); margin: 18px auto 0; max-width: 540px; font-size: 17px; }
-  #cta-final .hero-ctas { justify-content: center; }
-
-  footer { padding: 36px 0; border-top: 1px solid var(--border); }
-  .footer-inner { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .footer-brand { font-size: 14px; color: var(--muted); }
-  .footer-links { display: flex; gap: 20px; font-size: 14px; }
-  .footer-links a { color: var(--faint); text-decoration: none; }
-  .footer-links a:hover { color: var(--ink); }
-
-  /* Reveal on scroll */
-  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.6s ease, transform 0.6s ease; }
-  .reveal.in { opacity: 1; transform: none; }
-
-  @media (max-width: 860px) {
-    .nav-links a:not(.btn) { display: none; }
-    .pain-grid, .trust-grid { grid-template-columns: 1fr; }
-    .deliver-grid { grid-template-columns: repeat(2, 1fr); }
-    section { padding: 60px 0; }
-    .hero { padding: 56px 0 44px; }
+  @media(max-width:840px){
+    .nav-links a:not(.btn){display:none;}
+    .band-in{grid-template-columns:repeat(2,1fr);} .stat:nth-child(2){border-right:none;}
+    .ev-grid,.prod-row{grid-template-columns:1fr;} .prod-row.rev{direction:ltr;}
+    .deliver-grid{grid-template-columns:repeat(2,1fr);}
+    .fdr{grid-template-columns:1fr;}
+    section{padding:60px 0;}
   }
 </style>
 </head>
 <body>
 
-<nav>
-  <div class="nav-inner">
-    <a class="logo" href="#top">
-      <span class="logo-word">EVOLV</span>
-      <span class="logo-sub">The Validation Factory</span>
-    </a>
-    <div class="nav-links">
-      <a href="#how">Platform</a>
-      <a href="#screener">AI Screener</a>
-      <a href="#trust">Trust</a>
-      <a href="insights/index.html">Insights</a>
-      <a class="btn btn-ink btn-sm" id="nav-demo" href="#">Book a 15-min demo</a>
+<nav><div class="nav-in">
+  <a class="brand" href="#top"><b>EVOLV</b><span>The Validation Factory</span></a>
+  <div class="nav-links">
+    <a href="#evidence">Evidence</a>
+    <a href="#product">Platform</a>
+    <a href="#screener">AI Screener</a>
+    <a href="insights/index.html">Insights</a>
+    <a class="btn btn-ink btn-sm" id="nav-demo" href="#">Book a demo</a>
+  </div>
+</div></nav>
+
+<!-- HERO -->
+<header class="hero" id="top"><div class="wrap">
+  <div class="hero-spec lbl">
+    <span>GAMP 5</span><span>21 CFR Part 11</span><span>EU Annex 11</span>
+    <span>ICH Q9</span><span>FDA CSA</span>
+  </div>
+  <h1>AI drafts your validation.<br>Then <span class="g">proves</span> every
+  decision it made.</h1>
+  <p class="hero-sub">EVOLV runs the full GAMP&nbsp;5 lifecycle — AI drafts
+  requirements, risk, and tests; an independent agent verifies each one against
+  the regulatory corpus; every output is human-signed and re-derivable in an
+  inspection.</p>
+  <div class="hero-cta">
+    <a class="btn btn-ink" id="hero-demo" href="#">Book a 15-min demo →</a>
+    <a class="btn btn-line" href="#screener">Screen your AI use case</a>
+  </div>
+  <div class="hero-note">No customer logos here. Scroll for evidence instead.</div>
+</div></header>
+
+<!-- NUMBERS BAND -->
+<div class="band"><div class="wrap"><div class="band-in">
+  <div class="stat"><div class="n">253</div><div class="k">Requirements traced<br>end-to-end</div></div>
+  <div class="stat"><div class="n">136</div><div class="k">Deterministic evals<br>gating every change</div></div>
+  <div class="stat"><div class="n">90<em>+</em></div><div class="k">Adversarial scenarios<br>run continuously</div></div>
+  <div class="stat"><div class="n">10<em>/</em>10</div><div class="k">Security findings<br>closed</div></div>
+</div></div></div>
+
+<!-- EVIDENCE -->
+<section id="evidence"><div class="wrap">
+  <div class="seclbl reveal"><span class="num">01</span><span class="t">The credibility engine</span></div>
+  <p class="quote reveal">Every validation vendor shows you customer logos.
+  We're early — so we show you <em>the evidence</em> instead. It's the harder
+  thing to fake, and the only thing an inspector actually accepts.</p>
+  <div class="ev-grid reveal">
+    <div class="ev"><div class="k">Self-validation</div>
+      <h3>We validated EVOLV with EVOLV</h3>
+      <p>A signed 12-page validation package — Plan, IQ, OQ, and a 253-requirement
+      traceability matrix — generated by our own methodology, eval suite executed live.</p></div>
+    <div class="ev"><div class="k">Live screener</div>
+      <h3>Try to get past our refusals</h3>
+      <p>The five hard exclusion rules run in your browser. Type a use case; watch
+      it pass or get refused, with the regulation cited. No form, no call.</p></div>
+    <div class="ev"><div class="k">Chained audit trail</div>
+      <h3>Every AI decision, re-derivable</h3>
+      <p>Hash-chained logging plus a Logic Archive per decision. "Show me how the
+      AI decided that" has a literal, replayable answer.</p></div>
+    <div class="ev"><div class="k">Trusted evals</div>
+      <h3>Proven on every change, in the open</h3>
+      <p>136 deterministic checks gate CI on every push. When they find a hole in
+      our own rules — they have — we publish it.</p></div>
+  </div>
+</div></section>
+
+<!-- PRODUCT -->
+<section id="product"><div class="wrap">
+  <div class="seclbl reveal"><span class="num">02</span><span class="t">The platform</span></div>
+  <h2 class="reveal">One lifecycle. AI drafts the left arm. Humans sign every gate.</h2>
+  <p class="lead reveal">The GAMP&nbsp;5 V-model, run as a living system — from a
+  one-paragraph brief to a signed Validation Summary Report.</p>
+
+  <div class="vwrap reveal">
+    <svg viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:640px;">
+      <defs><linearGradient id="vg" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#0E9F6E"/><stop offset=".5" stop-color="#3B5BFF"/>
+        <stop offset="1" stop-color="#0E9F6E"/></linearGradient></defs>
+      <polyline id="vpath" points="70,50 180,95 290,140 400,185 500,185 610,140 720,95 830,50"
+        fill="none" stroke="url(#vg)" stroke-width="2.5" stroke-linecap="round"/>
+      <g font-family="IBM Plex Mono" font-size="11">
+        <circle cx="70" cy="50" r="6.5" fill="#fff" stroke="#0E9F6E" stroke-width="2.5"/>
+        <text x="70" y="32" text-anchor="middle" fill="#161618" font-weight="600">Plan</text>
+        <circle cx="180" cy="95" r="6.5" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
+        <text x="180" y="77" text-anchor="middle" fill="#161618" font-weight="600">Requirements</text>
+        <circle cx="290" cy="140" r="6.5" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
+        <text x="290" y="122" text-anchor="middle" fill="#161618" font-weight="600">Risk</text>
+        <circle cx="400" cy="185" r="6.5" fill="#fff" stroke="#0E9F6E" stroke-width="2.5"/>
+        <text x="400" y="207" text-anchor="middle" fill="#161618" font-weight="600">Design</text>
+        <circle cx="500" cy="185" r="6.5" fill="#fff" stroke="#0E9F6E" stroke-width="2.5"/>
+        <text x="500" y="207" text-anchor="middle" fill="#161618" font-weight="600">Verify</text>
+        <circle cx="610" cy="140" r="6.5" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
+        <text x="610" y="122" text-anchor="middle" fill="#161618" font-weight="600">Release</text>
+        <circle cx="720" cy="95" r="6.5" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
+        <text x="720" y="77" text-anchor="middle" fill="#161618" font-weight="600">Monitor</text>
+        <circle cx="830" cy="50" r="6.5" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
+        <text x="830" y="32" text-anchor="middle" fill="#161618" font-weight="600">Retire</text>
+      </g>
+    </svg>
+    <div class="v-caption">Paste a brief → <b>AI-drafted requirements with regulatory citations</b> →
+      risk-adaptive test scripts → executed runs with defect capture → <b>signed, inspection-ready PDFs</b>.</div>
+    <div class="v-legend">
+      <span><span class="dot" style="background:#0E9F6E"></span> AI drafts, human signs</span>
+      <span><span class="dot" style="background:#3B5BFF"></span> Human executes, AI assists</span>
     </div>
   </div>
-</nav>
 
-<!-- ── HERO ─────────────────────────────────────────── -->
-<header class="hero" id="top">
-  <div class="hero-blob blob-1"></div>
-  <div class="hero-blob blob-2"></div>
-  <div class="wrap">
-    <div class="eyebrow">GAMP 5 &middot; FDA CSA &middot; 21 CFR Part 11 &middot; EU Annex 11 &middot; FDA AI Guidance</div>
-    <h1>Computer System Validation, rebuilt for the AI&nbsp;era.</h1>
-    <p class="hero-sub">
-      EVOLV drafts your requirements, test scripts, and traceability in minutes —
-      then independently verifies every output against the GAMP&nbsp;5 corpus.
-      Every signature stays human. Every decision is inspectable by an auditor.
-    </p>
-    <div class="hero-ctas">
-      <a class="btn btn-ink" href="#screener">Screen your AI use case — 30 seconds</a>
-      <a class="btn btn-ghost" id="hero-demo" href="#">Book a 15-min demo</a>
-    </div>
-    <div style="margin-top: 14px;">
-      <a href="https://evolvplatform.streamlit.app/" target="_blank" rel="noopener"
-         style="font-size: 14.5px; color: var(--blue); text-decoration: none; font-weight: 500;">
-        or explore the live platform yourself →</a>
-    </div>
-    <div class="hero-proof">
-      <div class="proof-item"><span class="proof-num">90+</span><span class="proof-label">adversarial test scenarios, continuously run</span></div>
-      <div class="proof-item"><span class="proof-num">Every step</span><span class="proof-label">cites its regulation — 21 CFR 11, Annex 11, ICH Q9</span></div>
-      <div class="proof-item"><span class="proof-num">100%</span><span class="proof-label">of signatures human — enforced, not promised</span></div>
+  <div class="prod-row reveal">
+    <div class="frame"><div class="frame-bar"><i></i><i></i><i></i>
+      <span class="frame-url">app.evolifeval.com / lifecycle</span></div>
+      <img src="assets/platform-home.jpg" alt="EVOLV lifecycle view — live V-model progress for a LIMS migration" loading="lazy"></div>
+    <div class="cap">
+      <div class="k">Lifecycle</div>
+      <h3>The V-model, alive</h3>
+      <p>Every phase shows its real state — done, in-flight, or blocked. The living
+      traceability matrix updates itself as tests run and changes land, so
+      "are we still validated?" is a number, not a memory.</p>
     </div>
   </div>
-</header>
 
-<div class="framework-strip">
-  <div class="framework-inner">
-    <span>GAMP 5 Rev 2</span><span>21 CFR Part 11</span><span>EU GMP Annex 11</span>
-    <span>ICH Q9</span><span>FDA CSA Guidance</span><span>NIST AI RMF</span><span>ALCOA+</span>
-  </div>
-</div>
-
-<!-- ── PAIN ─────────────────────────────────────────── -->
-<section id="pain">
-  <div class="wrap">
-    <div class="section-eyebrow reveal">The problem</div>
-    <h2 class="reveal">Validation is the tax you pay on every system — and it's still done by hand.</h2>
-    <div class="pain-grid">
-      <div class="pain-card reveal">
-        <div class="num">Months</div>
-        <h3>of consultant authoring</h3>
-        <p>URS, FRs, risk assessments, OQ scripts, traceability matrices — written manually, per system, per change, per site.</p>
-      </div>
-      <div class="pain-card reveal">
-        <div class="num">Drift</div>
-        <h3>between docs and reality</h3>
-        <p>The day validation closes, the documents start aging. Change requests pile up and nobody knows what's still in a validated state.</p>
-      </div>
-      <div class="pain-card reveal">
-        <div class="num">One</div>
-        <h3>bad finding is all it takes</h3>
-        <p>Generic AI tools can't survive an inspection. If the auditor can't re-derive the reasoning, the output is a liability, not an asset.</p>
-      </div>
+  <div class="prod-row rev reveal">
+    <div class="frame"><div class="frame-bar"><i></i><i></i><i></i>
+      <span class="frame-url">app.evolifeval.com / dev-portal / trusted-evals</span></div>
+      <img src="assets/platform-evals.jpg" alt="EVOLV Trusted Evals — 136 of 136 deterministic checks passing" loading="lazy"></div>
+    <div class="cap">
+      <div class="k">Proof, on demand</div>
+      <h3>Run the eval suite yourself</h3>
+      <p>Every specialist function has a standing test set that gates CI on every
+      push. Run all 136 from the Dev Portal, or bring your own golden set and test
+      us on your requirements — same engine, same report.</p>
     </div>
   </div>
-</section>
+</div></section>
 
-<!-- ── SCREENER ─────────────────────────────────────── -->
-<section id="screener">
-  <div class="wrap">
-    <div class="section-eyebrow reveal">Live &middot; runs in your browser</div>
-    <h2 class="reveal">Screen your AI use case in 30 seconds.</h2>
-    <p class="section-sub reveal">
-      Describe how you want to use AI in your GxP environment. This runs the same
-      five hard-exclusion rules our Bounded Autonomy Profile engine applies —
-      deterministic, no data leaves this page.
-    </p>
-    <div class="screener-card reveal">
-      <label>Your AI use case</label>
-      <textarea id="cou-input" placeholder="e.g. AI drafts OQ test scripts for our LIMS; QA reviews and signs each script before it enters Veeva Vault…"></textarea>
-      <div class="chip-row">
-        <button class="chip" data-fill="AI drafts test scripts for our LIMS; QA reviews and signs each one before it enters the validated record.">AI drafts, QA signs</button>
-        <button class="chip" data-fill="AI signs the electronic signature on approved documents to speed up review cycles.">AI signs e-signatures</button>
-        <button class="chip" data-fill="AI automatically releases each batch once in-process checks pass.">AI releases batches</button>
-        <button class="chip" data-fill="AI closes CAPAs automatically when the linked fix is verified.">AI closes CAPAs</button>
-        <button class="chip" data-fill="AI updates validated records directly to remove review bottlenecks.">AI edits validated records</button>
-      </div>
-      <div class="screener-actions">
-        <button class="btn btn-lime" id="screen-btn">Run the screen</button>
-        <span class="screener-note">Deterministic rules &middot; nothing is sent to a server</span>
-      </div>
+<!-- SCREENER -->
+<section id="screener"><div class="wrap">
+  <div class="seclbl reveal"><span class="num">03</span><span class="t">Live · runs in your browser</span></div>
+  <h2 class="reveal">Screen your AI use case in 30 seconds.</h2>
+  <p class="lead reveal">Describe how you want to use AI in your GxP environment.
+  This runs the same five hard-exclusion rules our Bounded Autonomy Profile engine
+  applies — deterministic, no data leaves this page.</p>
+  <div class="sc-card reveal">
+    <label>Your AI use case</label>
+    <textarea id="cou-input" placeholder="e.g. AI drafts OQ test scripts for our LIMS; QA reviews and signs each script before it enters Veeva Vault…"></textarea>
+    <div class="chip-row">
+      <button class="chip" data-fill="AI drafts test scripts for our LIMS; QA reviews and signs each one before it enters the validated record.">AI drafts, QA signs</button>
+      <button class="chip" data-fill="AI signs the electronic signature on approved documents to speed up review cycles.">AI signs e-signatures</button>
+      <button class="chip" data-fill="AI automatically releases each batch once in-process checks pass.">AI releases batches</button>
+      <button class="chip" data-fill="AI closes CAPAs automatically when the linked fix is verified.">AI closes CAPAs</button>
+      <button class="chip" data-fill="AI updates validated records directly to remove review bottlenecks.">AI edits validated records</button>
+    </div>
+    <div class="screener-actions">
+      <button class="btn btn-accent" id="screen-btn">Run the screen</button>
+      <span class="screener-note">Deterministic rules · nothing is sent to a server</span>
+    </div>
 
-      <!-- BAP-X verdict -->
-      <div class="verdict verdict-x" id="verdict-x">
-        <span class="verdict-badge badge-x">⛔ BAP-X — OUT OF ENVELOPE</span>
-        <h3 id="x-violation"></h3>
-        <p id="x-why"></p>
-        <div class="cite" id="x-cite"></div>
-        <p style="margin-top:16px;">
-          This isn't a "needs more controls" verdict — it's a shape problem. No tier of
-          paperwork rescues it. The good news: most excluded use cases have a nearby
-          <b style="color:#fff;">re-scoped shape that works</b> (AI proposes, human signs).
-          We'll show you that path.
-        </p>
+    <div class="verdict verdict-x" id="verdict-x">
+      <span class="verdict-badge badge-x">⛔ BAP-X — OUT OF ENVELOPE</span>
+      <h3 id="x-violation"></h3>
+      <p id="x-why"></p>
+      <div class="cite" id="x-cite"></div>
+      <p style="margin-top:16px;">This isn't a "needs more controls" verdict — it's a shape
+      problem. No tier of paperwork rescues it. The good news: most excluded use cases have a
+      nearby <b style="color:#fff;">re-scoped shape that works</b> (AI proposes, human signs).</p>
+      <div class="verdict-cta">
+        <a class="btn btn-accent" id="x-email" href="#">Email us this result — get the re-scope path</a>
+      </div>
+    </div>
+
+    <div class="verdict verdict-pass" id="verdict-pass">
+      <span class="verdict-badge badge-pass">✓ NO STRUCTURAL EXCLUSION</span>
+      <h3>Your use case clears the five hard-exclusion rules.</h3>
+      <p>Now the interesting question — which assurance tier does it need? Pick the closest description:</p>
+      <div class="tier-pick">
+        <select id="tier-select">
+          <option value="">— Where does the AI's output land? —</option>
+          <option value="BAP-0">Internal productivity only — never enters a validated workflow</option>
+          <option value="BAP-1">Informs a human, but nothing enters the validated record</option>
+          <option value="BAP-2">Drafts artefacts that a qualified human signs into the record</option>
+          <option value="BAP-3">Influences a quality decision that a human makes</option>
+          <option value="BAP-4">Takes reversible action autonomously inside a fixed envelope</option>
+        </select>
+      </div>
+      <div class="tier-result" id="tier-result">
+        <span class="tier-badge" id="tier-badge"></span>
+        <h3 id="tier-name"></h3>
+        <p id="tier-summary"></p>
+        <div class="cite" id="tier-examples"></div>
         <div class="verdict-cta">
-          <a class="btn btn-lime" id="x-email" href="#">Email us this result — get the re-scope path</a>
-        </div>
-      </div>
-
-      <!-- Pass verdict -->
-      <div class="verdict verdict-pass" id="verdict-pass">
-        <span class="verdict-badge badge-pass">✓ NO STRUCTURAL EXCLUSION</span>
-        <h3>Your use case clears the five hard-exclusion rules.</h3>
-        <p>Now the interesting question — which assurance tier does it need? Pick the closest description:</p>
-        <div class="tier-pick">
-          <select id="tier-select">
-            <option value="">— Where does the AI's output land? —</option>
-            <option value="BAP-0">Internal productivity only — never enters a validated workflow</option>
-            <option value="BAP-1">Informs a human, but nothing enters the validated record</option>
-            <option value="BAP-2">Drafts artefacts that a qualified human signs into the record</option>
-            <option value="BAP-3">Influences a quality decision that a human makes</option>
-            <option value="BAP-4">Takes reversible action autonomously inside a fixed envelope</option>
-          </select>
-        </div>
-        <div class="tier-result" id="tier-result">
-          <span class="tier-badge" id="tier-badge"></span>
-          <h3 id="tier-name"></h3>
-          <p id="tier-summary"></p>
-          <div class="cite" id="tier-examples"></div>
-          <div class="verdict-cta">
-            <a class="btn btn-lime" id="tier-email" href="#">Get the full signed BAP assessment →</a>
-            <span class="screener-note">Signed PDF &middot; tier-graduated control catalogue &middot; fragility markers</span>
-          </div>
+          <a class="btn btn-accent" id="tier-email" href="#">Get the full signed BAP assessment →</a>
+          <span class="screener-note">Signed PDF · tier-graduated controls · fragility markers</span>
         </div>
       </div>
     </div>
   </div>
-</section>
+</div></section>
 
-<!-- ── HOW IT WORKS ─────────────────────────────────── -->
-<section id="how">
-  <div class="wrap">
-    <div class="section-eyebrow reveal">The platform</div>
-    <h2 class="reveal">One lifecycle. AI drafts the left arm. Humans sign every gate.</h2>
-    <p class="section-sub reveal">
-      EVOLV runs the full GAMP 5 V-model as a living system — from a one-paragraph
-      brief to a signed Validation Summary Report, with a traceability matrix that
-      updates itself as tests run and changes land.
-    </p>
-    <div class="vmodel-box reveal">
-      <svg viewBox="0 0 900 270" xmlns="http://www.w3.org/2000/svg" style="width:100%; min-width:640px;">
-        <defs>
-          <linearGradient id="vgrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#3B5BFF"/>
-            <stop offset="50%" stop-color="#65A30D"/>
-            <stop offset="100%" stop-color="#3B5BFF"/>
-          </linearGradient>
-        </defs>
-        <polyline id="vpath" points="70,50 180,100 290,150 400,200 500,200 610,150 720,100 830,50"
-          fill="none" stroke="url(#vgrad)" stroke-width="2.5" stroke-linecap="round"/>
-        <!-- nodes -->
-        <g id="vnodes" font-family="Inter, sans-serif">
-          <circle cx="70" cy="50" r="7" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
-          <text x="70" y="28" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Plan</text>
-          <text x="70" y="76" text-anchor="middle" font-size="10.5" fill="#8A867C">templates + frameworks</text>
+<!-- HONESTY -->
+<section id="honesty" style="border-top:1px solid var(--line);"><div class="wrap">
+  <div class="seclbl reveal"><span class="num">04</span><span class="t">The honesty contract</span></div>
+  <h2 class="reveal">Five deployments we refuse. Regardless of revenue.</h2>
+  <p class="lead reveal">Reading this list is the fastest way to understand how EVOLV
+  treats risk. These are structural exclusions — no amount of controls rescues them.</p>
+  <div class="refuse-list">
+    <div class="refuse-item reveal"><span class="refuse-id">EX-1</span>
+      <div><h4>AI executes an electronic signature</h4>
+      <p>21 CFR Part 11 §11.50 binds a signature to a named human. An AI cannot be the named signatory.</p></div></div>
+    <div class="refuse-item reveal"><span class="refuse-id">EX-2</span>
+      <div><h4>AI releases a batch or lot autonomously</h4>
+      <p>Batch release is a Qualified Person responsibility under GMP. It cannot be delegated to an AI in any shape.</p></div></div>
+    <div class="refuse-item reveal"><span class="refuse-id">EX-3</span>
+      <div><h4>AI closes a CAPA or deviation on its own</h4>
+      <p>CAPA closure requires independent review and effectiveness assessment under 21 CFR §820.100.</p></div></div>
+    <div class="refuse-item reveal"><span class="refuse-id">EX-4</span>
+      <div><h4>AI makes a clinical decision affecting a patient</h4>
+      <p>That's FDA SaMD territory — a different product with a different regulatory pathway. Not ours.</p></div></div>
+    <div class="refuse-item reveal"><span class="refuse-id">EX-5</span>
+      <div><h4>AI writes to a validated record without a human gate</h4>
+      <p>Every modification to a controlled record carries an accountable signature — 21 CFR §11.10(e).</p></div></div>
+  </div>
+  <p class="honesty-close reveal">A vendor who never says no to your use case isn't assessing it.
+  The exclusion rules run live in the screener above — try to get past them.</p>
+</div></section>
 
-          <circle cx="180" cy="100" r="7" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
-          <text x="180" y="78" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Requirements</text>
-          <text x="180" y="126" text-anchor="middle" font-size="10.5" fill="#8A867C">AI drafts UR / FR</text>
+<!-- DELIVERABLES -->
+<section id="deliverables" style="padding-top:0;"><div class="wrap">
+  <div class="seclbl reveal"><span class="num">05</span><span class="t">What lands on your desk</span></div>
+  <h2 class="reveal">Inspection-ready artefacts, signed and versioned.</h2>
+  <div class="deliver-grid reveal">
+    <div class="deliver-item">Validation Plan<span>Phase-1 PDF, signed</span></div>
+    <div class="deliver-item">URS / UR / FR<span>with regulatory rationale</span></div>
+    <div class="deliver-item">Risk Assessments<span>GAMP 5 + CSA matrices</span></div>
+    <div class="deliver-item">Test Scripts<span>per-step citations</span></div>
+    <div class="deliver-item">Design Specification<span>traceability included</span></div>
+    <div class="deliver-item">Validation Summary<span>Phase-6 closing PDF</span></div>
+    <div class="deliver-item">Traceability Matrix<span>UR → test → defect → release</span></div>
+    <div class="deliver-item">Audit Trail Export<span>filtered, signed, chained</span></div>
+  </div>
+</div></section>
 
-          <circle cx="290" cy="150" r="7" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
-          <text x="290" y="128" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Risk</text>
-          <text x="290" y="176" text-anchor="middle" font-size="10.5" fill="#8A867C">deterministic matrix</text>
-
-          <circle cx="400" cy="200" r="7" fill="#fff" stroke="#65A30D" stroke-width="2.5"/>
-          <text x="400" y="232" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Design</text>
-          <text x="400" y="248" text-anchor="middle" font-size="10.5" fill="#8A867C">test bundles + citations</text>
-
-          <circle cx="500" cy="200" r="7" fill="#fff" stroke="#65A30D" stroke-width="2.5"/>
-          <text x="500" y="232" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Verify</text>
-          <text x="500" y="248" text-anchor="middle" font-size="10.5" fill="#8A867C">execution + ALCOA+</text>
-
-          <circle cx="610" cy="150" r="7" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
-          <text x="610" y="128" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Release</text>
-          <text x="610" y="176" text-anchor="middle" font-size="10.5" fill="#8A867C">signed VSR</text>
-
-          <circle cx="720" cy="100" r="7" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
-          <text x="720" y="78" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Monitor</text>
-          <text x="720" y="126" text-anchor="middle" font-size="10.5" fill="#8A867C">AI change impact</text>
-
-          <circle cx="830" cy="50" r="7" fill="#fff" stroke="#3B5BFF" stroke-width="2.5"/>
-          <text x="830" y="28" text-anchor="middle" font-size="13" font-weight="600" fill="#2A2825">Retire</text>
-          <text x="830" y="76" text-anchor="middle" font-size="10.5" fill="#8A867C">controlled exit</text>
-        </g>
-      </svg>
-      <div class="v-caption">
-        Paste a one-paragraph brief → <b>AI-drafted requirements with regulatory citations</b> →
-        risk-adaptive test scripts → executed runs with defect capture →
-        <b>signed, inspection-ready PDFs</b>. The traceability matrix stays live the whole way.
+<!-- FOUNDER -->
+<section id="founder"><div class="wrap">
+  <div class="seclbl reveal"><span class="num">06</span><span class="t">Who built this</span></div>
+  <div class="fdr reveal">
+    <div><div class="fdr-photo">
+      <span class="mono-init">SK</span>
+      <img src="assets/sree.jpg" alt="Sreejith Kanhirangadan, founder of EVOLV"
+        onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+    </div></div>
+    <div>
+      <h2>Built by a practitioner. Not a holding company.</h2>
+      <p>Most validation software is built by people who left the industry years ago — or by
+      companies where nobody writing the code has ever sat through an inspection. I'm not that.</p>
+      <p><strong>I still do CSV.</strong> I've used ValGenesis, Kneat, Veeva, Polarion — and hit
+      the wall each one leaves you at. I've worked across big pharma, mid-size, and startups, so
+      I've seen the whole landscape, not one corner of it. And I've taught it:
+      <strong>11 courses, 10,000+ CSV professionals</strong> across the globe.</p>
+      <p>I built EVOLV because I wanted the tool I kept wishing existed — fast <em>and</em>
+      defensible, built as if the auditor is the most important person in the room. Not a headless
+      product. If you want to know why it works the way it does, the answer is simple: because
+      I've had to defend this work myself.</p>
+      <div class="cred">
+        <span>Still practicing CSV</span><span>big pharma → startup</span>
+        <span>11 courses</span><span>10,000+ professionals taught</span>
       </div>
-      <div class="legend">
-        <span><span class="dot" style="background:#3B5BFF"></span> AI drafts, human signs</span>
-        <span><span class="dot" style="background:#65A30D"></span> Human executes, AI assists</span>
-      </div>
+      <div class="sig">Sreejith Kanhirangadan</div>
+      <div class="sig-sub">Founder, EVOLV ·
+        <a href="https://linkedin.com/in/sreejith-kanhirangadan-csv-advisor" target="_blank" rel="noopener">LinkedIn</a>
+        · sreejith@evolifeval.com</div>
     </div>
   </div>
-</section>
+</div></section>
 
-<!-- ── BUILT FOR ────────────────────────────────────── -->
-<section id="personas" style="padding-top: 0;">
-  <div class="wrap">
-    <div class="section-eyebrow reveal">Built for</div>
-    <h2 class="reveal">Three people have to say yes. EVOLV answers each one.</h2>
-    <div class="pain-grid">
-      <div class="pain-card reveal">
-        <div class="section-eyebrow" style="margin-bottom:8px;">QA Head / CSV Manager</div>
-        <h3>"Will this survive my next inspection?"</h3>
-        <p>Every AI output is independently verified, hash-chained, and signed by your people. The Logic Archive lets an inspector replay any decision. You stay the signatory — EVOLV just removes the authoring grind.</p>
-      </div>
-      <div class="pain-card reveal">
-        <div class="section-eyebrow" style="margin-bottom:8px;">VP Regulatory Affairs</div>
-        <h3>"Which frameworks does it actually track?"</h3>
-        <p>GAMP 5 Rev 2, 21 CFR Part 11, EU Annex 11, ICH Q9, FDA CSA — cited per requirement and per test step, with version detection when guidance changes underneath you.</p>
-      </div>
-      <div class="pain-card reveal">
-        <div class="section-eyebrow" style="margin-bottom:8px;">CTO / CDO</div>
-        <h3>"How do I govern AI in GxP at all?"</h3>
-        <p>The Bounded Autonomy Profile gives every AI deployment a tier, a control catalogue, and hard exclusions. It's the governance framework your AI strategy is missing — validation is where it starts.</p>
-      </div>
-    </div>
+<!-- FINAL CTA -->
+<section id="cta-final"><div class="wrap">
+  <h2>See your first verified requirement in 15 minutes.</h2>
+  <p>Bring one real requirement from your current validation backlog. We'll draft it,
+  verify it, risk-rank it, and hand you the signed PDF — live.</p>
+  <div class="hero-cta">
+    <a class="btn btn-accent" id="final-demo" href="#">Book a 15-min demo →</a>
+    <a class="btn btn-line" style="color:#fff;border-color:rgba(255,255,255,.3);" href="https://evolvplatform.streamlit.app/" target="_blank" rel="noopener">Try the live platform</a>
   </div>
-</section>
+</div></section>
 
-<!-- ── TRUST ────────────────────────────────────────── -->
-<section id="trust" style="padding-top: 0;">
-  <div class="wrap">
-    <div class="section-eyebrow reveal">Why auditors accept it</div>
-    <h2 class="reveal">Bounded autonomy, not blind trust.</h2>
-    <p class="section-sub reveal">
-      Most AI tools ask your QA team to trust a black box. EVOLV is built so
-      nobody has to trust anything — every claim below is verifiable in the product.
-    </p>
-    <div class="trust-grid">
-      <div class="trust-card reveal">
-        <div class="trust-icon">🛂</div>
-        <h3>Agent Passports</h3>
-        <p>Every AI agent carries a machine-readable permission envelope: allowed actions, forbidden actions, data classifications, and which outputs require human sign-off. Malformed passports crash the server rather than serve bad data.</p>
-        <span class="tag">Inspectable via API</span>
-      </div>
-      <div class="trust-card reveal">
-        <div class="trust-icon">⚖️</div>
-        <h3>Independent Verification</h3>
-        <p>A separate verification agent checks every AI draft against the GAMP 5 regulatory corpus — criticality alignment, rationale relevance, contradiction scan. Non-compliant drafts are rejected and logged as compliance exceptions.</p>
-        <span class="tag">Rejections are audit events</span>
-      </div>
-      <div class="trust-card reveal">
-        <div class="trust-icon">🔗</div>
-        <h3>Logic Archives</h3>
-        <p>Every AI decision writes its full reasoning chain — inputs, steps, outputs — hash-linked (SHA-256) to a tamper-evident audit trail. An inspector can re-derive any decision from its inputs alone.</p>
-        <span class="tag">21 CFR Part 11 audit trail</span>
-      </div>
-      <div class="trust-card reveal">
-        <div class="trust-icon">✍️</div>
-        <h3>Human Signature Gates</h3>
-        <p>Phase completion, change control, release go-live — every irreversible step gates on a named human signature with a Manifestation of Signature page. The AI proposes; it never has the last word.</p>
-        <span class="tag">Enforced in the passport layer</span>
-      </div>
-    </div>
+<footer><div class="wrap foot">
+  <div>Powered by EVOLV | A WingstarTech Inc. Product · © 2026</div>
+  <div class="foot-links">
+    <a href="mailto:sreejith@evolifeval.com">sreejith@evolifeval.com</a>
+    <a href="insights/index.html">Insights</a>
+    <a href="https://linkedin.com/in/sreejith-kanhirangadan-csv-advisor" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="roi.html">ROI calculator</a>
   </div>
-</section>
-
-<!-- ── HONESTY CONTRACT ─────────────────────────────── -->
-<section id="honesty">
-  <div class="wrap">
-    <div class="section-eyebrow reveal">The honesty contract</div>
-    <h2 class="reveal">Five deployments we refuse. Regardless of revenue.</h2>
-    <p class="section-sub reveal">
-      Reading this list is the fastest way to understand how EVOLV treats risk.
-      These are structural exclusions — no amount of controls rescues them.
-    </p>
-    <div class="refuse-list">
-      <div class="refuse-item reveal">
-        <span class="refuse-id">EX-1</span>
-        <div><h4>AI executes an electronic signature</h4>
-        <p>21 CFR Part 11 §11.50 binds a signature to a named human. An AI cannot be the named signatory.</p></div>
-      </div>
-      <div class="refuse-item reveal">
-        <span class="refuse-id">EX-2</span>
-        <div><h4>AI releases a batch or lot autonomously</h4>
-        <p>Batch release is a Qualified Person responsibility under GMP. It cannot be delegated to an AI in any shape.</p></div>
-      </div>
-      <div class="refuse-item reveal">
-        <span class="refuse-id">EX-3</span>
-        <div><h4>AI closes a CAPA or deviation on its own</h4>
-        <p>CAPA closure requires independent review and effectiveness assessment under 21 CFR §820.100.</p></div>
-      </div>
-      <div class="refuse-item reveal">
-        <span class="refuse-id">EX-4</span>
-        <div><h4>AI makes a clinical decision affecting a patient</h4>
-        <p>That's FDA SaMD territory — a different product with a different regulatory pathway. Not ours.</p></div>
-      </div>
-      <div class="refuse-item reveal">
-        <span class="refuse-id">EX-5</span>
-        <div><h4>AI writes to a validated record without a human gate</h4>
-        <p>Every modification to a controlled record carries an accountable signature — 21 CFR §11.10(e).</p></div>
-      </div>
-    </div>
-    <p class="honesty-close reveal">
-      A vendor who never says no to your use case isn't assessing it.
-      The exclusion rules run live in the screener above — try to get past them.
-    </p>
-  </div>
-</section>
-
-<!-- ── DELIVERABLES ─────────────────────────────────── -->
-<section id="deliverables">
-  <div class="wrap">
-    <div class="section-eyebrow reveal">What lands on your desk</div>
-    <h2 class="reveal">Inspection-ready artefacts, signed and versioned.</h2>
-    <div class="deliver-grid">
-      <div class="deliver-item reveal">Validation Plan<span>Phase-1 PDF, signed</span></div>
-      <div class="deliver-item reveal">URS / UR / FR<span>with regulatory rationale</span></div>
-      <div class="deliver-item reveal">Risk Assessments<span>GAMP 5 + CSA matrices</span></div>
-      <div class="deliver-item reveal">Test Scripts<span>per-step citations</span></div>
-      <div class="deliver-item reveal">Design Specification<span>traceability included</span></div>
-      <div class="deliver-item reveal">Validation Summary<span>Phase-6 closing PDF</span></div>
-      <div class="deliver-item reveal">Living Traceability Matrix<span>UR → test → defect → release</span></div>
-      <div class="deliver-item reveal">Audit Trail Export<span>filtered, signed, chained</span></div>
-    </div>
-    <div class="trust-grid" style="margin-top: 44px;">
-      <div class="trust-card reveal">
-        <p style="font-style: italic; font-size: 15.5px;">
-          "With every project you worked on, you went over and above what was
-          asked for, and your attitude was always positive, bright, and inspiring."
-        </p>
-        <p style="margin-top: 14px; font-size: 13.5px; color: var(--faint);">
-          — Director, IT CSV &middot; on working with EVOLV's founder</p>
-      </div>
-      <div class="trust-card reveal">
-        <p style="font-style: italic; font-size: 15.5px;">
-          "You were such an integral part of our successes. You made my job
-          easier just knowing I had your support along the way."
-        </p>
-        <p style="margin-top: 14px; font-size: 13.5px; color: var(--faint);">
-          — Sr Manager, GxP Global Quality Systems &middot; on working with EVOLV's founder</p>
-      </div>
-    </div>
-    <div class="founder reveal">
-      <p>
-        "I built EVOLV because validation deserves better than choosing between
-        speed and defensibility. Every design decision starts from one question:
-        <i>will this survive an inspector asking 'show me how the AI decided that'?</i>
-        If your QA team wants to try to break it, I'd genuinely love that meeting."
-      </p>
-      <div class="sig">Sree</div>
-      <div class="sig-sub">Founder, EVOLV — WingstarTech Inc. &middot;
-        <a href="https://linkedin.com/in/sreejith-kanhirangadan-csv-advisor" target="_blank" rel="noopener" style="color: var(--blue); text-decoration: none;">LinkedIn</a>
-        &middot; sreejith@evolifeval.com</div>
-    </div>
-  </div>
-</section>
-
-<!-- ── FINAL CTA ────────────────────────────────────── -->
-<section id="cta-final">
-  <div class="wrap">
-    <h2>See your first verified requirement in 15 minutes.</h2>
-    <p>Bring one real requirement from your current validation backlog.
-       We'll draft it, verify it, risk-rank it, and hand you the signed PDF — live.</p>
-    <div class="hero-ctas" style="margin-top: 32px;">
-      <a class="btn btn-lime" id="final-demo" href="#">Book a 15-min demo</a>
-      <a class="btn btn-ghost" style="color:#fff; border-color: rgba(255,255,255,0.3);" href="https://evolvplatform.streamlit.app/" target="_blank" rel="noopener">Try the live platform</a>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div class="wrap footer-inner">
-    <div class="footer-brand">Powered by EVOLV | A WingstarTech Inc. Product &middot; © 2026</div>
-    <div class="footer-links">
-      <a href="mailto:sreejith@evolifeval.com">sreejith@evolifeval.com</a>
-      <a href="https://linkedin.com/in/sreejith-kanhirangadan-csv-advisor" target="_blank" rel="noopener">LinkedIn</a>
-      <a href="https://evolvplatform.streamlit.app/" target="_blank" rel="noopener">Live demo</a>
-      <a href="roi.html">ROI calculator</a>
-    </div>
-  </div>
-</footer>
+</div></footer>
 
 <script>
 /* ── Contact CTAs (prefilled mailto) ─────────────────────────── */
 const EMAIL = 'sreejith@evolifeval.com';
-function mailto(subject, body) {
-  return 'mailto:' + EMAIL +
-    '?subject=' + encodeURIComponent(subject) +
-    '&body=' + encodeURIComponent(body);
+function mailto(subject, body){
+  return 'mailto:'+EMAIL+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
 }
-const demoHref = mailto(
-  'EVOLV — 15-min demo request',
-  'Hi Sree,\n\nI\'d like to see EVOLV live. Here\'s a requirement from our backlog we could use:\n\n[paste one requirement]\n\nSystem type (LIMS / eQMS / MES / CTMS / other):\nBest times this week:\n'
-);
-['nav-demo','hero-demo','final-demo'].forEach(id => {
-  document.getElementById(id).href = demoHref;
-});
+const demoHref = mailto('EVOLV — 15-min demo request',
+  'Hi Sree,\n\nI\'d like to see EVOLV live. Here\'s a requirement from our backlog we could use:\n\n[paste one requirement]\n\nSystem type (LIMS / eQMS / MES / CTMS / other):\nBest times this week:\n');
+['nav-demo','hero-demo','final-demo'].forEach(id=>{document.getElementById(id).href=demoHref;});
 
-/* ── BAP hard-exclusion rules ────────────────────────────────
-   Client-side port of the same five rules the EVOLV Bounded
-   Autonomy Profile engine runs (Agents/bounded_autonomy_profile.py).
-   Deterministic — no data leaves the page. */
-const EXCLUSION_RULES = [
-  {
-    id: 'EX-1-SIGN',
-    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(sign|signs|signing|signed|authorize|authorizes|authorizing|authorized|authorise|authorises|authorising|authorised|puts?|places?|placing|apply|applies|applying)\b[^.;|]*?(electronic signature|e-signature|approval signature|manifestation of signature|digital signature|approvals?\b|signatures?\b)/i,
-    violation: 'AI executes an electronic signature',
-    why: '21 CFR Part 11 §11.50 binds an electronic signature to a named human. An AI cannot be the named signatory.'
-  },
-  {
-    id: 'EX-2-RELEASE',
-    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(release|releases|releasing|released|approve|approves|approving|approved|authorization|authorizes? release|authorises? release)\b[^.;|]*?(batch|lot|product|manufacturing)/i,
-    violation: 'AI releases a batch / lot autonomously',
-    why: 'Batch / lot release is a Qualified Person (QP) responsibility under GMP. It cannot be delegated to an AI in any shape.'
-  },
-  {
-    id: 'EX-3-CAPA',
-    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(close|closes|closing|closed|resolve|resolves|resolving|resolved|marks? complete|closes? out|signs? off|signing off|signed off)\b[^.;|]*?(capa|deviation|complaint|investigation|effectiveness)/i,
-    violation: 'AI closes a CAPA / deviation autonomously',
-    why: 'CAPA closure requires independent review and effectiveness assessment under 21 CFR Part 820 §820.100.'
-  },
-  {
-    id: 'EX-4-CLINICAL',
-    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(diagnose|diagnoses|diagnosed|diagnosing|prescribe|prescribes|prescribed|prescribing|dose|dosing|dosed|dosage|calculates? dosing|sets? dosing|makes? treatment|recommends? treatment|recommended treatment|recommending treatment|makes? clinical decisions?|determines? therapy|clinical decision|clinical judgment|patient decision)/i,
-    violation: 'AI makes a clinical decision affecting a patient',
-    why: 'Direct clinical decision-making is FDA SaMD territory — a different product with a different regulatory pathway.'
-  },
-  {
-    id: 'EX-5-VALIDATED-WRITE',
-    pattern: /\b(?:ai|llm|model)\b[^.;|]*?\b(modify|modifies|modified|modifying|alter|alters|altered|altering|update|updates|updated|updating|writes? to|written to|persist|persists|persisted|auto-corrects?|corrects?)\b[^.;|]*?(validated record|gxp record|controlled document|controlled records|batch record|validated records)(?![^.;|]*?(?:after|\bwith\b|requires?|prior to)[^.;|]*?(?:human|review|sign-?off|signature|approval|qa))/i,
-    violation: 'AI writes directly to a validated record without a human signature gate',
-    why: '21 CFR Part 11 §11.10(e) requires that every modification to a controlled record carries an accountable signature.'
-  }
+/* ── BAP hard-exclusion rules (mirror of the engine) ─────────── */
+const EXCLUSION_RULES=[
+  {id:'EX-1-SIGN',pattern:/\b(?:ai|llm|model)\b[^.;|]*?\b(sign|signs|signing|signed|authorize|authorizes|authorizing|authorized|authorise|authorises|authorising|authorised|puts?|places?|placing|apply|applies|applying)\b[^.;|]*?(electronic signature|e-signature|approval signature|manifestation of signature|digital signature|approvals?\b|signatures?\b)/i,
+   violation:'AI executes an electronic signature',
+   why:'21 CFR Part 11 §11.50 binds an electronic signature to a named human. An AI cannot be the named signatory.'},
+  {id:'EX-2-RELEASE',pattern:/\b(?:ai|llm|model)\b[^.;|]*?\b(release|releases|releasing|released|approve|approves|approving|approved|authorization|authorizes? release|authorises? release)\b[^.;|]*?(batch|lot|product|manufacturing)/i,
+   violation:'AI releases a batch / lot autonomously',
+   why:'Batch / lot release is a Qualified Person (QP) responsibility under GMP. It cannot be delegated to an AI in any shape.'},
+  {id:'EX-3-CAPA',pattern:/\b(?:ai|llm|model)\b[^.;|]*?\b(close|closes|closing|closed|resolve|resolves|resolving|resolved|marks? complete|closes? out|signs? off|signing off|signed off)\b[^.;|]*?(capa|deviation|complaint|investigation|effectiveness)/i,
+   violation:'AI closes a CAPA / deviation autonomously',
+   why:'CAPA closure requires independent review and effectiveness assessment under 21 CFR Part 820 §820.100.'},
+  {id:'EX-4-CLINICAL',pattern:/\b(?:ai|llm|model)\b[^.;|]*?\b(diagnose|diagnoses|diagnosed|diagnosing|prescribe|prescribes|prescribed|prescribing|dose|dosing|dosed|dosage|calculates? dosing|sets? dosing|makes? treatment|recommends? treatment|recommended treatment|recommending treatment|makes? clinical decisions?|determines? therapy|clinical decision|clinical judgment|patient decision)/i,
+   violation:'AI makes a clinical decision affecting a patient',
+   why:'Direct clinical decision-making is FDA SaMD territory — a different product with a different regulatory pathway.'},
+  {id:'EX-5-VALIDATED-WRITE',pattern:/\b(?:ai|llm|model)\b[^.;|]*?\b(modify|modifies|modified|modifying|alter|alters|altered|altering|update|updates|updated|updating|writes? to|written to|persist|persists|persisted|auto-corrects?|corrects?)\b[^.;|]*?(validated record|gxp record|controlled document|controlled records|batch record|validated records)(?![^.;|]*?(?:after|\bwith\b|requires?|prior to)[^.;|]*?(?:human|review|sign-?off|signature|approval|qa))/i,
+   violation:'AI writes directly to a validated record without a human signature gate',
+   why:'21 CFR Part 11 §11.10(e) requires that every modification to a controlled record carries an accountable signature.'}
 ];
-
-const BAP_TIERS = {
-  'BAP-0': { name: 'Productivity', color: '#9CA3AF',
-    summary: 'Non-GxP productivity use. Output never enters a validated workflow; no quality decision is influenced. Lowest control surface.',
-    examples: 'Meeting summarisation, ad-hoc internal drafting, productivity assistance.' },
-  'BAP-1': { name: 'Advisory', color: '#60A5FA',
-    summary: 'GxP-adjacent advisory use. Output informs a human but never enters the validated record. No decision authority delegated.',
-    examples: 'Regulatory corpus search, suggestion of related URs, exploratory analysis.' },
-  'BAP-2': { name: 'Controlled Drafting', color: '#A3E635',
-    summary: 'AI drafts an artefact that enters the validated workflow ONLY after a qualified human reviews and signs. The human owns the record.',
-    examples: 'Drafting URS / FR / test scripts that flow into Vault after QA sign-off — EVOLV’s typical deployment.' },
-  'BAP-3': { name: 'Decision-Support', color: '#FBBF24',
-    summary: 'AI output materially informs a quality judgement. The human remains the decision-maker, but automation-bias risk is elevated — controls scale accordingly.',
-    examples: 'Per-UR confidence scores that gate a release decision; drift detection that triggers a change record.' },
-  'BAP-4': { name: 'Bounded Action', color: '#C084FC',
-    summary: 'AI acts autonomously within a strictly deterministic, reversible envelope. Human oversight is by exception, not by signature.',
-    examples: 'Auto-grouping audit rows for an export; auto-tagging corpus chunks at ingestion.' }
+const BAP_TIERS={
+  'BAP-0':{name:'Productivity',color:'#9CA3AF',summary:'Non-GxP productivity use. Output never enters a validated workflow; no quality decision is influenced. Lowest control surface.',examples:'Meeting summarisation, ad-hoc internal drafting, productivity assistance.'},
+  'BAP-1':{name:'Advisory',color:'#60A5FA',summary:'GxP-adjacent advisory use. Output informs a human but never enters the validated record. No decision authority delegated.',examples:'Regulatory corpus search, suggestion of related URs, exploratory analysis.'},
+  'BAP-2':{name:'Controlled Drafting',color:'#0E9F6E',summary:'AI drafts an artefact that enters the validated workflow ONLY after a qualified human reviews and signs. The human owns the record.',examples:'Drafting URS / FR / test scripts that flow into Vault after QA sign-off — EVOLV’s typical deployment.'},
+  'BAP-3':{name:'Decision-Support',color:'#FBBF24',summary:'AI output materially informs a quality judgement. The human remains the decision-maker, but automation-bias risk is elevated — controls scale accordingly.',examples:'Per-UR confidence scores that gate a release decision; drift detection that triggers a change record.'},
+  'BAP-4':{name:'Bounded Action',color:'#C084FC',summary:'AI acts autonomously within a strictly deterministic, reversible envelope. Human oversight is by exception, not by signature.',examples:'Auto-grouping audit rows for an export; auto-tagging corpus chunks at ingestion.'}
 };
-
-const input = document.getElementById('cou-input');
-const vX = document.getElementById('verdict-x');
-const vPass = document.getElementById('verdict-pass');
-const tierResult = document.getElementById('tier-result');
-const tierSelect = document.getElementById('tier-select');
-
-document.querySelectorAll('.chip').forEach(c => {
-  c.addEventListener('click', () => {
-    input.value = c.dataset.fill;
-    input.focus();
-    runScreen();
-  });
-});
-
-function runScreen() {
-  const text = input.value.trim();
-  vX.classList.remove('show');
-  vPass.classList.remove('show');
-  tierResult.classList.remove('show');
-  tierSelect.value = '';
-  if (!text) { input.focus(); return; }
-
-  const fired = EXCLUSION_RULES.find(r => r.pattern.test(text));
-  if (fired) {
-    document.getElementById('x-violation').textContent = fired.violation;
-    document.getElementById('x-why').textContent = fired.why;
-    document.getElementById('x-cite').textContent =
-      'Rule fired: ' + fired.id + ' — one of the five structural exclusions in the EVOLV Bounded Autonomy Profile.';
-    document.getElementById('x-email').href = mailto(
-      'EVOLV — screener flagged my use case (' + fired.id + ')',
-      'Hi Sree,\n\nI ran the screener on your site and it returned BAP-X.\n\nMy use case:\n"' + text + '"\n\nRule fired: ' + fired.id + ' — ' + fired.violation +
-      '\n\nI\'d like to see the re-scoped shape that would work.\n'
-    );
-    vX.classList.add('show');
-    vX.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  } else {
-    vPass.classList.add('show');
-    vPass.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
+const input=document.getElementById('cou-input');
+const vX=document.getElementById('verdict-x');
+const vPass=document.getElementById('verdict-pass');
+const tierResult=document.getElementById('tier-result');
+const tierSelect=document.getElementById('tier-select');
+document.querySelectorAll('.chip').forEach(c=>{c.addEventListener('click',()=>{input.value=c.dataset.fill;input.focus();runScreen();});});
+function runScreen(){
+  const text=input.value.trim();
+  vX.classList.remove('show');vPass.classList.remove('show');tierResult.classList.remove('show');tierSelect.value='';
+  if(!text){input.focus();return;}
+  const fired=EXCLUSION_RULES.find(r=>r.pattern.test(text));
+  if(fired){
+    document.getElementById('x-violation').textContent=fired.violation;
+    document.getElementById('x-why').textContent=fired.why;
+    document.getElementById('x-cite').textContent='Rule fired: '+fired.id+' — one of the five structural exclusions in the EVOLV Bounded Autonomy Profile.';
+    document.getElementById('x-email').href=mailto('EVOLV — screener flagged my use case ('+fired.id+')',
+      'Hi Sree,\n\nI ran the screener on your site and it returned BAP-X.\n\nMy use case:\n"'+text+'"\n\nRule fired: '+fired.id+' — '+fired.violation+'\n\nI\'d like to see the re-scoped shape that would work.\n');
+    vX.classList.add('show');vX.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }else{vPass.classList.add('show');vPass.scrollIntoView({behavior:'smooth',block:'nearest'});}
 }
-document.getElementById('screen-btn').addEventListener('click', runScreen);
-input.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runScreen(); }
-});
-
-tierSelect.addEventListener('change', () => {
-  const t = BAP_TIERS[tierSelect.value];
-  if (!t) { tierResult.classList.remove('show'); return; }
-  const badge = document.getElementById('tier-badge');
-  badge.textContent = tierSelect.value + ' — ' + t.name;
-  badge.style.background = t.color + '22';
-  badge.style.color = t.color;
-  badge.style.border = '1px solid ' + t.color + '66';
-  document.getElementById('tier-name').textContent = 'Estimated tier: ' + t.name;
-  document.getElementById('tier-summary').textContent = t.summary;
-  document.getElementById('tier-examples').textContent = 'Typical examples: ' + t.examples;
-  document.getElementById('tier-email').href = mailto(
-    'EVOLV — full BAP assessment request (' + tierSelect.value + ' estimate)',
-    'Hi Sree,\n\nI ran the 30-second screener. No exclusion fired; my tier estimate is ' +
-    tierSelect.value + ' (' + t.name + ').\n\nMy use case:\n"' + input.value.trim() +
-    '"\n\nPlease send the full signed Bounded Autonomy Profile assessment — and let\'s book a 15-min demo.\n'
-  );
+document.getElementById('screen-btn').addEventListener('click',runScreen);
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runScreen();}});
+tierSelect.addEventListener('change',()=>{
+  const t=BAP_TIERS[tierSelect.value];
+  if(!t){tierResult.classList.remove('show');return;}
+  const badge=document.getElementById('tier-badge');
+  badge.textContent=tierSelect.value+' — '+t.name;
+  badge.style.background=t.color+'22';badge.style.color=t.color;badge.style.border='1px solid '+t.color+'66';
+  document.getElementById('tier-name').textContent='Estimated tier: '+t.name;
+  document.getElementById('tier-summary').textContent=t.summary;
+  document.getElementById('tier-examples').textContent='Typical examples: '+t.examples;
+  document.getElementById('tier-email').href=mailto('EVOLV — full BAP assessment request ('+tierSelect.value+' estimate)',
+    'Hi Sree,\n\nI ran the 30-second screener. No exclusion fired; my tier estimate is '+tierSelect.value+' ('+t.name+').\n\nMy use case:\n"'+input.value.trim()+'"\n\nPlease send the full signed Bounded Autonomy Profile assessment — and let\'s book a 15-min demo.\n');
   tierResult.classList.add('show');
 });
-
 /* ── V-model draw-in ─────────────────────────────────────────── */
-const vpath = document.getElementById('vpath');
-const vlen = vpath.getTotalLength();
-vpath.style.strokeDasharray = vlen;
-vpath.style.strokeDashoffset = vlen;
-const vObs = new IntersectionObserver(entries => {
-  entries.forEach(en => {
-    if (en.isIntersecting) {
-      vpath.style.transition = 'stroke-dashoffset 1.4s ease-out';
-      vpath.style.strokeDashoffset = '0';
-      vObs.disconnect();
-    }
-  });
-}, { threshold: 0.4 });
-vObs.observe(vpath);
-
+const vpath=document.getElementById('vpath');
+const vlen=vpath.getTotalLength();
+vpath.style.strokeDasharray=vlen;vpath.style.strokeDashoffset=vlen;
+new IntersectionObserver((es,o)=>{es.forEach(e=>{if(e.isIntersecting){vpath.style.transition='stroke-dashoffset 1.4s ease-out';vpath.style.strokeDashoffset='0';o.disconnect();}});},{threshold:.4}).observe(vpath);
 /* ── Reveal on scroll ────────────────────────────────────────── */
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(en => {
-    if (en.isIntersecting) { en.target.classList.add('in'); obs.unobserve(en.target); }
-  });
-}, { threshold: 0.12 });
-document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+const obs=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');obs.unobserve(e.target);}});},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
 </script>
 </body>
 </html>
