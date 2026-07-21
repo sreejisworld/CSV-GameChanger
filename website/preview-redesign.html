@@ -149,6 +149,26 @@
   /* V-model svg frame */
   .vwrap{padding:30px 24px;}
 
+  /* founder */
+  #founder{border-top:1px solid var(--line);background:var(--paper2);}
+  .fdr{display:grid;grid-template-columns:180px 1fr;gap:40px;align-items:start;}
+  .fdr-photo{width:150px;height:150px;border-radius:14px;
+    background:linear-gradient(150deg,#1f5f47,#0E9F6E);
+    display:flex;align-items:center;justify-content:center;position:relative;
+    border:1px solid var(--line2);overflow:hidden;}
+  .fdr-photo .mono-init{font-family:var(--disp);font-size:52px;font-weight:600;color:#fff;}
+  .fdr-photo .ph{position:absolute;bottom:8px;font-family:var(--mono);font-size:8.5px;
+    letter-spacing:.1em;color:rgba(255,255,255,.7);text-transform:uppercase;}
+  .fdr h2{font-size:clamp(26px,3.2vw,34px);}
+  .fdr p{margin-top:16px;font-size:16.5px;color:var(--ink2);max-width:640px;line-height:1.62;}
+  .fdr .sig{margin-top:22px;font-family:var(--disp);font-size:18px;font-weight:600;}
+  .fdr .sig-sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:3px;}
+  .cred{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}
+  .cred span{font-family:var(--mono);font-size:11px;color:var(--accent-dk);
+    background:rgba(14,159,110,.08);border:1px solid rgba(14,159,110,.25);
+    border-radius:100px;padding:5px 12px;}
+  @media(max-width:840px){.fdr{grid-template-columns:1fr;}}
+
   footer{border-top:1px solid var(--line);padding:32px 0;}
   .foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
     font-size:13.5px;color:var(--muted);}
@@ -319,6 +339,43 @@
   </div>
   </div>
 </section>
+
+<!-- FOUNDER -->
+<section id="founder"><div class="wrap">
+  <div class="seclbl"><span class="num">04</span><span class="t">Who built this</span></div>
+  <div class="fdr">
+    <div>
+      <div class="fdr-photo">
+        <span class="mono-init">SK</span>
+        <span class="ph">your photo here</span>
+      </div>
+    </div>
+    <div>
+      <h2>Built by a practitioner. Not a holding company.</h2>
+      <p>Most validation software is built by people who left the industry
+      years ago — or by companies where nobody writing the code has ever sat
+      through an inspection. I'm not that.</p>
+      <p><strong>I still do CSV.</strong> I've used ValGenesis, Kneat, Veeva,
+      Polarion — and hit the wall each one leaves you at. I've worked across big
+      pharma, mid-size, and startups, so I've seen the whole landscape, not one
+      corner of it. And I've taught it: <strong>11 courses, 10,000+ CSV
+      professionals</strong> across the globe.</p>
+      <p>I built EVOLV because I wanted the tool I kept wishing existed — fast
+      <em>and</em> defensible, built as if the auditor is the most important
+      person in the room. Not a headless product. If you want to know why it
+      works the way it does, the answer is simple: because I've had to defend
+      this work myself.</p>
+      <div class="cred">
+        <span>Still practicing CSV</span>
+        <span>20+ years · big pharma → startup</span>
+        <span>11 courses</span>
+        <span>10,000+ professionals taught</span>
+      </div>
+      <div class="sig">Sreejith Kanhirangadan</div>
+      <div class="sig-sub">Founder, EVOLV · sreejith@evolifeval.com</div>
+    </div>
+  </div>
+</div></section>
 
 <footer><div class="wrap foot">
   <div>Powered by EVOLV | A WingstarTech Inc. Product · © 2026</div>
