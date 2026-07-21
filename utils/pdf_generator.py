@@ -3741,3 +3741,300 @@ def generate_transparency_dossier_pdf(
              new_x="LMARGIN", new_y="NEXT")
 
     return bytes(pdf.output())
+
+
+# ---------------------------------------------------------------
+# Sprint 50 - EVOLV Self-Validation Package
+# ---------------------------------------------------------------
+
+class _SelfValPDF(FPDF):
+    """Branded FPDF subclass for the self-validation package."""
+
+    def header(self) -> None:
+        self.set_fill_color(*NAVY)
+        self.rect(0, 0, 210, 18, "F")
+        self.set_font("Helvetica", "B", 11)
+        self.set_text_color(*WHITE)
+        self.set_xy(10, 4)
+        self.cell(0, 10, "EVOLV  |  The Validation Factory",
+                  align="L")
+        self.set_font("Helvetica", "", 9)
+        self.set_xy(-95, 4)
+        self.cell(85, 10, "Self-Validation Package", align="R")
+        self.ln(16)
+
+    def footer(self) -> None:
+        self.set_y(-15)
+        self.set_font("Helvetica", "I", 7)
+        self.set_text_color(140, 140, 140)
+        self.cell(
+            0, 10,
+            f"Page {self.page_no()}/{{nb}}  |  Generated "
+            f"{datetime.now(timezone.utc):%Y-%m-%d}  |  "
+            "Powered by EVOLV | A WingstarTech Inc. Product",
+            align="C",
+        )
+
+
+def _latin1_safe(text: str) -> str:
+    """Transliterate common unicode punctuation to latin-1 so
+    RTM text drawn from CLAUDE.md renders in the core font."""
+    repl = {
+        "→": "->", "←": "<-", "↔": "<->",
+        "—": "-", "–": "-", "‘": "'",
+        "’": "'", "“": '"', "”": '"',
+        "…": "...", "•": "-", "×": "x",
+        "≥": ">=", "≤": "<=", "≠": "!=",
+        " ": " ",
+    }
+    for k, v in repl.items():
+        text = text.replace(k, v)
+    return text.encode("latin-1", "replace").decode("latin-1")
+
+
+def _sv_h(pdf: FPDF, text: str) -> None:
+    """Self-validation section heading."""
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(*NAVY)
+    pdf.multi_cell(0, 8, text, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(*NAVY)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    pdf.set_text_color(30, 30, 30)
+
+
+def _sv_p(pdf: FPDF, text: str, size: int = 9) -> None:
+    """Self-validation body paragraph."""
+    pdf.set_font("Helvetica", "", size)
+    pdf.multi_cell(0, 4.6, _latin1_safe(text),
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+
+def _sv_kv(pdf: FPDF, label: str, value: str) -> None:
+    """Label/value line."""
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.multi_cell(45, 5, _latin1_safe(label),
+                   new_x="RIGHT", new_y="TOP")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_x(55)
+    pdf.multi_cell(0, 5, _latin1_safe(value),
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(0.5)
+
+
+def generate_self_validation_pdf(
+    package: Dict[str, Any],
+    signer_name: str = "",
+    meaning: str = "Approval of Validation Package",
+) -> bytes:
+    """
+    Render EVOLV's own signed validation package.
+
+    Assembles the Validation Plan, Installation Qualification,
+    Operational Qualification (live eval evidence), and the
+    Requirements Traceability Matrix (URS -> implementation ->
+    verification) into the standard GxP validation-package
+    structure, with a 21 CFR Part 11 signature page.
+
+    :param package: Output of
+                    self_validation.generate_self_validation_package()
+                    .to_dict().
+    :param signer_name: Approver for the signature page.
+    :param meaning: Meaning of the signature.
+    :return: PDF bytes.
+    :requirement: URS-50.3 - Signed self-validation package PDF.
+    """
+    pdf = _SelfValPDF(orientation="P", unit="mm", format="A4")
+    pdf.alias_nb_pages()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    vp = package.get("validation_plan", {})
+    iq = package.get("iq", {})
+    oq = package.get("oq", {})
+    rtm = package.get("traceability", [])
+
+    # -- Cover / Validation Plan -------------------------------
+    pdf.add_page()
+    pdf.ln(6)
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_text_color(*NAVY)
+    pdf.multi_cell(0, 10, "Self-Validation Package",
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(90, 90, 90)
+    pdf.multi_cell(
+        0, 6,
+        f"{vp.get('system', 'EVOLV')}  -  platform v"
+        f"{package.get('platform_version')}  -  generated "
+        f"{package.get('generated_at', '')[:19]}Z",
+        new_x="LMARGIN", new_y="NEXT",
+    )
+    pdf.ln(4)
+    pdf.set_text_color(30, 30, 30)
+    _sv_p(
+        pdf,
+        "EVOLV is validated using EVOLV's own methodology: "
+        "the V-model, risk-based verification, and "
+        "traceability from requirement to implementation to "
+        "objective test evidence. This package is assembled "
+        "from standing evidence - the eval suite is executed "
+        "live at generation time.",
+        size=10,
+    )
+    _sv_h(pdf, "1. Validation Plan")
+    _sv_kv(pdf, "System", vp.get("system", ""))
+    _sv_kv(pdf, "GAMP Category", vp.get("gamp_category", ""))
+    _sv_kv(pdf, "Intended Use", vp.get("intended_use", ""))
+    _sv_kv(pdf, "Approach", vp.get("validation_approach", ""))
+    _sv_kv(pdf, "Acceptance",
+           vp.get("acceptance_criteria", ""))
+    pdf.ln(1)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.multi_cell(0, 5, "Roles", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    for role in vp.get("roles", []):
+        pdf.multi_cell(0, 4.6, f"  -  {role}",
+                       new_x="LMARGIN", new_y="NEXT")
+
+    # -- IQ ----------------------------------------------------
+    pdf.add_page()
+    _sv_h(pdf, "2. Installation Qualification (IQ)")
+    _sv_p(pdf, "The verifiable install baseline.")
+    _sv_kv(pdf, "Python", iq.get("python_baseline", ""))
+    _sv_kv(pdf, "Manifest",
+           f"{iq.get('dependency_manifest', '')} "
+           f"({iq.get('dependency_count', 0)} dependencies)")
+    _sv_kv(pdf, "CVE Status", iq.get("cve_status", ""))
+    _sv_kv(pdf, "Container",
+           f"Dockerfile: "
+           f"{iq.get('container', {}).get('dockerfile_present')}"
+           f" | Compose: "
+           f"{iq.get('container', {}).get('compose_present')}")
+    _sv_kv(pdf, "Install check",
+           iq.get("install_verification", ""))
+    pdf.ln(1)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.multi_cell(0, 5, "Security-floor pinned dependencies",
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Courier", "", 8)
+    for dep in iq.get("pinned_security_floors", []):
+        pdf.multi_cell(0, 4.4, f"  {dep}",
+                       new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(1)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.multi_cell(0, 5, "Required environment",
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 8.5)
+    for env in iq.get("required_env", []):
+        pdf.multi_cell(0, 4.4, f"  -  {env}",
+                       new_x="LMARGIN", new_y="NEXT")
+
+    # -- OQ ----------------------------------------------------
+    pdf.add_page()
+    _sv_h(pdf, "3. Operational Qualification (OQ)")
+    _sv_p(pdf, oq.get("method", ""))
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(*NAVY)
+    pdf.multi_cell(
+        0, 7,
+        f"Result: {oq.get('passed', 0)}/"
+        f"{oq.get('total_tests', 0)} tests passed "
+        f"({oq.get('pass_rate', 0) * 100:.1f}%)",
+        new_x="LMARGIN", new_y="NEXT",
+    )
+    pdf.set_text_color(30, 30, 30)
+    pdf.ln(2)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_fill_color(235, 238, 245)
+    pdf.cell(110, 7, "Specialist function (test group)",
+             border=1, fill=True)
+    pdf.cell(40, 7, "Tests", border=1, fill=True)
+    pdf.cell(30, 7, "Passed", border=1, fill=True,
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    for a in oq.get("by_agent", []):
+        pdf.cell(110, 6.5, str(a.get("agent", "")), border=1)
+        pdf.cell(40, 6.5, str(a.get("tests", "")), border=1)
+        pdf.cell(30, 6.5, str(a.get("passed", "")), border=1,
+                 new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    _sv_kv(pdf, "Reproducibility",
+           oq.get("reproducibility", ""))
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.multi_cell(0, 5, "Additional evidence",
+                   new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 8.5)
+    for ev in oq.get("additional_evidence", []):
+        pdf.multi_cell(0, 4.4, f"  -  {ev}",
+                       new_x="LMARGIN", new_y="NEXT")
+
+    # -- RTM (landscape) ---------------------------------------
+    pdf.add_page(orientation="L")
+    _sv_h(pdf, f"4. Requirements Traceability Matrix "
+               f"({len(rtm)} requirements)")
+    pdf.set_font("Helvetica", "B", 7)
+    pdf.set_fill_color(235, 238, 245)
+    widths = (22, 95, 75, 85)
+    heads = ("URS ID", "Requirement", "Implementation",
+             "Verification evidence")
+    for w, h in zip(widths, heads):
+        pdf.cell(w, 6, h, border=1, fill=True)
+    pdf.ln(6)
+    pdf.set_font("Helvetica", "", 6.5)
+    for row in rtm:
+        req = _latin1_safe(row.get("requirement", ""))
+        impl = _latin1_safe(row.get("implementation", ""))
+        ver = _latin1_safe(row.get("verification", ""))
+        # Truncate to keep one row per requirement (readable RTM)
+        req = (req[:78] + "...") if len(req) > 81 else req
+        impl = (impl[:60] + "...") if len(impl) > 63 else impl
+        y0 = pdf.get_y()
+        if y0 > 185:
+            pdf.add_page(orientation="L")
+            y0 = pdf.get_y()
+        pdf.cell(widths[0], 5, row.get("urs_id", ""), border=1)
+        pdf.cell(widths[1], 5, req, border=1)
+        pdf.cell(widths[2], 5, impl, border=1)
+        pdf.cell(widths[3], 5, ver, border=1)
+        pdf.ln(5)
+
+    # -- Signature page ----------------------------------------
+    pdf.add_page(orientation="P")
+    _sv_h(pdf, "5. Manifestation of Signature")
+    _sv_p(
+        pdf,
+        "The undersigned attests that this self-validation "
+        "package was assembled from live platform evidence "
+        "(the OQ eval suite executed at generation time) "
+        "without manual alteration (21 CFR Part 11 Sec. "
+        "11.50).",
+    )
+    pdf.ln(3)
+    ts = datetime.now(timezone.utc).strftime(
+        "%Y-%m-%d %H:%M UTC"
+    )
+    sig_rows = [
+        ("Document", "EVOLV Self-Validation Package"),
+        ("Platform version",
+         str(package.get("platform_version", ""))),
+        ("Requirements traced",
+         str(package.get("requirement_count", ""))),
+        ("OQ result",
+         f"{oq.get('passed', 0)}/{oq.get('total_tests', 0)} "
+         "passed"),
+        ("Signer Name", signer_name or "_" * 40),
+        ("Timestamp (UTC)", ts),
+        ("Meaning", meaning),
+    ]
+    for label, value in sig_rows:
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.cell(50, 8, label, border=1)
+        pdf.set_font("Helvetica", "", 9.5)
+        pdf.cell(140, 8, value, border=1,
+                 new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(10)
+    pdf.cell(90, 7, "Signature: " + "_" * 28)
+    pdf.cell(0, 7, "Date: " + "_" * 20,
+             new_x="LMARGIN", new_y="NEXT")
+
+    return bytes(pdf.output())

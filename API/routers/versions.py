@@ -44,6 +44,17 @@ class DossierRequest(BaseModel):
     )
 
 
+class SelfValidationRequest(BaseModel):
+    """POST /versions/self-validation request body."""
+    signer_name: str = Field(
+        "", max_length=200,
+        description="Validation approver (optional).",
+    )
+    meaning: str = Field(
+        "Approval of Validation Package", max_length=200,
+    )
+
+
 @router.get("/versions/registry")
 def get_version_registry() -> Dict[str, Any]:
     """Return the component/model version registry, the
@@ -54,6 +65,100 @@ def get_version_registry() -> Dict[str, Any]:
     """
     from Agents.version_registry import get_registry
     return get_registry()
+
+
+@router.get("/versions/self-validation/rtm")
+def self_validation_rtm() -> Dict[str, Any]:
+    """Return EVOLV's own Requirements Traceability Matrix
+    (URS -> implementation -> verification evidence), parsed
+    from the living URS index. Lightweight — no OQ run.
+
+    :requirement: URS-50.2 - Self-validation package assembler.
+    """
+    from Agents.self_validation import parse_urs_index
+    rtm = parse_urs_index()
+    return {
+        "requirement_count": len(rtm),
+        "traceability": [
+            {
+                "urs_id": r.urs_id,
+                "requirement": r.requirement,
+                "implementation": r.implementation,
+                "verification": r.verification,
+            }
+            for r in rtm
+        ],
+    }
+
+
+@router.post("/versions/self-validation")
+def generate_self_validation(
+    body: SelfValidationRequest,
+) -> Response:
+    """Generate EVOLV's signed self-validation package PDF
+    (Validation Plan + IQ + OQ + Requirements Traceability
+    Matrix), assembled from standing evidence with the OQ eval
+    suite executed live. Emits the SELF_VALIDATION_* triplet.
+
+    :requirement: URS-50.3 - Signed self-validation package PDF.
+    """
+    from Agents.integrity_manager import log_audit_event
+    from Agents.self_validation import (
+        generate_self_validation_package,
+    )
+    from utils.pdf_generator import generate_self_validation_pdf
+
+    log_audit_event(
+        agent_name="SelfValidation",
+        action="SELF_VALIDATION_RECEIVED",
+        decision_logic="Self-validation package requested",
+    )
+    try:
+        pkg = generate_self_validation_package().to_dict()
+        pdf_bytes = generate_self_validation_pdf(
+            package=pkg,
+            signer_name=body.signer_name,
+            meaning=body.meaning,
+        )
+        oq = pkg.get("oq", {})
+        log_audit_event(
+            agent_name="SelfValidation",
+            action="SELF_VALIDATION_COMPLETED",
+            decision_logic=(
+                f"Package generated: "
+                f"{pkg.get('requirement_count')} requirements "
+                f"traced, OQ {oq.get('passed')}/"
+                f"{oq.get('total_tests')}, "
+                f"{len(pdf_bytes)} bytes"
+            ),
+        )
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition":
+                    'attachment; '
+                    'filename="EVOLV_Self_Validation'
+                    '_Package.pdf"',
+            },
+        )
+    except Exception as exc:
+        _logger.exception(
+            "[CSV-003] Self-validation generation failed: %s",
+            exc,
+        )
+        log_audit_event(
+            agent_name="SelfValidation",
+            action="SELF_VALIDATION_FAILED",
+            decision_logic="Self-validation raised an error.",
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "[CSV-003] Self-validation package generation "
+                "failed. See server audit log for details."
+            ),
+        ) from exc
 
 
 @router.post("/versions/dossier")

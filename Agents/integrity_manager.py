@@ -181,6 +181,10 @@ _IMPACT_MAP = {
     "DOSSIER_GENERATION_RECEIVED":  "Vendor Governance",
     "DOSSIER_GENERATION_COMPLETED": "Vendor Governance",
     "DOSSIER_GENERATION_FAILED":    "Vendor Governance",
+    # Sprint 50 — EVOLV self-validation package
+    "SELF_VALIDATION_RECEIVED":  "Platform Validation Evidence",
+    "SELF_VALIDATION_COMPLETED": "Platform Validation Evidence",
+    "SELF_VALIDATION_FAILED":    "Platform Validation Evidence",
 }
 
 DEFAULT_IMPACT = "Operational"
