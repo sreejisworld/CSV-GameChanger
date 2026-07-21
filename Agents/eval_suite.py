@@ -839,6 +839,32 @@ def run_bap_exclusion_evals(
 
 # ── IntegrityManager chain evals (Sprint 45 — SEC-9) ────────────────
 
+def run_reproducibility_evals() -> EvalRun:
+    """Wrap the reproducibility harness as an eval agent so
+    output-consistency is proven in CI and the dossier on every
+    run — the same input must yield the same decision.
+
+    :requirement: URS-50.1 - Reproducibility proof.
+    """
+    from Agents.reproducibility import run_reproducibility
+    report = run_reproducibility(runs=10)
+    results: List[EvalResult] = []
+    for r in report.results:
+        res = EvalResult(
+            eval_id=f"REPRO-{r.engine.split('.')[0][:16]}",
+            eval_name=r.engine,
+            input_text=f"{r.runs} repeated runs, fixed input",
+            output_summary=r.detail,
+        )
+        res.checks.append(EvalCheck(
+            name="byte_reproducible",
+            passed=r.reproducible,
+            detail=r.error or r.detail,
+        ))
+        results.append(_finish(res))
+    return _make_run("ReproducibilityHarness", results)
+
+
 def run_integrity_manager_evals() -> EvalRun:
     """Eval the audit-trail hash chain: growth, tamper detection,
     reorder detection, and legacy-row coexistence. Uses temp CSV
@@ -1105,6 +1131,7 @@ AGENT_RUNNERS: Dict[str, Callable[[], EvalRun]] = {
     "ValidatedStateEngine": run_validated_state_evals,
     "BAPExclusionScreen":   run_bap_exclusion_evals,
     "IntegrityManager":     run_integrity_manager_evals,
+    "ReproducibilityHarness": run_reproducibility_evals,
 }
 
 

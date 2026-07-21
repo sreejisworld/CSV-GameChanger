@@ -165,9 +165,20 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
         "kind": "harness",
         "version": REGISTRY_SCHEMA_VERSION,
         "description":
-            "131 deterministic evals across 6 agents; runs in "
+            "136 deterministic evals across 7 agents; runs in "
             "CI on every push and on demand from the Dev Portal.",
         "governed_by": "CI gate (blocking) + signed run reports",
+    },
+    {
+        "component": "Reproducibility harness",
+        "kind": "harness",
+        "version": "1.0.0",
+        "description":
+            "Proves the deterministic engines produce "
+            "byte-identical output across repeated runs on "
+            "fixed inputs (provenance timestamps normalised).",
+        "governed_by":
+            "5 reproducibility evals in the CI-gated suite",
     },
 ]
 
@@ -177,6 +188,19 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
 # would want notified about. Newest first.
 
 VERSION_CHANGELOG: List[Dict[str, str]] = [
+    {
+        "date": "2026-07-21",
+        "component": "Reproducibility harness",
+        "change":
+            "Added output-consistency proof: deterministic "
+            "engines shown byte-identical across repeated runs; "
+            "wired into the CI-gated suite (now 136 evals / "
+            "7 agents).",
+        "impact":
+            "Formal reproducibility evidence for validation; "
+            "no behaviour change.",
+        "sprint": "50",
+    },
     {
         "date": "2026-07-20",
         "component": "Platform / compliance gate",
