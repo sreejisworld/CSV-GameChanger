@@ -114,6 +114,37 @@ class TraceRow:
     verification: str
 
 
+# Broad architecture layer for a given implementation reference -
+# used by the public (redacted) package so the RTM proves the
+# requirement is implemented in a real layer without exposing the
+# file/function-level architecture map (legitimate IP protection,
+# per the vendor-transparency line "protecting IP != refusing
+# accountability").
+_LAYER_MAP: List[tuple] = [
+    ("react-platform", "React platform (UI)"),
+    (".jsx", "React platform (UI)"),
+    ("Agents/", "AI specialist-function layer"),
+    ("API/", "API service layer"),
+    ("utils/", "Utilities layer"),
+    ("scripts/", "Tooling / CI"),
+    ("docs/", "Documentation"),
+    ("frontend/", "Streamlit surface"),
+    ("website/", "Marketing site"),
+]
+
+_REDACTED_MARKER = "Implemented & traced (detail in evaluator copy)"
+
+
+def _redact_impl(implementation: str) -> str:
+    """Collapse an implementation reference to its broad layer for
+    the public package."""
+    impl = implementation.lower()
+    for key, layer in _LAYER_MAP:
+        if key.lower() in impl:
+            return layer
+    return _REDACTED_MARKER
+
+
 @dataclass
 class SelfValidationPackage:
     """The assembled self-validation package (structured)."""
@@ -124,12 +155,14 @@ class SelfValidationPackage:
     iq: Dict[str, Any]
     oq: Dict[str, Any]
     traceability: List[TraceRow] = field(default_factory=list)
+    redacted: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "schema_version": self.schema_version,
             "generated_at": self.generated_at,
             "platform_version": self.platform_version,
+            "redacted": self.redacted,
             "validation_plan": self.validation_plan,
             "iq": self.iq,
             "oq": self.oq,
@@ -323,10 +356,19 @@ def build_validation_plan(rtm_count: int) -> Dict[str, Any]:
     }
 
 
-def generate_self_validation_package() -> SelfValidationPackage:
+def generate_self_validation_package(
+    redacted: bool = False,
+) -> SelfValidationPackage:
     """Assemble the full EVOLV self-validation package from
     standing evidence (runs the OQ eval suite live).
 
+    :param redacted: When True, the RTM implementation column is
+                     collapsed to the broad architecture layer
+                     (public-safe: proves each requirement is
+                     implemented and verified without exposing the
+                     file/function-level architecture map). Use
+                     for public sharing; the full package is for
+                     qualified evaluators.
     :requirement: URS-50.2 - Self-validation package assembler.
     """
     if str(_PROJECT_ROOT) not in sys.path:
@@ -334,6 +376,16 @@ def generate_self_validation_package() -> SelfValidationPackage:
     from Agents.version_registry import EVOLV_PLATFORM_VERSION
 
     rtm = parse_urs_index()
+    if redacted:
+        rtm = [
+            TraceRow(
+                urs_id=r.urs_id,
+                requirement=r.requirement,
+                implementation=_redact_impl(r.implementation),
+                verification=r.verification,
+            )
+            for r in rtm
+        ]
     return SelfValidationPackage(
         schema_version=SELF_VALIDATION_SCHEMA_VERSION,
         generated_at=datetime.now(timezone.utc).isoformat(),
@@ -342,6 +394,7 @@ def generate_self_validation_package() -> SelfValidationPackage:
         iq=build_iq_baseline(),
         oq=build_oq_summary(),
         traceability=rtm,
+        redacted=redacted,
     )
 
 

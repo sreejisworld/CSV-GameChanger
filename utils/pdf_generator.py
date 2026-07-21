@@ -3855,11 +3855,26 @@ def generate_self_validation_pdf(
 
     # -- Cover / Validation Plan -------------------------------
     pdf.add_page()
-    pdf.ln(6)
+    redacted = bool(package.get("redacted"))
+    if redacted:
+        pdf.set_fill_color(217, 119, 6)  # amber
+        pdf.set_text_color(*WHITE)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(
+            0, 7,
+            "  PUBLIC SUMMARY - REDACTED  |  Full package "
+            "available to qualified evaluators on request",
+            fill=True, new_x="LMARGIN", new_y="NEXT",
+        )
+        pdf.ln(3)
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(*NAVY)
-    pdf.multi_cell(0, 10, "Self-Validation Package",
-                   new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(
+        0, 10,
+        "Self-Validation Package"
+        + (" (Public Summary)" if redacted else ""),
+        new_x="LMARGIN", new_y="NEXT",
+    )
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(90, 90, 90)
     pdf.multi_cell(
@@ -3972,10 +3987,20 @@ def generate_self_validation_pdf(
     pdf.add_page(orientation="L")
     _sv_h(pdf, f"4. Requirements Traceability Matrix "
                f"({len(rtm)} requirements)")
+    if redacted:
+        _sv_p(
+            pdf,
+            "Implementation references are collapsed to their "
+            "architecture layer in this public summary. The "
+            "full file/function-level matrix is provided to "
+            "qualified evaluators.",
+            size=8,
+        )
     pdf.set_font("Helvetica", "B", 7)
     pdf.set_fill_color(235, 238, 245)
     widths = (22, 95, 75, 85)
-    heads = ("URS ID", "Requirement", "Implementation",
+    heads = ("URS ID", "Requirement",
+             "Architecture layer" if redacted else "Implementation",
              "Verification evidence")
     for w, h in zip(widths, heads):
         pdf.cell(w, 6, h, border=1, fill=True)

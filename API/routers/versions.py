@@ -53,6 +53,15 @@ class SelfValidationRequest(BaseModel):
     meaning: str = Field(
         "Approval of Validation Package", max_length=200,
     )
+    redacted: bool = Field(
+        False,
+        description=(
+            "Public-safe summary: RTM implementation column "
+            "collapsed to architecture layer (no file/function "
+            "map). Use for public sharing; the full package is "
+            "for qualified evaluators."
+        ),
+    )
 
 
 @router.get("/versions/registry")
@@ -114,7 +123,9 @@ def generate_self_validation(
         decision_logic="Self-validation package requested",
     )
     try:
-        pkg = generate_self_validation_package().to_dict()
+        pkg = generate_self_validation_package(
+            redacted=body.redacted,
+        ).to_dict()
         pdf_bytes = generate_self_validation_pdf(
             package=pkg,
             signer_name=body.signer_name,
