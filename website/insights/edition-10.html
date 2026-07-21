@@ -1,0 +1,141 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Our Test Suite Found 11 Holes in Our Own Safety Rules. Good. - EVOLV Insights</title>
+<meta name="description" content="We built an eval suite that attacks every EVOLV agent on every change. Its first run found 11 real gaps in our own AI safety rules.">
+<meta name="robots" content="index,follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#FAFAF7;--card:#FFFFFF;--ink:#2A2825;--muted:#6B675F;
+  --faint:#8A867C;--border:#EAE7E1;--border2:#DDD9D0;--blue:#3B5BFF;
+  --lime:#65A30D;--lime-bright:#A3E635;--amber:#D97706;
+  --serif:'Fraunces',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',monospace;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;}
+  ::selection{background:rgba(163,230,53,0.4);}
+  a{color:var(--blue);}
+  .wrap{max-width:820px;margin:0 auto;padding:0 24px;}
+  nav{position:sticky;top:0;z-index:50;
+  background:rgba(250,250,247,0.85);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);}
+  .nav-inner{display:flex;align-items:center;gap:24px;padding:14px 24px;
+  max-width:1080px;margin:0 auto;}
+  .logo{display:flex;align-items:baseline;gap:10px;text-decoration:none;
+  color:var(--ink);}
+  .logo-word{font-family:var(--serif);font-size:22px;font-weight:600;
+  letter-spacing:.02em;}
+  .logo-sub{font-size:10px;font-family:var(--mono);color:var(--faint);
+  letter-spacing:.12em;text-transform:uppercase;}
+  .nav-links{display:flex;gap:22px;margin-left:auto;align-items:center;}
+  .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;
+  font-weight:500;}
+  .nav-links a:hover{color:var(--ink);}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;
+  border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;
+  cursor:pointer;border:none;font-family:var(--sans);transition:all .18s;}
+  .btn-ink{background:var(--ink);color:#fff;}
+  .btn-ink:hover{background:#000;transform:translateY(-1px);
+  box-shadow:0 6px 20px rgba(42,40,37,.25);}
+  .btn-sm{padding:8px 18px;font-size:14px;}
+
+  .article{padding:52px 0 40px;}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--blue);margin-bottom:14px;}
+  .back{font-size:14px;color:var(--muted);text-decoration:none;
+  font-weight:500;} .back:hover{color:var(--ink);}
+  h1{font-family:var(--serif);font-weight:600;
+  font-size:clamp(30px,4.4vw,44px);line-height:1.12;
+  letter-spacing:-.01em;margin:6px 0 10px;}
+  .meta{font-size:14px;color:var(--faint);margin-bottom:8px;}
+  article h2{font-family:var(--serif);font-weight:600;font-size:25px;
+  margin:34px 0 12px;line-height:1.2;}
+  article h3{font-size:18px;font-weight:600;margin:24px 0 8px;}
+  article p{margin:0 0 16px;font-size:17px;color:#332F2A;}
+  article ul,article ol{margin:0 0 16px 22px;}
+  article li{margin-bottom:7px;font-size:17px;color:#332F2A;}
+  article strong{color:var(--ink);}
+  article code{font-family:var(--mono);font-size:.9em;
+  background:#F2F0EA;padding:1px 5px;border-radius:4px;}
+  article blockquote{border-left:3px solid var(--lime);
+  background:#F7F9F2;padding:14px 20px;margin:0 0 20px;
+  border-radius:0 8px 8px 0;font-size:16.5px;color:#3A3833;}
+  article hr{border:none;border-top:1px solid var(--border);
+  margin:30px 0;}
+  .foot{margin-top:40px;border-top:1px solid var(--border);
+  padding-top:24px;display:flex;gap:14px;flex-wrap:wrap;
+  align-items:center;}
+  .li-note{font-size:13.5px;color:var(--faint);margin-top:18px;}
+  footer{padding:32px 0;border-top:1px solid var(--border);
+  font-size:13.5px;color:var(--muted);text-align:center;margin-top:20px;}
+</style></head><body>
+
+<nav><div class="nav-inner">
+  <a class="logo" href="../index.html">
+    <span class="logo-word">EVOLV</span>
+    <span class="logo-sub">The Validation Factory</span></a>
+  <div class="nav-links">
+    <a href="../index.html#how">Platform</a>
+    <a href="index.html">Insights</a>
+    <a class="btn btn-ink btn-sm" id="demo" href="#">Book a demo</a>
+  </div></div></nav>
+
+<div class="wrap article">
+  <a class="back" href="index.html">&larr; All editions</a>
+  <div class="eyebrow" style="margin-top:20px;">EVOLV Insights &middot; Edition 10</div>
+  <h1>Our Test Suite Found 11 Holes in Our Own Safety Rules. Good.</h1>
+  <div class="meta">Jul 2026 &middot; EVOLV build log</div>
+  <article><hr>
+<p><strong>TL;DR:</strong> We shipped a standing eval suite that attacks every EVOLV agent with 125 deterministic checks on every change. Its first full run found 11 real gaps in our five hard-exclusion rules — the rules that stop AI from signing signatures, releasing batches, or writing to validated records. All 11 were fixed the same day. This issue is the unedited story, because how a vendor finds their own holes tells you more than any brochure.</p>
+<hr>
+<h2>The setup</h2>
+<p>If you&#x27;ve read this newsletter before, you know EVOLV&#x27;s exclusion list: five deployment shapes we refuse regardless of revenue. AI executing an e-signature (21 CFR §11.50). AI releasing a batch (QP responsibility). AI closing a CAPA (§820.100). AI making clinical decisions (SaMD — not our product). AI writing to validated records without a human gate (§11.10(e)).</p>
+<p>Those rules are enforced in code — pattern matching over the customer&#x27;s own description of what they want the AI to do. Type &quot;AI closes CAPAs automatically&quot; into our screener and rule EX-3 fires, with the citation.</p>
+<p>Rules enforced in code have a failure mode: the code.</p>
+<h2>The bet</h2>
+<p>Salim Ismail calls the first pillar of trustable agentic systems &quot;Trusted Evals&quot; — every agent runs continuously against a known test set, so drift gets flagged before customers see it.</p>
+<p>We&#x27;d built a skeleton of this months ago for one agent. This sprint we extended it to all of them: 125 deterministic checks — the risk engine&#x27;s full mapping matrix including the patient-safety override, the test generator&#x27;s routing depths, the change-impact logic, the validated-state scoring tiers, and 95 adversarial scenarios thrown at the exclusion rules, half of them machine-generated variations designed to sneak past.</p>
+<p>First full run: <strong>114 of 125 passed.</strong></p>
+<p>Eleven didn&#x27;t.</p>
+<h2>The eleven</h2>
+<p>Three categories, each more instructive than the last.</p>
+<p><strong>1. The vocabulary hole.</strong> Our rules looked for the word &quot;AI.&quot; <em>&quot;The LLM alters each validated record&quot;</em> sailed through. So did &quot;the model.&quot; The intent was identical; the noun was different. If your guardrails are keyword-based and your keywords are narrow, your guardrails are decorative.</p>
+<p><strong>2. The grammar holes.</strong> <em>&quot;The AI authorises the electronic signature&quot;</em> — missed, because we&#x27;d only listed the American spelling. <em>&quot;The AI signs off the deviation&quot;</em> — missed; we had &quot;closes&quot; and &quot;resolves&quot; but not &quot;signs off.&quot; <em>&quot;AI recommends treatment&quot;</em> — missed, because a previous fix had added &quot;recommend treatment&quot; but not the third-person form. Every one of these is the kind of gap you only find by generating hostile variations at scale — which is exactly what the eval factory does.</p>
+<p><strong>3. The scary one.</strong> <em>&quot;AI writes to the controlled document without review.&quot;</em> Our EX-5 rule has a suppressor: if the statement describes a human gate (&quot;...after QA sign-off&quot;), it shouldn&#x27;t fire. The suppressor looked for the word &quot;with&quot; followed by words like &quot;review&quot; or &quot;approval.&quot;</p>
+<p>&quot;with<strong>out</strong> review&quot; contains &quot;with.&quot; Followed by &quot;review.&quot;</p>
+<p>The rule saw a human gate in a sentence that explicitly said there was none. A statement describing the exact violation the rule exists to catch was being waved through <em>by the safety mechanism itself.</em></p>
+<p>We also found the mirror image: two false positives, where the rules fired on safe statements like &quot;AI signs a summary email; the CSV lead signs the electronic signature&quot; — matching across the sentence boundary and attributing the human&#x27;s action to the AI. Guardrails that cry wolf get disabled; that failure mode matters too.</p>
+<h2>The fixes</h2>
+<p>Same day: subjects widened (ai / llm / model), all matching bounded inside a single clause so rules can&#x27;t straddle sentences, the missing verb forms added, and the suppressor now requires &quot;with&quot; as a whole word. The suite re-ran: 125/125. The 84 scenarios that passed before still pass — that&#x27;s the other job of an eval suite, catching the fix that breaks something else.</p>
+<p>And because our public website runs the same rules in its live screener, the browser version was updated in the same commit. If the engine and the demo can drift apart, one of them is lying.</p>
+<h2>Why publish this</h2>
+<p>Because the alternative is the industry default: &quot;our AI is safe,&quot; full stop, and the holes get found by an inspector in your data instead of a test suite in ours.</p>
+<p>The honest claim was never &quot;no holes.&quot; It&#x27;s: the holes get hunted, found, fixed, and pinned by a regression suite that runs on every change — and the whole loop is visible to you. That&#x27;s what &quot;validated&quot; has always meant. We&#x27;re just applying it to ourselves.</p>
+<p><strong>The current number: 215+ standing checks across every EVOLV agent, 100% passing, re-run on every change.</strong> When that number dips, we&#x27;ll know before you do. That&#x27;s the whole point.</p>
+<hr>
+<p><em>Want to attack the rules yourself? The screener on evolifeval.com runs them live in your browser — several readers will try &quot;AI closes CAPAs when the fix is verified.&quot; EX-3 is waiting for you.</em></p>
+<p><em>Evaluating AI for your validation workflow? 15 minutes, bring your hardest use case: sreejith@evolifeval.com</em></p>
+<hr>
+<p><em>Sree · Founder, EVOLV | The Validation Factory</em> <em>Powered by EVOLV | A WingstarTech Inc. Product</em></p></article>
+  <p class="li-note">Originally shared on LinkedIn.
+    <a href="https://www.linkedin.com/in/sreejith-kanhirangadan-csv-advisor/recent-activity/" target="_blank" rel="noopener">
+    Subscribe there for new editions &rarr;</a></p>
+  <div class="foot">
+    <a class="btn btn-ink" id="demo" href="#">Book a 15-min demo</a>
+    <a class="btn" style="border:1.5px solid var(--border2);
+    color:var(--ink);" href="index.html">More editions</a>
+  </div>
+</div>
+<footer>Powered by EVOLV | A WingstarTech Inc. Product &middot; &copy; 2026</footer>
+
+<script>
+var m='mailto:sreejith@evolifeval.com?subject='+
+encodeURIComponent('EVOLV - 15-min demo request');
+var d=document.getElementById('demo');if(d)d.href=m;
+</script>
+
+</body></html>
