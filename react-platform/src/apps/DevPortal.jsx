@@ -1152,7 +1152,7 @@ function TrustedEvalsPanel() {
           className="px-4 py-2 rounded-lg text-xs font-semibold
                      bg-brand-blue text-white hover:opacity-90
                      disabled:opacity-40 transition-opacity">
-          {running ? 'Running 131 evals…' : '▶ Run full eval suite'}
+          {running ? 'Running the eval suite…' : '▶ Run full eval suite'}
         </button>
         {result && (
           <span className={`text-xs font-mono px-3 py-1.5 rounded-full border
