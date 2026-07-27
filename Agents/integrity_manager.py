@@ -185,6 +185,21 @@ _IMPACT_MAP = {
     "SELF_VALIDATION_RECEIVED":  "Platform Validation Evidence",
     "SELF_VALIDATION_COMPLETED": "Platform Validation Evidence",
     "SELF_VALIDATION_FAILED":    "Platform Validation Evidence",
+    # Sprint 51 — PII/PHI input shield (AI Input Safety Layer)
+    # Deterministic screen at the tenant boundary before text is
+    # sent to OpenAI/Pinecone. Events record category *counts*
+    # only — never the matched values — so the trail never itself
+    # becomes a PII store.
+    "PII_SCREEN_CLEAR":          "Data Privacy — Screen",
+    "PII_SCREEN_FLAGGED":        "Data Privacy — PII Detected",
+    "PII_SCREEN_BLOCKED":        "Data Privacy — Transmission Blocked",
+    # Sprint 51 — resilience layer (retry + circuit breaker around
+    # OpenAI/Pinecone). Only state transitions and retry-exhaustion
+    # are logged (not every attempt) to keep the trail signal high.
+    "CIRCUIT_BREAKER_OPENED":     "Availability — Dependency",
+    "CIRCUIT_BREAKER_HALF_OPEN":  "Availability — Dependency",
+    "CIRCUIT_BREAKER_CLOSED":     "Availability — Dependency",
+    "DEPENDENCY_RETRY_EXHAUSTED": "Availability — Dependency",
 }
 
 DEFAULT_IMPACT = "Operational"

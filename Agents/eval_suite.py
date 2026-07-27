@@ -1122,6 +1122,319 @@ def apply_judge_to_run(run: EvalRun) -> EvalRun:
     return run
 
 
+# ── PIIShield golden set (Sprint 51) ────────────────────────────────
+#
+# Deterministic detection across every category, plus redaction
+# completeness and value-free audit payloads. Golden `input_text`
+# uses the eval id (not the raw text) so the eval report itself
+# never echoes PII. No LLM, no network.
+
+PII_SHIELD_GOLDEN_SET: List[Dict[str, Any]] = [
+    {"id": "PII-1",
+     "text": "The system shall log the batch temperature.",
+     "expected": []},
+    {"id": "PII-2",
+     "text": "Escalate to jane.doe@acme-pharma.com immediately.",
+     "expected": ["Email"]},
+    {"id": "PII-3",
+     "text": "Operator SSN 123-45-6789 recorded in error.",
+     "expected": ["US_SSN"]},
+    {"id": "PII-4",
+     "text": "Reachable at (415) 555-0132 during the shift.",
+     "expected": ["Phone"]},
+    {"id": "PII-5",
+     "text": "Charge captured on 4111 1111 1111 1111.",
+     "expected": ["Credit_Card"]},
+    {"id": "PII-6",
+     "text": "Lot code 1234 5678 9012 3456 fails checksum.",
+     "expected": []},
+    {"id": "PII-7",
+     "text": "Subject ID: SUBJ-00417 enrolled Tuesday.",
+     "expected": ["Medical_Record_Number"]},
+    {"id": "PII-8",
+     "text": "DOB: 03/14/1982 verified against photo ID.",
+     "expected": ["Date_Of_Birth"]},
+    {"id": "PII-9",
+     "text": "Patient Name: John Smith gave consent.",
+     "expected": ["Patient_Name"]},
+    {"id": "PII-10",
+     "text": "Deviation notes MRN 55219 and email x@y.io.",
+     "expected": ["Email", "Medical_Record_Number"]},
+]
+
+
+def run_pii_shield_evals() -> EvalRun:
+    """Standing evals for the PII/PHI input shield: deterministic
+    detection across categories, redaction completeness, and
+    value-free audit summaries. No LLM, no network.
+
+    :requirement: URS-51.1 - Detect PII/PHI before external
+                  transmission.
+    :requirement: URS-51.4 - Never persist raw PII.
+    """
+    from Agents.pii_shield import (
+        detect, redact, screen_text, ScreenMode, ScreenDecision,
+    )
+    results: List[EvalResult] = []
+
+    for entry in PII_SHIELD_GOLDEN_SET:
+        text = entry["text"]
+        expected = sorted(entry["expected"])
+        findings = detect(text)
+        got = sorted({f.category.value for f in findings})
+        res = EvalResult(
+            eval_id=entry["id"],
+            eval_name="pii_detection",
+            input_text=entry["id"],          # never echo raw PII
+            output_summary=f"categories={got}",
+        )
+        res.checks.append(_eq("categories_match", got, expected))
+        red = redact(text, findings)
+        leaked = any(
+            len(text[f.start:f.end]) >= 4
+            and text[f.start:f.end] in red
+            for f in findings
+        )
+        res.checks.append(EvalCheck(
+            name="no_raw_after_redaction",
+            passed=(not leaked),
+            detail=("No matched span survives redaction."
+                    if not leaked
+                    else "A matched span survived redaction."),
+        ))
+        results.append(_finish(res))
+
+    # Mode behaviour + value-free summary on a high-risk input.
+    hot = "Patient Name: John Smith SSN 123-45-6789 MRN 88231"
+    res = EvalResult(
+        eval_id="PII-MODE",
+        eval_name="mode_and_value_free_summary",
+        input_text="PII-MODE",
+        output_summary="warn/redact/block + value-free summary",
+    )
+    warn = screen_text(hot, ScreenMode.WARN)
+    redd = screen_text(hot, ScreenMode.REDACT)
+    blok = screen_text(hot, ScreenMode.BLOCK)
+    res.checks.append(
+        _eq("warn_flagged", warn.decision,
+            ScreenDecision.ALLOW_FLAGGED)
+    )
+    res.checks.append(
+        _eq("warn_text_unchanged", warn.text_out, hot)
+    )
+    res.checks.append(
+        _eq("redact_decision", redd.decision,
+            ScreenDecision.REDACTED)
+    )
+    res.checks.append(EvalCheck(
+        name="redact_removes_ssn",
+        passed=("123-45-6789" not in redd.text_out),
+        detail="SSN absent from redacted output.",
+    ))
+    res.checks.append(
+        _eq("block_decision", blok.decision,
+            ScreenDecision.BLOCKED)
+    )
+    blob = str(warn.summary())
+    res.checks.append(EvalCheck(
+        name="summary_value_free",
+        passed=("123-45-6789" not in blob
+                and "John Smith" not in blob),
+        detail="Summary carries counts only, no raw values.",
+    ))
+    results.append(_finish(res))
+
+    return _make_run("PIIShield", results)
+
+
+def run_resilience_evals() -> EvalRun:
+    """Deterministic evals for the retry + circuit-breaker layer:
+    transient retry/recovery, exhaustion re-raise, non-retryable
+    pass-through, and breaker open -> fail-fast -> half-open ->
+    close. Injected clock + no-op sleep, and audit logging is
+    silenced for the run, so no real time passes, no network is
+    touched, and the trail is never written.
+
+    :requirement: URS-51.6 - Retry transient failures.
+    :requirement: URS-51.7 - Circuit-break failing dependencies.
+    """
+    import Agents.integrity_manager as _im
+    from Agents.resilience import (
+        retry_call, resilient_call, CircuitBreaker, CircuitState,
+        CircuitOpenError, default_retryable,
+    )
+
+    class _Transient(Exception):
+        """Test double: a transient (retryable) dependency error."""
+
+        error_code = "CSV-060"
+        status_code = 503
+
+    class _Fatal(Exception):
+        """Test double: a non-retryable dependency error."""
+
+        error_code = "CSV-060"
+        status_code = 400
+
+    def _noop(_delay: float) -> None:
+        return None
+
+    results: List[EvalResult] = []
+    _orig_log = _im.log_audit_event
+    _im.log_audit_event = lambda **kw: "hash"      # silence trail
+    try:
+        # 1. Retry recovers after 2 transient failures.
+        res = EvalResult(
+            eval_id="RES-1", eval_name="retry_recovers",
+            input_text="2 transient then ok", output_summary="",
+        )
+        st = {"n": 0}
+
+        def _flaky() -> str:
+            if st["n"] < 2:
+                st["n"] += 1
+                raise _Transient("temporarily unavailable")
+            return "ok"
+
+        out = retry_call(
+            _flaky, max_attempts=3, base_delay=0, sleep=_noop,
+        )
+        res.output_summary = f"result={out}, failures={st['n']}"
+        res.checks.append(_eq("returns_ok", out, "ok"))
+        res.checks.append(_eq("retried_twice", st["n"], 2))
+        results.append(_finish(res))
+
+        # 2. Retry re-raises after exhausting a persistent transient.
+        res = EvalResult(
+            eval_id="RES-2", eval_name="retry_exhausts",
+            input_text="always transient", output_summary="",
+        )
+        st2 = {"n": 0}
+
+        def _always_transient() -> str:
+            st2["n"] += 1
+            raise _Transient("still down")
+
+        raised = False
+        try:
+            retry_call(
+                _always_transient, max_attempts=3, base_delay=0,
+                sleep=_noop,
+            )
+        except _Transient:
+            raised = True
+        res.checks.append(EvalCheck(
+            name="raises_after_exhaust", passed=raised,
+            detail="Re-raised after max attempts."
+            if raised else "Did not raise.",
+        ))
+        res.checks.append(_eq("attempted_3", st2["n"], 3))
+        results.append(_finish(res))
+
+        # 3. Non-retryable (400) is not retried.
+        res = EvalResult(
+            eval_id="RES-3", eval_name="no_retry_fatal",
+            input_text="400 fatal", output_summary="",
+        )
+        st3 = {"n": 0}
+
+        def _fatal() -> str:
+            st3["n"] += 1
+            raise _Fatal("bad request")
+
+        raised = False
+        try:
+            retry_call(
+                _fatal, max_attempts=3, base_delay=0, sleep=_noop,
+            )
+        except _Fatal:
+            raised = True
+        res.checks.append(EvalCheck(
+            name="raised", passed=raised, detail="",
+        ))
+        res.checks.append(_eq("called_once", st3["n"], 1))
+        res.checks.append(_eq(
+            "classified_nonretryable",
+            default_retryable(_Fatal("bad request")), False,
+        ))
+        results.append(_finish(res))
+
+        # 4. Breaker opens after the failure threshold.
+        clock = {"t": 0.0}
+        cb = CircuitBreaker(
+            "test", failure_threshold=3, recovery_timeout=10.0,
+            clock=lambda: clock["t"],
+        )
+        res = EvalResult(
+            eval_id="RES-4", eval_name="breaker_opens",
+            input_text="3 failures", output_summary="",
+        )
+
+        def _down() -> str:
+            raise _Transient("down")
+
+        for _ in range(3):
+            try:
+                resilient_call(
+                    _down, breaker=cb, max_attempts=1,
+                    base_delay=0, sleep=_noop,
+                )
+            except _Transient:
+                pass
+        res.checks.append(_eq(
+            "state_open", cb.snapshot()["state"],
+            CircuitState.OPEN.value,
+        ))
+        results.append(_finish(res))
+
+        # 5. Open breaker fails fast (call never runs).
+        res = EvalResult(
+            eval_id="RES-5", eval_name="breaker_fails_fast",
+            input_text="call while open", output_summary="",
+        )
+        ran = {"v": False}
+
+        def _mark() -> str:
+            ran["v"] = True
+            return "ran"
+
+        blocked = False
+        try:
+            resilient_call(
+                _mark, breaker=cb, max_attempts=1, base_delay=0,
+                sleep=_noop,
+            )
+        except CircuitOpenError:
+            blocked = True
+        res.checks.append(EvalCheck(
+            name="blocked_when_open", passed=blocked, detail="",
+        ))
+        res.checks.append(_eq("call_skipped", ran["v"], False))
+        results.append(_finish(res))
+
+        # 6. Recovers to half-open then closes on success.
+        res = EvalResult(
+            eval_id="RES-6", eval_name="breaker_recovers",
+            input_text="advance clock past recovery + success",
+            output_summary="",
+        )
+        clock["t"] = 11.0                       # past recovery
+        out = resilient_call(
+            lambda: "ok", breaker=cb, max_attempts=1,
+            base_delay=0, sleep=_noop,
+        )
+        res.checks.append(_eq("trial_ok", out, "ok"))
+        res.checks.append(_eq(
+            "state_closed", cb.snapshot()["state"],
+            CircuitState.CLOSED.value,
+        ))
+        results.append(_finish(res))
+    finally:
+        _im.log_audit_event = _orig_log
+
+    return _make_run("Resilience", results)
+
+
 # ── Registry + suite runner ─────────────────────────────────────────
 
 AGENT_RUNNERS: Dict[str, Callable[[], EvalRun]] = {
@@ -1132,6 +1445,8 @@ AGENT_RUNNERS: Dict[str, Callable[[], EvalRun]] = {
     "BAPExclusionScreen":   run_bap_exclusion_evals,
     "IntegrityManager":     run_integrity_manager_evals,
     "ReproducibilityHarness": run_reproducibility_evals,
+    "PIIShield":            run_pii_shield_evals,
+    "Resilience":           run_resilience_evals,
 }
 
 

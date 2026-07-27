@@ -37,7 +37,7 @@ REGISTRY_SCHEMA_VERSION = "1.0.0"
 
 # Platform version: MAJOR.SPRINT.PATCH - the middle number is
 # the EVOLV sprint that last shipped behaviour-relevant change.
-EVOLV_PLATFORM_VERSION = "1.48.0"
+EVOLV_PLATFORM_VERSION = "1.51.0"
 
 # Where runtime model observations are persisted (append-only
 # JSON lines). Not the audit trail - that gets the event; this
@@ -80,6 +80,29 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
         "description":
             "Change Impact Assessment via token-overlap matching.",
         "governed_by": "6 evals + Logic Archive per assessment",
+    },
+    {
+        "component": "PIIShield",
+        "kind": "deterministic-engine",
+        "version": "1.0.0",
+        "description":
+            "Real-time PII/PHI screen at the tenant boundary "
+            "(regex + Luhn) before text reaches OpenAI/Pinecone. "
+            "Modes off|warn|redact|block via EVOLV_PII_MODE; "
+            "audit records category counts only, never values.",
+        "governed_by": "11 evals in Trusted Evals suite (CI)",
+    },
+    {
+        "component": "Resilience",
+        "kind": "deterministic-engine",
+        "version": "1.0.0",
+        "description":
+            "Retry (bounded exponential backoff, transient-only) "
+            "plus per-dependency circuit breaker around OpenAI/"
+            "Pinecone. Fail-fast when a dependency is down; "
+            "recover via a half-open trial. Health snapshot from "
+            "breaker state.",
+        "governed_by": "6 evals in Trusted Evals suite (CI)",
     },
     {
         "component": "ValidatedStateEngine",
@@ -165,7 +188,7 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
         "kind": "harness",
         "version": REGISTRY_SCHEMA_VERSION,
         "description":
-            "136 deterministic evals across 7 agents; runs in "
+            "153 deterministic evals across 9 agents; runs in "
             "CI on every push and on demand from the Dev Portal.",
         "governed_by": "CI gate (blocking) + signed run reports",
     },
@@ -188,6 +211,36 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
 # would want notified about. Newest first.
 
 VERSION_CHANGELOG: List[Dict[str, str]] = [
+    {
+        "date": "2026-07-27",
+        "component": "Resilience",
+        "change":
+            "New retry + circuit-breaker layer wraps the OpenAI "
+            "and Pinecone calls: bounded exponential backoff on "
+            "transient errors only, fail-fast breaker with "
+            "half-open recovery, and a breaker-state health "
+            "snapshot. Tunable via EVOLV_RETRY_* / EVOLV_CB_*. "
+            "6 evals added (suite now 153 / 9 agents).",
+        "impact":
+            "More robust under upstream throttling/outage; "
+            "no behaviour change on the happy path.",
+        "sprint": "51",
+    },
+    {
+        "date": "2026-07-27",
+        "component": "PIIShield",
+        "change":
+            "New deterministic PII/PHI input shield screens text "
+            "at the tenant boundary before it reaches OpenAI/"
+            "Pinecone. Enforcement via EVOLV_PII_MODE "
+            "(off|warn|redact|block); default warn. Wired into "
+            "RequirementArchitect.search(). 11 evals added "
+            "(suite now 147 / 8 agents).",
+        "impact":
+            "No behaviour change at default (warn logs only). "
+            "Set EVOLV_PII_MODE=redact|block to enforce.",
+        "sprint": "51",
+    },
     {
         "date": "2026-07-21",
         "component": "Reproducibility harness",

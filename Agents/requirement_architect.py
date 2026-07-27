@@ -1107,9 +1107,15 @@ class RequirementArchitect:
             raise ValueError("OPENAI_API_KEY is required for embeddings")
 
         client = OpenAI(api_key=self._openai_api_key)
-        response = client.embeddings.create(
+        # Sprint 51 — resilient call: bounded retry on transient
+        # failures + a circuit breaker that fails fast if OpenAI is
+        # down, rather than hanging every request behind a timeout.
+        from Agents.resilience import resilient_call, get_breaker
+        response = resilient_call(
+            client.embeddings.create,
             model=EMBEDDING_MODEL,
-            input=text
+            input=text,
+            breaker=get_breaker("openai"),
         )
         return response.data[0].embedding
 
@@ -1134,10 +1140,15 @@ class RequirementArchitect:
         pc = Pinecone(api_key=self._pinecone_api_key)
         index = pc.Index(self._index_name)
 
-        results = index.query(
+        # Sprint 51 — resilient call: retry transient Pinecone
+        # blips; circuit-break when the index is unreachable.
+        from Agents.resilience import resilient_call, get_breaker
+        results = resilient_call(
+            index.query,
             vector=embedding,
             top_k=top_k,
-            include_metadata=True
+            include_metadata=True,
+            breaker=get_breaker("pinecone"),
         )
 
         matches = []
@@ -1193,6 +1204,20 @@ class RequirementArchitect:
         """
         if not query or not query.strip():
             raise ValueError("Search query cannot be empty")
+
+        # Sprint 51 — PII/PHI pre-flight screen at the tenant
+        # boundary. `query` is about to be embedded (OpenAI) and
+        # sent to Pinecone, i.e. it LEAVES the tenant. Screen it
+        # first; enforcement is governed by EVOLV_PII_MODE
+        # (off | warn [default] | redact | block). In warn mode
+        # the text is unchanged and only a value-free audit event
+        # is written when PII is present.
+        from Agents.pii_shield import screen_for_external_call
+        query = screen_for_external_call(
+            query,
+            agent_name="RequirementArchitect",
+            context="search:embedding+pinecone",
+        )
 
         # Generate embedding for the query
         embedding = self._get_embedding(query)
