@@ -4,15 +4,28 @@
 
 ---
 
-**TL;DR:** A validation platform is itself a computer system —
-GAMP Category 5, custom software, the highest-scrutiny class. So
-before you deploy one, you're supposed to see *its* validation
-evidence. Most vendors hand you a supplier questionnaire and a
-SOC 2 report. This week we made EVOLV generate its own complete
-validation package — Validation Plan, IQ, OQ, and a
-253-requirement traceability matrix — on demand, from live
-evidence, using EVOLV's own methodology. This issue is about
-that recursive move, and why it's harder to fake than a slide.
+**Update (after publication):** Following a sharp comment from
+Dori Gonzalez (CEO, ProcellaRX), I've sharpened the GAMP-
+classification language throughout this piece. The short version:
+*how you classify a validation tool depends on which side of the
+fence you stand on.* A customer deploying a SaaS tool runs a
+risk-based supplier assessment (typically Category 3/4); a vendor
+validating its own bespoke code is doing Category 5 work from its
+own SDLC. The original draft blurred the two — thanks, Dori. The
+distinction below is better for it.
+
+---
+
+**TL;DR:** A validation platform is software you have to trust
+with your GxP records — so the fair question is whether its
+vendor can show you real validation *evidence you can leverage*,
+not a slide. Most hand you a supplier questionnaire and a SOC 2.
+This week we made EVOLV generate its own complete validation
+package — Validation Plan, IQ, OQ, and a 253-requirement
+traceability matrix — on demand, from live evidence, so a
+deploying customer can leverage our activities and do less. This
+issue is about that recursive move, and why it's harder to fake
+than a slide.
 
 ---
 
@@ -20,11 +33,23 @@ that recursive move, and why it's harder to fake than a slide.
 
 Here's an uncomfortable one for any validation-software vendor.
 Your tool authors, executes, and stores GxP validation records.
-That makes your tool a computer system used in a regulated
-process — Category 5 under GAMP 5, the custom-software tier that
-gets the most scrutiny.
+That makes it a computer system in a regulated process, and its
+outputs are ones an inspector can question.
 
-So: **who validated your tool?** Not "is it ISO-certified." Not
+One clarification up front — the one Dori pushed me to sharpen:
+*classification depends on which side of the fence you stand on.*
+When a **customer deploys** a SaaS validation tool, that's a
+risk-based **supplier assessment plus validation of intended
+use** — typically GAMP Category 3/4, and rightly a
+leverage-the-supplier, least-burden exercise under GAMP 5's
+second edition and FDA's CSA guidance. Nobody should be told they
+owe a full Category 5 validation to switch on a SaaS tool. When a
+**vendor validates its own bespoke code** — which is what this
+piece is about — that's Category 5 work from *our* SDLC. Same
+tool, two lenses. The question that holds across both is the same.
+
+So: **who validated your tool, and can I leverage that
+evidence?** Not "is it ISO-certified." Not
 "here's our SOC 2." Show me the Installation Qualification, the
 Operational Qualification, and the requirements traceability
 matrix — for the software I'm about to let touch my quality
@@ -41,8 +66,10 @@ Turning it on ourselves felt only fair.
 One API call now produces a signed, 12-page validation package
 for the EVOLV platform itself:
 
-- **Validation Plan** — declared as GAMP Category 5, risk-based,
-  V-model. The same lifecycle EVOLV runs for customers, run on
+- **Validation Plan** — our own bespoke software, validated by a
+  risk-based V-model (Category 5 from *our* SDLC; a deploying
+  customer's exercise is the risk-based Cat 3/4 one described
+  above). The same lifecycle EVOLV runs for customers, run on
   EVOLV.
 - **Installation Qualification** — the verifiable install
   baseline: pinned dependency manifest with security floors,
@@ -114,6 +141,13 @@ built for their tool, by their tool's methodology, with the test
 evidence executed live. Then ask us. The gap in the answers is
 the whole pitch.
 
+And to be clear about *why* it matters: this isn't "more
+documents." It's the opposite. Real supplier evidence is
+something you **leverage** — it lets your team do less,
+risk-based, exactly the leverage principle GAMP 5's second
+edition asks for. Evidence you can re-derive beats paperwork you
+file.
+
 **The stack, in numbers:** 253 requirements traced end-to-end ·
 136 deterministic evals gating CI · deterministic engines proven
 byte-reproducible · a 12-page validation package generated on
@@ -126,5 +160,9 @@ generate their own validation package on the spot. We can:
 sreejith@evolifeval.com*
 
 ---
+*With thanks to Dori Gonzalez (ProcellaRX) for the challenge that
+sharpened the classification section — this is the conversation
+the field needs more of.*
+
 *Sree · Founder, EVOLV | The Validation Factory*
 *Powered by EVOLV | A WingstarTech Inc. Product*
