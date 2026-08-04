@@ -16,6 +16,7 @@ log entries can never be overwritten by application code.
 import csv
 import hashlib
 import json
+import logging
 import os
 import threading
 from dataclasses import dataclass, field
@@ -30,6 +31,17 @@ AUDIT_TRAIL_PATH = PROJECT_ROOT / "output" / "audit_trail.csv"
 LOGIC_ARCHIVE_DIR = PROJECT_ROOT / "output" / "logic_archives"
 
 _ARCHIVE_SCHEMA_VERSION = "1.0.0"
+
+logger = logging.getLogger("evolv.integrity")
+
+
+class TrailIntegrityError(Exception):
+    """
+    Error code: CSV-056 - The audit trail failed its integrity check
+    (disabled, deleted, truncated, or tampered).
+    """
+
+    error_code = "CSV-056"
 
 CSV_COLUMNS = [
     "Timestamp",
@@ -200,6 +212,9 @@ _IMPACT_MAP = {
     "CIRCUIT_BREAKER_HALF_OPEN":  "Availability — Dependency",
     "CIRCUIT_BREAKER_CLOSED":     "Availability — Dependency",
     "DEPENDENCY_RETRY_EXHAUSTED": "Availability — Dependency",
+    # Sprint 52 — audit-trail integrity self-check (FDA 211.68(b))
+    "INTEGRITY_VERIFIED":     "Data Integrity — Trail Verified",
+    "INTEGRITY_COMPROMISED":  "Data Integrity — Trail Compromised",
 }
 
 DEFAULT_IMPACT = "Operational"
@@ -514,6 +529,13 @@ def log_audit_event(
     if compliance_impact is None:
         compliance_impact = _IMPACT_MAP.get(action, DEFAULT_IMPACT)
 
+    # Attribution guard (Sprint 52): a human-decision event recorded
+    # against a shared/generic identity is refused (enforce mode) or
+    # flagged (warn mode) before it can enter the trail — FDA
+    # 211.68(b) "only authorized personnel", unique attribution.
+    from Agents.attribution import guard_attribution
+    guard_attribution(user_id, action)
+
     with _write_lock:
         _ensure_csv_header(audit_path)
 
@@ -706,4 +728,61 @@ def verify_audit_chain(
             prev_hash = row_hash
 
     report.head_hash = prev_hash
+    return report
+
+
+def verify_trail_on_startup(
+    audit_path: Path = AUDIT_TRAIL_PATH,
+    enforce: Optional[bool] = None,
+) -> ChainVerificationReport:
+    """
+    Verify the audit-trail chain at process startup.
+
+    The platform must never silently operate on a disabled, deleted,
+    truncated, or tampered audit trail (FDA 21 CFR 211.68(b)). This
+    runs the full-chain verification once at boot, records the outcome
+    as its own audit event, and — when enforcement is on — refuses to
+    start on a broken chain.
+
+    Enforcement is enabled by ``EVOLV_TRAIL_ENFORCE`` (any value other
+    than "", "0", "false", "no") or by passing ``enforce=True``.
+
+    :param audit_path: CSV to verify (defaults to the central trail).
+    :param enforce: Override for enforcement (env used when None).
+    :return: The :class:`ChainVerificationReport`.
+    :raises TrailIntegrityError: In enforce mode when the chain is
+                                 broken.
+    :requirement: URS-52.5 - Verify audit-trail chain integrity at
+                  startup and refuse to run on a broken chain.
+    """
+    report = verify_audit_chain(audit_path)
+    if report.intact:
+        log_audit_event(
+            agent_name="IntegrityManager",
+            action="INTEGRITY_VERIFIED",
+            decision_logic=(
+                f"Startup chain check OK: {report.total_rows} row(s), "
+                f"{report.chained_ok} chained, head "
+                f"{report.head_hash[:12]}."
+            ),
+        )
+        return report
+
+    first = report.issues[0]
+    detail = (
+        f"Startup chain check FAILED: {len(report.issues)} issue(s); "
+        f"first at row {first.row_number} ({first.reason})."
+    )
+    log_audit_event(
+        agent_name="IntegrityManager",
+        action="INTEGRITY_COMPROMISED",
+        decision_logic=detail,
+    )
+    logger.critical("[CSV-056] %s", detail)
+
+    if enforce is None:
+        raw = os.getenv("EVOLV_TRAIL_ENFORCE", "").strip().lower()
+        enforce = raw not in ("", "0", "false", "no")
+    if enforce:
+        raise TrailIntegrityError(f"[CSV-056] {detail}")
     return report

@@ -186,6 +186,23 @@ app = FastAPI(
 # Emit a loud warning when running with authentication disabled.
 warn_if_auth_disabled()
 
+# Verify the audit-trail chain at startup (Sprint 52). The platform
+# must not silently run on a disabled/truncated/tampered trail (FDA
+# 21 CFR 211.68(b)). In enforce mode (EVOLV_TRAIL_ENFORCE) a broken
+# chain refuses startup; otherwise it is logged as a critical alarm.
+try:
+    from Agents.integrity_manager import (
+        verify_trail_on_startup,
+        TrailIntegrityError,
+    )
+    verify_trail_on_startup()
+except TrailIntegrityError:
+    raise  # enforce mode — refuse to serve on a broken trail
+except Exception:  # noqa: BLE001 — never block dev boot on a check bug
+    logging.getLogger("evolv.api").exception(
+        "Audit-trail startup verification error (continuing)."
+    )
+
 # TenantDictionaryMiddleware — rewrites JSON response labels
 # to match the active tenant nomenclature map.
 app.add_middleware(TenantDictionaryMiddleware)

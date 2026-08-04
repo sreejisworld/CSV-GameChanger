@@ -21,6 +21,14 @@ LINKEDIN_NEWSLETTER = (
 #                 written as edition-{num}.html
 # native=False -> card links out to the LinkedIn edition (url)
 EDITIONS = [
+    {"num": 14, "native": True, "md": "newsletter-14-draft.md",
+     "topic": "FDA Prevention", "date": "Aug 2026",
+     "title": "What FDA Is Citing in 2026 - and How EVOLV "
+              "Prevents Each One by Design",
+     "hook": "FDA's 2026 computer-system findings cluster into "
+             "six themes under 21 CFR 211.68. We mapped EVOLV "
+             "against every one - four prevented by design, two "
+             "edges found and closed this week."},
     {"num": 12, "native": True, "md": "newsletter-12-draft.md",
      "topic": "Self-Validation", "date": "Jul 2026",
      "title": "Who Validated the Tool That Validates "
@@ -236,6 +244,30 @@ def md_to_html(md):
                 i += 1
             out.append('<ol>' + ''.join(items) + '</ol>')
             continue
+        # GFM table: a header row followed by a |---|---| separator.
+        if (s.startswith('|') and i + 1 < n
+                and '-' in lines[i + 1]
+                and re.match(r'^\|?[\s:|-]+\|?\s*$',
+                             lines[i + 1].strip())):
+            header = [c.strip()
+                      for c in s.strip().strip('|').split('|')]
+            i += 2  # consume header + separator
+            rows = []
+            while i < n and lines[i].strip().startswith('|'):
+                cells = [c.strip() for c in
+                         lines[i].strip().strip('|').split('|')]
+                rows.append(cells)
+                i += 1
+            thead = ''.join(f'<th>{inline(c)}</th>' for c in header)
+            body = ''
+            for r in rows:
+                tds = ''.join(f'<td>{inline(c)}</td>' for c in r)
+                body += f'<tr>{tds}</tr>'
+            out.append(
+                '<div class="table-wrap"><table>'
+                f'<thead><tr>{thead}</tr></thead>'
+                f'<tbody>{body}</tbody></table></div>')
+            continue
         para = [s]
         i += 1
         while (i < n and lines[i].strip()
@@ -310,6 +342,16 @@ def article_page(ed):
   border-radius:0 8px 8px 0;font-size:16.5px;color:#3A3833;}}
   article hr{{border:none;border-top:1px solid var(--border);
   margin:30px 0;}}
+  .table-wrap{{overflow-x:auto;margin:0 0 22px;
+  border:1px solid var(--border);border-radius:10px;}}
+  article table{{border-collapse:collapse;width:100%;
+  font-size:14.5px;min-width:660px;}}
+  article th{{text-align:left;font-family:var(--sans);font-weight:600;
+  background:#F2F0EA;color:var(--ink);padding:11px 14px;
+  border-bottom:1px solid var(--border);}}
+  article td{{padding:11px 14px;vertical-align:top;color:#332F2A;
+  border-bottom:1px solid var(--border);line-height:1.5;}}
+  article tbody tr:last-child td{{border-bottom:none;}}
   .foot{{margin-top:40px;border-top:1px solid var(--border);
   padding-top:24px;display:flex;gap:14px;flex-wrap:wrap;
   align-items:center;}}

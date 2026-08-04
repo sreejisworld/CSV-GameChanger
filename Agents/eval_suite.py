@@ -1435,6 +1435,146 @@ def run_resilience_evals() -> EvalRun:
     return _make_run("Resilience", results)
 
 
+def run_attribution_evals() -> EvalRun:
+    """Deterministic evals for the unique-user attribution guard:
+    shared/generic identity detection, human-decision action
+    classification, and off/warn/enforce mode behaviour (enforce
+    raises before an un-attributable sign-off is written; plumbing
+    events with SYSTEM stay allowed). Mode env is set and restored
+    around the run.
+
+    :requirement: URS-52.1 - Enforce unique-user attribution.
+    :requirement: URS-52.3 - Classify human-decision actions.
+    """
+    import os as _os
+    from Agents.attribution import (
+        is_shared_identity, is_attributable_action,
+        screen_attribution, guard_attribution, AttributionError,
+    )
+
+    results: List[EvalResult] = []
+    _orig_mode = _os.environ.get("EVOLV_ATTRIBUTION_MODE")
+
+    def _set_mode(m: Optional[str]) -> None:
+        if m is None:
+            _os.environ.pop("EVOLV_ATTRIBUTION_MODE", None)
+        else:
+            _os.environ["EVOLV_ATTRIBUTION_MODE"] = m
+
+    try:
+        # 1. shared / generic identity detection
+        res = EvalResult(
+            eval_id="ATTR-1", eval_name="shared_id_detect",
+            input_text="SYSTEM / '' / admin vs a real person",
+            output_summary="",
+        )
+        res.checks.append(_eq(
+            "system_is_shared", is_shared_identity("SYSTEM"), True))
+        res.checks.append(_eq(
+            "empty_is_shared", is_shared_identity(""), True))
+        res.checks.append(_eq(
+            "admin_is_shared", is_shared_identity("admin"), True))
+        res.checks.append(_eq(
+            "person_not_shared",
+            is_shared_identity("jane.doe@acme.com"), False))
+        results.append(_finish(res))
+
+        # 2. attributable-action classification
+        res = EvalResult(
+            eval_id="ATTR-2", eval_name="attributable_actions",
+            input_text="signed/approved vs generated/failed",
+            output_summary="",
+        )
+        res.checks.append(_eq(
+            "ccr_approved", is_attributable_action("CCR_APPROVED"),
+            True))
+        res.checks.append(_eq(
+            "qa_signed",
+            is_attributable_action("QA_REVIEW_SIGNED"), True))
+        res.checks.append(_eq(
+            "urs_generated_not",
+            is_attributable_action("URS_GENERATED"), False))
+        res.checks.append(_eq(
+            "ccr_failed_not",
+            is_attributable_action("CCR_FAILED"), False))
+        results.append(_finish(res))
+
+        # 3. warn mode: flagged, guard does NOT raise
+        _set_mode("warn")
+        res = EvalResult(
+            eval_id="ATTR-3", eval_name="warn_flags_no_raise",
+            input_text="SYSTEM + CCR_APPROVED (warn)",
+            output_summary="",
+        )
+        scr = screen_attribution("SYSTEM", "CCR_APPROVED")
+        raised = False
+        try:
+            guard_attribution("SYSTEM", "CCR_APPROVED")
+        except AttributionError:
+            raised = True
+        res.checks.append(_eq("violation_flagged", scr.violation, True))
+        res.checks.append(_eq("warn_does_not_raise", raised, False))
+        results.append(_finish(res))
+
+        # 4. enforce mode: guard raises before the row is written
+        _set_mode("enforce")
+        res = EvalResult(
+            eval_id="ATTR-4", eval_name="enforce_raises",
+            input_text="SYSTEM + CCR_APPROVED (enforce)",
+            output_summary="",
+        )
+        raised = False
+        try:
+            guard_attribution("SYSTEM", "CCR_APPROVED")
+        except AttributionError:
+            raised = True
+        res.checks.append(EvalCheck(
+            name="enforce_blocks", passed=raised,
+            detail="Un-attributable sign-off blocked."
+            if raised else "Not blocked.",
+        ))
+        results.append(_finish(res))
+
+        # 5. off mode: never a violation
+        _set_mode("off")
+        res = EvalResult(
+            eval_id="ATTR-5", eval_name="off_no_violation",
+            input_text="SYSTEM + CCR_APPROVED (off)",
+            output_summary="",
+        )
+        res.checks.append(_eq(
+            "no_violation_off",
+            screen_attribution("SYSTEM", "CCR_APPROVED").violation,
+            False))
+        results.append(_finish(res))
+
+        # 6. enforce: real person allowed; SYSTEM plumbing allowed
+        _set_mode("enforce")
+        res = EvalResult(
+            eval_id="ATTR-6", eval_name="legit_paths_allowed",
+            input_text="person+sign-off, SYSTEM+plumbing (enforce)",
+            output_summary="",
+        )
+        raised_person = False
+        try:
+            guard_attribution("jane.doe@acme.com", "CCR_APPROVED")
+        except AttributionError:
+            raised_person = True
+        raised_plumbing = False
+        try:
+            guard_attribution("SYSTEM", "URS_GENERATED")
+        except AttributionError:
+            raised_plumbing = True
+        res.checks.append(_eq("real_user_ok", raised_person, False))
+        res.checks.append(_eq(
+            "system_plumbing_ok", raised_plumbing, False))
+        results.append(_finish(res))
+    finally:
+        _set_mode(_orig_mode)
+
+    return _make_run("Attribution", results)
+
+
 # ── Registry + suite runner ─────────────────────────────────────────
 
 AGENT_RUNNERS: Dict[str, Callable[[], EvalRun]] = {
@@ -1447,6 +1587,7 @@ AGENT_RUNNERS: Dict[str, Callable[[], EvalRun]] = {
     "ReproducibilityHarness": run_reproducibility_evals,
     "PIIShield":            run_pii_shield_evals,
     "Resilience":           run_resilience_evals,
+    "Attribution":          run_attribution_evals,
 }
 
 

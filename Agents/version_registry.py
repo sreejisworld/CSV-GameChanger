@@ -105,6 +105,31 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
         "governed_by": "6 evals in Trusted Evals suite (CI)",
     },
     {
+        "component": "Attribution",
+        "kind": "deterministic-guard",
+        "version": "1.0.0",
+        "description":
+            "Unique-user attribution guard: a human-decision audit "
+            "event (signature / approval / attestation) recorded "
+            "against a shared or generic identity is refused "
+            "(enforce) or flagged (warn). Modes off|warn|enforce via "
+            "EVOLV_ATTRIBUTION_MODE. Closes FDA 211.68(b) 'shared "
+            "login / no attribution'.",
+        "governed_by": "6 evals in Trusted Evals suite (CI)",
+    },
+    {
+        "component": "AuditTrailIntegrityCheck",
+        "kind": "deterministic-guard",
+        "version": "1.0.0",
+        "description":
+            "Startup audit-trail chain verification: the platform "
+            "verifies its own tamper-evident trail at boot and, in "
+            "enforce mode (EVOLV_TRAIL_ENFORCE), refuses to run on a "
+            "disabled/truncated/tampered chain. Closes FDA 211.68(b) "
+            "'missing/disabled audit trail'.",
+        "governed_by": "IntegrityManager evals (chain verification)",
+    },
+    {
         "component": "ValidatedStateEngine",
         "kind": "deterministic-engine",
         "version": "1.0.0",
@@ -188,7 +213,7 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
         "kind": "harness",
         "version": REGISTRY_SCHEMA_VERSION,
         "description":
-            "153 deterministic evals across 9 agents; runs in "
+            "159 deterministic evals across 10 agents; runs in "
             "CI on every push and on demand from the Dev Portal.",
         "governed_by": "CI gate (blocking) + signed run reports",
     },
@@ -211,6 +236,22 @@ COMPONENT_REGISTRY: List[Dict[str, Any]] = [
 # would want notified about. Newest first.
 
 VERSION_CHANGELOG: List[Dict[str, str]] = [
+    {
+        "date": "2026-08-04",
+        "component": "Attribution + AuditTrailIntegrityCheck",
+        "change":
+            "Two prevention controls answering FDA's 2026 21 CFR "
+            "211.68 warning-letter themes: (1) a unique-user "
+            "attribution guard that refuses/flags human sign-offs "
+            "recorded against a shared or generic identity; (2) a "
+            "startup audit-trail chain verification that refuses to "
+            "run on a disabled/tampered trail (enforce mode). "
+            "10 evals added (suite now 159 / 10 agents).",
+        "impact":
+            "Default modes are behaviour-neutral (warn); enforce is "
+            "opt-in via EVOLV_ATTRIBUTION_MODE / EVOLV_TRAIL_ENFORCE.",
+        "sprint": "52",
+    },
     {
         "date": "2026-07-27",
         "component": "Resilience",
