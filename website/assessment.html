@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-CSV Readiness Assessment | EVOLV</title>
+<meta name="description" content="Three weeks, fixed fee. Where your systems sit against the six computer-system themes FDA is citing in 2026 — readiness scorecard, gap register, and a 90-day remediation plan.">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23161618'/><text x='16' y='22' font-size='17' font-family='monospace' font-weight='bold' fill='%230E9F6E' text-anchor='middle'>E</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4F4F0; --paper2:#FBFBF9; --card:#FFFFFF;
+    --ink:#161618; --ink2:#3C3C40; --muted:#6E6E68; --faint:#94948C;
+    --line:#E4E4DE; --line2:#D6D6CE;
+    --accent:#0E9F6E; --accent-dk:#0A7D57; --signal:#3B5BFF; --red:#DC2626;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --sans:'Inter',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  ::selection{background:rgba(14,159,110,.22);}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px;}
+  .mono{font-family:var(--mono);}
+  .lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;background:rgba(244,244,240,.82);
+    backdrop-filter:blur(14px);border-bottom:1px solid var(--line);}
+  .nav-in{display:flex;align-items:center;gap:24px;max-width:1120px;
+    margin:0 auto;padding:15px 28px;}
+  .brand{display:flex;align-items:baseline;gap:10px;text-decoration:none;color:var(--ink);}
+  .brand b{font-family:var(--disp);font-size:21px;font-weight:700;letter-spacing:.01em;}
+  .brand span{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);}
+  .nav-links{display:flex;gap:22px;margin-left:auto;align-items:center;}
+  .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;}
+  .nav-links a:hover{color:var(--ink);}
+  .nav-links a.on{color:var(--ink);}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;
+    border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;
+    cursor:pointer;border:none;font-family:var(--sans);transition:all .18s;}
+  .btn-ink{background:var(--ink);color:#fff;}
+  .btn-ink:hover{background:#000;transform:translateY(-1px);
+    box-shadow:0 6px 20px rgba(22,22,24,.22);}
+  .btn-out{background:transparent;color:var(--ink);border:1.5px solid var(--line2);}
+  .btn-out:hover{border-color:var(--ink);}
+  .btn-sm{padding:8px 18px;font-size:14px;}
+
+  /* hero */
+  .hero{padding:76px 0 54px;border-bottom:1px solid var(--line);}
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:20px;}
+  .eyebrow::before{content:"";width:26px;height:1.5px;background:var(--accent);}
+  h1{font-family:var(--disp);font-size:clamp(34px,5.2vw,54px);font-weight:700;
+    line-height:1.08;letter-spacing:-.025em;max-width:16ch;}
+  h1 em{font-style:normal;color:var(--accent);}
+  .lede{margin-top:22px;font-size:18px;line-height:1.62;color:var(--ink2);
+    max-width:62ch;}
+  .cta-row{display:flex;gap:13px;flex-wrap:wrap;margin-top:32px;align-items:center;}
+  .cta-note{font-family:var(--mono);font-size:12px;color:var(--faint);
+    letter-spacing:.04em;}
+
+  /* sections */
+  section{padding:56px 0;border-bottom:1px solid var(--line);}
+  h2{font-family:var(--disp);font-size:27px;font-weight:600;
+    letter-spacing:-.015em;margin-bottom:8px;}
+  .sub{color:var(--muted);font-size:15.5px;margin-bottom:30px;max-width:62ch;}
+
+  /* themes table */
+  .themes{width:100%;border-collapse:collapse;}
+  .themes th{text-align:left;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.15em;text-transform:uppercase;color:var(--faint);
+    padding:0 0 12px;border-bottom:1px solid var(--line2);font-weight:500;}
+  .themes td{padding:16px 0;border-bottom:1px solid var(--line);
+    vertical-align:top;font-size:15px;color:var(--ink2);line-height:1.55;}
+  .themes td:first-child{font-family:var(--mono);color:var(--accent);
+    width:44px;font-size:13px;}
+  .themes td b{color:var(--ink);font-weight:600;display:block;
+    margin-bottom:2px;}
+  .themes td:nth-child(2){width:32%;padding-right:24px;}
+
+  /* deliverables */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:16px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:24px;}
+  .card .n{font-family:var(--mono);font-size:11px;color:var(--accent);
+    letter-spacing:.14em;margin-bottom:10px;}
+  .card h3{font-family:var(--disp);font-size:17px;font-weight:600;
+    margin-bottom:7px;letter-spacing:-.01em;}
+  .card p{font-size:14.5px;color:var(--muted);line-height:1.55;}
+
+  /* terms */
+  .terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:16px;}
+  .term{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:26px;}
+  .term .v{font-family:var(--disp);font-size:34px;font-weight:700;
+    letter-spacing:-.03em;line-height:1;margin:8px 0 10px;}
+  .term p{font-size:14px;color:var(--muted);line-height:1.55;}
+
+  /* who list */
+  ul.who{list-style:none;max-width:74ch;}
+  ul.who li{position:relative;padding-left:26px;margin-bottom:14px;
+    font-size:16px;color:var(--ink2);line-height:1.6;}
+  ul.who li::before{content:"→";position:absolute;left:0;color:var(--accent);
+    font-weight:600;}
+  ul.who li b{color:var(--ink);font-weight:600;}
+
+  /* honest block */
+  .honest{background:var(--ink);color:#EDEDE9;border-radius:16px;
+    padding:44px 46px;display:flex;gap:44px;flex-wrap:wrap;
+    align-items:flex-start;}
+  .honest .t{flex:1 1 340px;}
+  .honest h2{color:#fff;margin-bottom:12px;}
+  .honest p{color:#B4B4AE;font-size:15.5px;line-height:1.65;max-width:56ch;}
+  .honest .side{flex:0 0 auto;font-family:var(--mono);font-size:13px;
+    line-height:2.1;color:var(--accent);}
+  .honest .side a{text-decoration:none;}
+  .honest .side a:hover{text-decoration:underline;}
+
+  footer{padding:34px 0;}
+  .foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    font-size:13.5px;color:var(--muted);}
+  .foot-links{display:flex;gap:20px;flex-wrap:wrap;}
+  .foot-links a{text-decoration:none;color:var(--muted);}
+  .foot-links a:hover{color:var(--ink);}
+
+  @media(max-width:720px){
+    .nav-links a:not(.btn){display:none;}
+    .honest{padding:32px 26px;gap:26px;}
+    .themes td:nth-child(2){width:auto;}
+  }
+</style>
+</head>
+<body>
+
+<nav><div class="nav-in">
+  <a class="brand" href="index.html"><b>EVOLV</b><span>The Validation Factory</span></a>
+  <div class="nav-links">
+    <a href="index.html#evidence">Evidence</a>
+    <a href="index.html#product">Platform</a>
+    <a class="on" href="assessment.html">Assessment</a>
+    <a href="insights/index.html">Insights</a>
+    <a class="btn btn-ink btn-sm" id="nav-cta" href="#">Request the assessment</a>
+  </div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">Service brief</div>
+  <h1>AI-CSV Readiness Assessment.<br><em>Three weeks. One answer.</em></h1>
+  <p class="lede">
+    FDA's 2026 computer-system findings cluster into six recurring themes
+    under 21 CFR 211.68 — shared logins, missing audit trails, unvalidated
+    systems, backdated records, deletable data, and AI used without
+    controls. This assessment tells you exactly where your systems sit
+    against all six, what to fix first, and what it will take — before an
+    inspector tells you instead.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-ink" id="hero-cta" href="#">Request the assessment →</a>
+    <a class="btn btn-out" href="AI-CSV-Readiness-Assessment.pdf" download>Download the brief (PDF)</a>
+    <span class="cta-note">3 weeks · $18,500 fixed</span>
+  </div>
+</div></header>
+
+<section><div class="wrap">
+  <h2>What gets assessed</h2>
+  <p class="sub">Six themes. Every system you nominate is scored against
+    each one, with the evidence behind the score.</p>
+  <table class="themes">
+    <thead><tr><th></th><th>Theme</th><th>The question answered</th></tr></thead>
+    <tbody>
+      <tr><td>01</td><td><b>Access &amp; attribution</b></td>
+          <td>Can every GxP action be traced to a unique person — or do shared logins exist?</td></tr>
+      <tr><td>02</td><td><b>Audit trails</b></td>
+          <td>Are they on, complete, reviewed, and reconstructable?</td></tr>
+      <tr><td>03</td><td><b>Validation state</b></td>
+          <td>Which systems are making GxP decisions without defensible validation?</td></tr>
+      <tr><td>04</td><td><b>Record integrity</b></td>
+          <td>Can records be altered or backdated without a trace?</td></tr>
+      <tr><td>05</td><td><b>Backup &amp; retention</b></td>
+          <td>Can data be deleted or overwritten without detection?</td></tr>
+      <tr><td>06</td><td><b>AI governance</b></td>
+          <td>Where is AI influencing GxP decisions — and is it controlled?</td></tr>
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="wrap">
+  <h2>What you receive</h2>
+  <p class="sub">Four artifacts. Yours to keep and act on, whether or not
+    you ever use our platform.</p>
+  <div class="cards">
+    <div class="card">
+      <div class="n">01</div>
+      <h3>Readiness scorecard</h3>
+      <p>Every system scored red / amber / green against the six themes,
+         with the evidence behind each score.</p>
+    </div>
+    <div class="card">
+      <div class="n">02</div>
+      <h3>Gap register</h3>
+      <p>Each gap rated by inspection risk and effort to close, so the
+         sequence is obvious rather than debated.</p>
+    </div>
+    <div class="card">
+      <div class="n">03</div>
+      <h3>90-day remediation plan</h3>
+      <p>What to fix first, who owns it, and what "done" looks like for
+         each item.</p>
+    </div>
+    <div class="card">
+      <div class="n">04</div>
+      <h3>Executive readout</h3>
+      <p>A deck your leadership can act on — written so you don't have to
+         translate it first.</p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Terms</h2>
+  <p class="sub">Fixed scope, fixed fee, fixed end date.</p>
+  <div class="terms">
+    <div class="term">
+      <div class="lbl">Duration</div>
+      <div class="v">3 weeks</div>
+      <p>Kickoff, evidence review and interviews, then the readout.
+         Roughly 4–6 hours of your team's time in total.</p>
+    </div>
+    <div class="term">
+      <div class="lbl">Investment</div>
+      <div class="v">$18,500</div>
+      <p>Fixed fee. No hourly billing, no scope creep, no $400/hr
+         surprise at the end of the month.</p>
+    </div>
+    <div class="term">
+      <div class="lbl">Delivered by</div>
+      <div class="v">Sreejith</div>
+      <p>20+ years across big and mid pharma. 10,000+ professionals
+         trained in modern CSA. Not a junior on a rate card.</p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Who this is for</h2>
+  <ul class="who">
+    <li>QA Directors, CSV Leads, and IT Compliance Heads at
+        <b>startup and mid-size pharma and biotech</b>.</li>
+    <li>Teams deploying an <b>AI-enabled system</b> and unsure what
+        "validating AI" actually requires in practice.</li>
+    <li>Anyone who would struggle to answer
+        <b>"show me your audit trail review evidence"</b> in the next
+        30 days.</li>
+  </ul>
+</div></section>
+
+<section style="border-bottom:none"><div class="wrap">
+  <div class="honest">
+    <div class="t">
+      <h2>The assessment is the starting point, not the pitch.</h2>
+      <p>You get the scorecard and the plan whether or not you ever use
+         our platform. If the remediation turns out to be bigger than your
+         team's capacity, we can run it with you — but that's a separate
+         conversation, held after you have the findings in hand.</p>
+    </div>
+    <div class="side">
+      <a href="mailto:sreejith@evolifeval.com">sreejith@evolifeval.com</a><br>
+      <a href="https://linkedin.com/in/sreejith-kanhirangadan-csv-advisor" target="_blank" rel="noopener">LinkedIn</a><br>
+      <a href="AI-CSV-Readiness-Assessment.pdf" download>Download the brief</a>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap foot">
+  <div>Powered by EVOLV | A WingstarTech Inc. Product · © 2026</div>
+  <div class="foot-links">
+    <a href="mailto:sreejith@evolifeval.com">sreejith@evolifeval.com</a>
+    <a href="index.html">Platform</a>
+    <a href="insights/index.html">Insights</a>
+    <a href="https://linkedin.com/in/sreejith-kanhirangadan-csv-advisor" target="_blank" rel="noopener">LinkedIn</a>
+  </div>
+</div></footer>
+
+<script>
+/* Prefilled mailto CTAs — same pattern as the homepage. */
+const EMAIL = 'sreejith@evolifeval.com';
+function mailto(subject, body){
+  return 'mailto:' + EMAIL
+    + '?subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(body);
+}
+const href = mailto(
+  'AI-CSV Readiness Assessment — request',
+  'Hi Sreejith,\n\n'
+  + 'I\'d like to talk about the AI-CSV Readiness Assessment.\n\n'
+  + 'Company:\n'
+  + 'My role:\n'
+  + 'Systems in scope (rough count):\n'
+  + 'What prompted this (inspection, go-live, AI rollout, other):\n'
+  + 'Timing:\n\n'
+  + 'Thanks,\n'
+);
+document.getElementById('nav-cta').href = href;
+document.getElementById('hero-cta').href = href;
+</script>
+</body>
+</html>
