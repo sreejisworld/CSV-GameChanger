@@ -53,3 +53,7 @@ selector*.json
 *_port_fix.json
 *_final.json
 port_patch.json
+website/assets/_review_*
+
+# skills installed via npx skills add (package dir, not source)
+.agents/

@@ -1,0 +1,14 @@
+[
+  {
+    "type": "statement",
+    "motif": "script",
+    "text": "We wrote the test script\n*after* we ran the test.",
+    "out": "01b-test-after-motif.png"
+  },
+  {
+    "type": "statement",
+    "motif": "signoff",
+    "text": "Three signatures.\n*Nobody* read it end to end.",
+    "out": "04-signatures-motif.png"
+  }
+]

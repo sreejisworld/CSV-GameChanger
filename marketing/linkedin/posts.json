@@ -1,0 +1,19 @@
+[
+  {
+    "type": "statement",
+    "text": "We wrote the test script\n*after* we ran the test.",
+    "out": "01-test-after.png"
+  },
+  {
+    "type": "stat",
+    "stat": "$400/hr",
+    "text": "to watch a consultant recycle\nanother client's content.",
+    "out": "02-400-hr.png"
+  },
+  {
+    "type": "contrast",
+    "before": "~You need a new validation\nframework for AI.~",
+    "after": "You need to *apply the one\nyou already have*.",
+    "out": "03-framework.png"
+  }
+]
