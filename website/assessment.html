@@ -108,6 +108,29 @@
     letter-spacing:-.03em;line-height:1;margin:8px 0 10px;}
   .term p{font-size:14px;color:var(--muted);line-height:1.55;}
 
+  /* ladder */
+  .ladder{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:16px;align-items:stretch;}
+  .rung{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:26px 24px 24px;display:flex;flex-direction:column;}
+  .rung.feat{border:1.5px solid var(--ink);
+    box-shadow:0 8px 30px rgba(22,22,24,.07);}
+  .rung-top{display:flex;justify-content:space-between;align-items:baseline;
+    gap:10px;margin-bottom:14px;}
+  .rung .price{font-family:var(--disp);font-size:25px;font-weight:700;
+    letter-spacing:-.025em;white-space:nowrap;}
+  .rung .price span{font-size:14px;font-weight:500;color:var(--muted);}
+  .rung h3{font-family:var(--disp);font-size:18.5px;font-weight:600;
+    letter-spacing:-.012em;margin-bottom:3px;}
+  .rung .dur{font-family:var(--mono);font-size:11.5px;color:var(--accent);
+    letter-spacing:.08em;margin-bottom:12px;}
+  .rung p{font-size:14.5px;color:var(--muted);line-height:1.58;
+    margin-bottom:16px;}
+  .rung .credit{font-family:var(--mono);font-size:11px;color:var(--faint);
+    letter-spacing:.05em;border-top:1px solid var(--line);padding-top:12px;
+    margin-top:auto;margin-bottom:16px;}
+  .rung-cta{align-self:flex-start;}
+
   /* who list */
   ul.who{list-style:none;max-width:74ch;}
   ul.who li{position:relative;padding-left:26px;margin-bottom:14px;
@@ -169,7 +192,7 @@
   <div class="cta-row">
     <a class="btn btn-ink" id="hero-cta" href="#">Request the assessment →</a>
     <a class="btn btn-out" href="AI-CSV-Readiness-Assessment.pdf" download>Download the brief (PDF)</a>
-    <span class="cta-note">3 weeks · $18,500 fixed</span>
+    <span class="cta-note">3 weeks · $18,500 fixed &nbsp;·&nbsp; or start with a 90-min diagnostic, $2,500</span>
   </div>
 </div></header>
 
@@ -254,6 +277,52 @@
 </div></section>
 
 <section><div class="wrap">
+  <h2>Ways to start</h2>
+  <p class="sub">Three steps, and each one credits toward the next —
+    so nothing is paid for twice.</p>
+  <div class="ladder">
+    <div class="rung">
+      <div class="rung-top">
+        <div class="lbl">Step 01 · Entry</div>
+        <div class="price">$2,500</div>
+      </div>
+      <h3>Validation Diagnostic</h3>
+      <div class="dur">90 minutes</div>
+      <p>One system, one problem, worked live with your team. You get a
+         one-page findings memo and the three actions worth taking first.</p>
+      <div class="credit">Credits in full toward the assessment</div>
+      <a class="btn btn-out btn-sm rung-cta" id="cta-diag" href="#">Book the diagnostic</a>
+    </div>
+    <div class="rung feat">
+      <div class="rung-top">
+        <div class="lbl">Step 02 · Core</div>
+        <div class="price">$18,500</div>
+      </div>
+      <h3>AI-CSV Readiness Assessment</h3>
+      <div class="dur">3 weeks · up to 5 systems</div>
+      <p>The full six-theme review: scorecard, gap register, 90-day plan,
+         and an executive readout — closing with a working session where
+         the first three actions get agreed in the room.</p>
+      <div class="credit">Credits toward the advisory retainer</div>
+      <a class="btn btn-ink btn-sm rung-cta" id="cta-assess" href="#">Request the assessment</a>
+    </div>
+    <div class="rung">
+      <div class="rung-top">
+        <div class="lbl">Step 03 · Ongoing</div>
+        <div class="price">$8–12k<span>/mo</span></div>
+      </div>
+      <h3>Fractional AI-CSV Advisor</h3>
+      <div class="dur">2 days per month</div>
+      <p>For teams whose remediation plan is bigger than their capacity.
+         I own the plan with you — reviews, risk calls, inspection prep —
+         without adding headcount.</p>
+      <div class="credit">Only offered after an assessment</div>
+      <a class="btn btn-out btn-sm rung-cta" id="cta-ret" href="#">Ask about the retainer</a>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
   <h2>Who this is for</h2>
   <ul class="who">
     <li>QA Directors, CSV Leads, and IT Compliance Heads at
@@ -314,6 +383,28 @@ const href = mailto(
 );
 document.getElementById('nav-cta').href = href;
 document.getElementById('hero-cta').href = href;
+document.getElementById('cta-assess').href = href;
+
+document.getElementById('cta-diag').href = mailto(
+  'Validation Diagnostic (90 min) — request',
+  'Hi Sreejith,\n\n'
+  + 'I\'d like to book the 90-minute Validation Diagnostic.\n\n'
+  + 'Company:\n'
+  + 'My role:\n'
+  + 'The one system or problem I want to work on:\n'
+  + 'Any deadline driving this:\n\n'
+  + 'Thanks,\n'
+);
+
+document.getElementById('cta-ret').href = mailto(
+  'Fractional AI-CSV Advisor — enquiry',
+  'Hi Sreejith,\n\n'
+  + 'I\'d like to talk about ongoing advisory support.\n\n'
+  + 'Company:\n'
+  + 'My role:\n'
+  + 'What we need help owning:\n\n'
+  + 'Thanks,\n'
+);
 </script>
 </body>
 </html>
