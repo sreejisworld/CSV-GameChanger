@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EVOLV — LinkedIn carousel (1080x1350 / slide)</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  @page{size:1080px 1350px;margin:0}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#222;
+    --mint:#12E29B; --ink:#F2F6F4; --muted:#7C8B84; --dim:#4A5A54;}
+
+  .slide{position:relative;width:1080px;height:1350px;overflow:hidden;
+    background:#0A1210;font-family:'Space Grotesk',system-ui,sans-serif;
+    page-break-after:always;break-after:page;}
+  .slide:last-child{page-break-after:auto;break-after:auto;}
+
+  .grid{position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(18,226,155,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(18,226,155,.05) 1px,transparent 1px);
+    background-size:60px 60px;}
+  .glow{position:absolute;width:1000px;height:1000px;right:-260px;top:-400px;
+    background:radial-gradient(circle,rgba(18,226,155,.15) 0%,transparent 62%);}
+
+  .pad{position:absolute;inset:0;padding:92px 88px 84px;
+    display:flex;flex-direction:column;}
+  .kicker{font-family:'IBM Plex Mono',monospace;font-size:19px;
+    letter-spacing:.26em;text-transform:uppercase;color:var(--mint);
+    display:flex;align-items:center;gap:14px;flex:0 0 auto;}
+  .kicker::before{content:"";width:32px;height:2px;background:var(--mint);}
+
+  .body{flex:1 1 auto;display:flex;flex-direction:column;
+    justify-content:center;min-height:0;padding:40px 0;}
+
+  /* cover */
+  .cover h1{color:var(--ink);font-weight:700;font-size:88px;line-height:1.1;
+    letter-spacing:-.025em;}
+  .cover .sub{margin-top:34px;color:var(--muted);font-size:31px;
+    line-height:1.45;font-weight:400;max-width:80%;}
+
+  /* numbered point */
+  .num{font-family:'IBM Plex Mono',monospace;font-size:23px;color:var(--mint);
+    letter-spacing:.2em;margin-bottom:26px;}
+  .point h2{color:var(--ink);font-weight:700;font-size:62px;line-height:1.14;
+    letter-spacing:-.02em;margin-bottom:30px;}
+  .point p{color:var(--muted);font-size:30px;line-height:1.5;}
+  .point .tag{margin-top:32px;display:inline-block;
+    font-family:'IBM Plex Mono',monospace;font-size:20px;color:var(--mint);
+    border:2px solid rgba(18,226,155,.35);border-radius:100px;
+    padding:11px 22px;letter-spacing:.06em;}
+
+  /* big statement */
+  .statement h2{color:var(--ink);font-weight:700;font-size:74px;
+    line-height:1.14;letter-spacing:-.022em;}
+  .statement p{margin-top:32px;color:var(--muted);font-size:30px;
+    line-height:1.5;}
+
+  /* list slide */
+  .listing h2{color:var(--ink);font-weight:700;font-size:56px;
+    line-height:1.14;letter-spacing:-.02em;margin-bottom:38px;}
+  .listing li{list-style:none;color:var(--muted);font-size:29px;
+    line-height:1.45;padding-left:44px;position:relative;margin-bottom:24px;}
+  .listing li::before{content:"→";position:absolute;left:0;color:var(--mint);}
+  .listing li b{color:var(--ink);font-weight:600;}
+
+  .em{color:var(--mint);}
+
+  .foot{flex:0 0 auto;display:flex;align-items:flex-end;
+    justify-content:space-between;gap:20px;}
+  .mark{display:flex;align-items:center;gap:12px;}
+  .tick{width:32px;height:32px;border-radius:9px;background:var(--mint);
+    display:flex;align-items:center;justify-content:center;
+    color:#06231A;font-size:19px;font-weight:700;}
+  .mark span{color:var(--ink);font-weight:600;font-size:22px;
+    letter-spacing:.2em;}
+  .pageno{font-family:'IBM Plex Mono',monospace;font-size:19px;
+    color:var(--dim);}
+  .swipe{font-family:'IBM Plex Mono',monospace;font-size:19px;
+    color:var(--mint);letter-spacing:.1em;}
+</style>
+</head>
+<body>
+<div id="deck"></div>
+<script>
+function fmt(s){
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // typographic quotes — a straight " after start/space/bracket opens,
+    // everything else closes. Space Grotesk renders " as a closing glyph,
+    // so without this every opening quote looks backwards.
+    .replace(/(^|[\s(\[\n])"/g, '$1“')
+    .replace(/"/g, '”')
+    .replace(/(^|[\s(\[\n])'/g, '$1‘')
+    .replace(/'/g, '’')
+    .replace(/\*([^*]+)\*/g,'<span class="em">$1</span>')
+    .replace(/\n/g,'<br>');
+}
+
+window.renderDeck = function(slides){
+  const deck = document.getElementById('deck');
+  deck.innerHTML = '';
+  const total = slides.length;
+
+  slides.forEach(function(s, i){
+    const el = document.createElement('div');
+    el.className = 'slide';
+    let inner = '';
+
+    if (s.type === 'cover') {
+      inner = '<div class="body cover"><h1>' + fmt(s.title) + '</h1>'
+        + (s.sub ? '<div class="sub">' + fmt(s.sub) + '</div>' : '')
+        + '</div>';
+    } else if (s.type === 'point') {
+      inner = '<div class="body point">'
+        + (s.num ? '<div class="num">' + fmt(s.num) + '</div>' : '')
+        + '<h2>' + fmt(s.title) + '</h2>'
+        + (s.text ? '<p>' + fmt(s.text) + '</p>' : '')
+        + (s.tag ? '<div><span class="tag">' + fmt(s.tag) + '</span></div>' : '')
+        + '</div>';
+    } else if (s.type === 'list') {
+      inner = '<div class="body listing"><h2>' + fmt(s.title) + '</h2><ul>'
+        + (s.items || []).map(function(x){ return '<li>' + fmt(x) + '</li>'; }).join('')
+        + '</ul></div>';
+    } else {
+      inner = '<div class="body statement"><h2>' + fmt(s.title) + '</h2>'
+        + (s.text ? '<p>' + fmt(s.text) + '</p>' : '')
+        + '</div>';
+    }
+
+    const right = (i === 0)
+      ? '<div class="swipe">swipe →</div>'
+      : '<div class="pageno">' + (i + 1) + ' / ' + total + '</div>';
+
+    el.innerHTML = '<div class="grid"></div><div class="glow"></div>'
+      + '<div class="pad">'
+      + '<div class="kicker">' + fmt(s.kicker || 'THE VALIDATION EDGE') + '</div>'
+      + inner
+      + '<div class="foot">'
+      + '<div class="mark"><div class="tick">&#10003;</div><span>EVOLV</span></div>'
+      + right + '</div></div>';
+    deck.appendChild(el);
+  });
+
+  // shrink any slide whose content overflows its box
+  document.querySelectorAll('.slide').forEach(function(sl){
+    const box = sl.querySelector('.body');
+    const head = box.querySelector('h1, h2');
+    if (!head) return;
+    let size = parseFloat(getComputedStyle(head).fontSize);
+    while (size > 26 && box.scrollHeight > box.clientHeight) {
+      size -= 2;
+      head.style.fontSize = size + 'px';
+    }
+  });
+  return true;
+};
+</script>
+</body></html>

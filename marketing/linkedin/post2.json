@@ -1,0 +1,8 @@
+[
+  {
+    "type": "statement",
+    "motif": "document",
+    "text": "Three people signed it.\n*None* read past page four.",
+    "out": "05-signatures.png"
+  }
+]

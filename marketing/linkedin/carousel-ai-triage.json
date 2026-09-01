@@ -1,0 +1,65 @@
+[
+  {
+    "type": "cover",
+    "title": "\"Is this AI?\"\nis the wrong\nquestion.",
+    "sub": "The one that actually decides your validation burden — and the four answers that settle it."
+  },
+  {
+    "type": "statement",
+    "title": "Ask \"is this AI?\" and you get a *definitional debate*.",
+    "text": "Almost anything can be argued into or out of the label. And nothing about the answer tells you what validation you owe."
+  },
+  {
+    "type": "statement",
+    "title": "The question that works:\n*\"What happens when it's wrong?\"*",
+    "text": "Regulators reason about consequence, not category. Your intake form should too."
+  },
+  {
+    "type": "point",
+    "num": "QUESTION 01",
+    "title": "What does the output touch?",
+    "text": "A GxP decision, a GxP record, or neither. If it touches neither, you're documenting scope — not validating a system.",
+    "tag": "Scope, before anything else"
+  },
+  {
+    "type": "point",
+    "num": "QUESTION 02",
+    "title": "How much does it influence that decision?",
+    "text": "Informational. Advisory. Direct. Autonomous. Influence is a dial — and it moves your obligation far more than the technology does.",
+    "tag": "FDA: influence × consequence"
+  },
+  {
+    "type": "point",
+    "num": "QUESTION 03",
+    "title": "Can it change on its own?",
+    "text": "A locked model behaves tomorrow the way it behaved at qualification. An adaptive one — or a vendor-updated one — does not. That single difference is your entire monitoring burden.",
+    "tag": "Locked vs adaptive"
+  },
+  {
+    "type": "point",
+    "num": "QUESTION 04",
+    "title": "What does the human actually do?",
+    "text": "Reviews every output, samples them, or rubber-stamps them. \"Human in the loop\" isn't a control until you can say which — and show it works.",
+    "tag": "Automation bias is real"
+  },
+  {
+    "type": "list",
+    "title": "Four answers.\nOne repeatable decision.",
+    "items": [
+      "*Same inputs, same class* — whoever runs the form.",
+      "*Proportionate depth* — most low-risk uses clear in days, not quarters.",
+      "*A defensible record* — the reasoning survives \"why this level?\"",
+      "*A re-trigger* — re-run it when the model, the use, or the vendor changes."
+    ]
+  },
+  {
+    "type": "statement",
+    "title": "Governance isn't the brake.\n*Not being able to decide* is.",
+    "text": "If your AI projects are waiting on a framework, the bottleneck isn't risk appetite. It's the absence of a repeatable answer."
+  },
+  {
+    "type": "statement",
+    "title": "Has your org started the\nAI-in-GxP journey?",
+    "text": "Forward this to your QA, CSV or IT lead — it's the conversation they're about to be in.\n\nAnd if something here doesn't fit your setup, ask me. Happy to answer anything on this.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV · big & mid pharma · 10,000+ trained\n*evolifeval.com*"
+  }
+]

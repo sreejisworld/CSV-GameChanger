@@ -39,6 +39,18 @@
     border-bottom:2px solid rgba(207,239,226,.4);}
   #motif .sigcap{position:absolute;font-size:19px;
     letter-spacing:.18em;text-transform:uppercase;opacity:.8;}
+  /* 'document' motif — a contents page with dotted leaders, so the
+     page count itself is the evidence */
+  #motif .drow{position:absolute;left:92px;right:92px;display:flex;
+    align-items:baseline;font-size:23px;}
+  #motif .dots{flex:1 1 auto;margin:0 14px;
+    border-bottom:2px dotted rgba(207,239,226,.35);
+    transform:translateY(-6px);}
+  #motif .dpage{flex:0 0 auto;width:64px;text-align:right;}
+  #motif .rel-hit{color:#12E29B;opacity:1;
+    border-bottom-color:rgba(18,226,155,.5);}
+  #motif .drow.hit{color:#12E29B;opacity:1;}
+  #motif .drow.hit .dots{border-bottom-color:rgba(18,226,155,.55);}
   /* scrim keeps the headline crisp where it crosses the motif */
   #scrim{position:absolute;inset:0;pointer-events:none;
     background:linear-gradient(180deg,
@@ -172,6 +184,60 @@ function motif(kind){
         '<div style="flex:0 0 auto;width:130px">' + r[1] + '</div>' +
         '<div style="flex:1 1 auto">' + r[2] + '</div>' +
         '<div class="' + (amended ? 'amend' : '') + '">' + r[3] + '</div>';
+      m.appendChild(d);
+    });
+  } else if (kind === 'document') {
+    // contents page of a 340-page validation package; the row the
+    // headline refers to is highlighted
+    const toc = [
+      ['1.  Purpose', '1'],
+      ['2.  Scope', '3'],
+      ['3.  System Description', '4'],
+      ['4.  Roles and Responsibilities', '11'],
+      ['5.  Risk Assessment', '24'],
+      ['6.  Requirements Traceability', '58'],
+      ['7.  Installation Qualification', '96'],
+      ['8.  Operational Qualification', '141'],
+      ['9.  Performance Qualification', '203'],
+      ['10. Deviations and Resolutions', '248'],
+      ['11. Conclusion', '271'],
+      ['Appendix A  Test Evidence', '274'],
+      ['Appendix B  Screenshots', '298'],
+      ['Appendix C  Signature Manifest', '340'],
+    ];
+    toc.forEach(function(r, i){
+      const d = document.createElement('div');
+      d.className = 'drow' + (r[1] === '4' ? ' hit' : '');
+      d.style.top = (140 + i * 84) + 'px';
+      d.innerHTML = '<span>' + r[0] + '</span>'
+        + '<span class="dots"></span>'
+        + '<span class="dpage">' + r[1] + '</span>';
+      m.appendChild(d);
+    });
+  } else if (kind === 'release') {
+    // a vendor changelog with the model swap buried among cosmetics
+    const notes = [
+      ['v4.2.1', 'Improved dashboard load time', ''],
+      ['v4.2.1', 'Fixed CSV export column order', ''],
+      ['v4.2.1', 'Updated underlying language model', 'hit'],
+      ['v4.2.1', 'Minor UI refinements', ''],
+      ['v4.2.0', 'Added bulk upload', ''],
+      ['v4.2.0', 'New notification preferences', ''],
+      ['v4.1.9', 'Performance improvements', ''],
+      ['v4.1.9', 'Security patches', ''],
+      ['v4.1.8', 'Accessibility fixes', ''],
+      ['v4.1.8', 'Updated help documentation', ''],
+      ['v4.1.7', 'Bug fixes', ''],
+      ['v4.1.7', 'Localisation updates', ''],
+    ];
+    notes.forEach(function(r, i){
+      const d = document.createElement('div');
+      d.className = 'row' + (r[2] ? ' rel-hit' : '');
+      d.style.top = (150 + i * 96) + 'px';
+      d.innerHTML =
+        '<div style="flex:0 0 auto;width:118px">' + r[0] + '</div>'
+        + '<div style="flex:1 1 auto">' + r[1] + '</div>'
+        + (r[2] ? '<div class="amend">MODEL CHANGE</div>' : '');
       m.appendChild(d);
     });
   } else if (kind === 'signoff') {

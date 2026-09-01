@@ -1,0 +1,8 @@
+[
+  {
+    "type": "statement",
+    "motif": "release",
+    "text": "Your vendor changed\nthe model. *Nobody\ntold you.*",
+    "out": "06-model-change.png"
+  }
+]
