@@ -65,6 +65,11 @@
   .listing li b{color:var(--ink);font-weight:600;}
 
   .em{color:var(--mint);}
+  /* ~tildes~ mark the "before" half of a before/after — struck but
+     still legible, so the contrast reads at a glance */
+  .strike{color:var(--muted);text-decoration:line-through;
+    text-decoration-thickness:3px;
+    text-decoration-color:rgba(124,139,132,.7);}
 
   .foot{flex:0 0 auto;display:flex;align-items:flex-end;
     justify-content:space-between;gap:20px;}
@@ -93,6 +98,7 @@ function fmt(s){
     .replace(/"/g, '”')
     .replace(/(^|[\s(\[\n])'/g, '$1‘')
     .replace(/'/g, '’')
+    .replace(/~([^~]+)~/g,'<span class="strike">$1</span>')
     .replace(/\*([^*]+)\*/g,'<span class="em">$1</span>')
     .replace(/\n/g,'<br>');
 }
@@ -142,15 +148,26 @@ window.renderDeck = function(slides){
     deck.appendChild(el);
   });
 
-  // shrink any slide whose content overflows its box
+  // shrink any slide whose content overflows: heading first (it has
+  // the most slack), then body text — otherwise a long before/after
+  // example silently overflows off the bottom of the slide.
   document.querySelectorAll('.slide').forEach(function(sl){
     const box = sl.querySelector('.body');
     const head = box.querySelector('h1, h2');
-    if (!head) return;
-    let size = parseFloat(getComputedStyle(head).fontSize);
-    while (size > 26 && box.scrollHeight > box.clientHeight) {
-      size -= 2;
-      head.style.fontSize = size + 'px';
+    if (head) {
+      let hs = parseFloat(getComputedStyle(head).fontSize);
+      while (hs > 26 && box.scrollHeight > box.clientHeight) {
+        hs -= 2;
+        head.style.fontSize = hs + 'px';
+      }
+    }
+    const paras = box.querySelectorAll('p, li');
+    if (paras.length && box.scrollHeight > box.clientHeight) {
+      let ps = parseFloat(getComputedStyle(paras[0]).fontSize);
+      while (ps > 18 && box.scrollHeight > box.clientHeight) {
+        ps -= 1;
+        paras.forEach(function(el){ el.style.fontSize = ps + 'px'; });
+      }
     }
   });
   return true;

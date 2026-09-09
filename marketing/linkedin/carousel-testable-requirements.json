@@ -1,0 +1,67 @@
+[
+  {
+    "type": "cover",
+    "title": "An AI requirement\nthat can't *fail*\ncan't be validated.",
+    "sub": "Most AI requirements are aspirations wearing the word \"shall\"."
+  },
+  {
+    "type": "statement",
+    "title": "You've probably written this one:",
+    "text": "\"The system shall accurately extract data from batch records.\"\n\nNothing in that sentence can fail. So nothing in it can be tested — and the tester finds that out during execution, under deadline."
+  },
+  {
+    "type": "statement",
+    "title": "Why it happens:",
+    "text": "Nobody knows what number to write. And writing a number feels like committing to something you might miss.\n\nSo the requirement stays vague — and the decision quietly moves downstream to whoever is holding the script at 6pm."
+  },
+  {
+    "type": "point",
+    "num": "THE TEST",
+    "title": "Can this requirement fail?",
+    "text": "If you can't describe the observable outcome that counts as failure, you don't have a requirement. You have an intention.",
+    "tag": "Apply it to every line"
+  },
+  {
+    "type": "list",
+    "title": "What a testable AI\nrequirement needs:",
+    "items": [
+      "*The property* — accuracy, recall, consistency, latency",
+      "*The threshold* — a number, and a reason for it",
+      "*The conditions* — which data, which population, which document type",
+      "*The evidence* — how pass and fail get recorded",
+      "*The owner* — who decides, before anyone runs it"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "EXAMPLE 01 · EXTRACTION",
+    "title": "Before → After",
+    "text": "~The system shall accurately extract data from batch records.~\n\n*≥98% field-level accuracy against a 200-record human-adjudicated reference set. No single field below 95%. Re-measured at qualification and at every model change.*"
+  },
+  {
+    "type": "point",
+    "num": "EXAMPLE 02 · HUMAN REVIEW",
+    "title": "Before → After",
+    "text": "~AI output shall be reviewed by a qualified user.~\n\n*100% of Tier 3 outputs reviewed by a named role before entering the record. Reviewer disagreement rate monitored — a sustained rate below 2% triggers an automation-bias investigation.*"
+  },
+  {
+    "type": "statement",
+    "title": "That second one matters more\nthan it looks.",
+    "text": "If your reviewers never disagree with the model, they aren't reviewing it.\n\n\"Human in the loop\" only becomes a control the moment it can fail."
+  },
+  {
+    "type": "statement",
+    "title": "The hardest part is\nthe *threshold*.",
+    "text": "Here's the move nobody makes: measure what your current process actually achieves.\n\nIf your human reviewers catch 94%, then debating in the abstract whether 97% is \"good enough\" misses that you already accepted 94% — and never wrote it down."
+  },
+  {
+    "type": "statement",
+    "title": "Setting the number *is*\nthe risk assessment.",
+    "text": "To choose a threshold you have to say what happens when it's wrong, who catches it, and what it costs.\n\nThat's the conversation everyone says they want and then skips — because it's easier to write \"accurately\"."
+  },
+  {
+    "type": "statement",
+    "title": "Has your org started the\nAI-in-GxP journey?",
+    "text": "Forward this to your QA, CSV or IT lead — especially if requirements are being drafted right now.\n\nAnd if a threshold in your own work is hard to justify, ask me. Happy to think it through.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV · big, mid & startup · 10,000+ trained\n*evolifeval.com*"
+  }
+]
