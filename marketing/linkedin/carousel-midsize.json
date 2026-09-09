@@ -1,0 +1,62 @@
+[
+  {
+    "type": "cover",
+    "title": "The framework that\nworks at big pharma\n*breaks* at mid-size.",
+    "sub": "It's almost never the framework. It's what people carry in with them."
+  },
+  {
+    "type": "statement",
+    "title": "I've worked all three sizes.",
+    "text": "15 years in big pharma. Four in mid-size. Then startups. Then back again.\n\nSame regulations every time. Completely different physics."
+  },
+  {
+    "type": "statement",
+    "title": "Small and mid-size companies hire *from* big pharma.",
+    "text": "They get the experience they paid for. They also get the mentality that came with it — and nobody mentions that part in the interview."
+  },
+  {
+    "type": "point",
+    "num": "A PROJECT I WORKED ON",
+    "title": "Their first GxP system —\nand the date mattered.",
+    "text": "A statistical computing platform (SAS). Six months, limited scope, roughly 75% out-of-the-box vendor features — with vendor qualification documentation for all of it.\n\nRegulatory submission preparation was waiting on the go-live.",
+    "tag": "First GxP system. No local precedent."
+  },
+  {
+    "type": "point",
+    "num": "WHAT HAPPENED",
+    "title": "Two months late.",
+    "text": "QA asked the CSV team to fully validate the out-of-the-box features — the way you would with a hundred-person validation function and no deadline. The vendor's own evidence sat there, unused.\n\nSubmission prep slipped. So did every system downstream.",
+    "tag": "Risk-based validation: available, unused"
+  },
+  {
+    "type": "statement",
+    "title": "The part nobody says out loud:",
+    "text": "Over-validation is billable. Under-validation isn't.\n\nThat asymmetry shapes more decisions than anyone admits — and the company carrying the delay is never the one being paid for it."
+  },
+  {
+    "type": "statement",
+    "title": "This wasn't a *framework* gap.",
+    "text": "Risk-based validation was right there in the SOP. CSA was available. Vendor evidence was leverageable.\n\nBut it was their first GxP system — no local precedent, nothing to push back against the imported default: validate everything."
+  },
+  {
+    "type": "list",
+    "title": "What to unlearn when\nyou move down a size:",
+    "items": [
+      "*Validate everything* → proportionate to risk",
+      "*We have a team for that* → you are the team",
+      "*The SOP will tell us* → you will write the SOP",
+      "*Vendor docs aren't enough* → often they're exactly enough",
+      "*A six-week workshop* → a decision, in a room, this afternoon"
+    ]
+  },
+  {
+    "type": "statement",
+    "title": "What actually made me useful\nwasn't the CSV knowledge.",
+    "text": "It was leadership, teaching, negotiation, workshop facilitation, communicating risk to people who don't want to hear it.\n\nThe technical part is table stakes. Getting a room of experienced people to change how they work is the job."
+  },
+  {
+    "type": "statement",
+    "title": "Has your org started the\nAI-in-GxP journey?",
+    "text": "Forward this to your QA, CSV or IT lead — especially if your team was built by hiring from bigger companies.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV · big, mid & startup · 10,000+ trained\n*evolifeval.com*"
+  }
+]
