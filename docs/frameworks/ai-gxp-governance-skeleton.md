@@ -16,8 +16,9 @@ domain — because the failure mode in the field isn't a missing control
 domain, it's nobody being able to answer a question in the room.
 
 **Provenance:** every element derives from public regulatory sources
-(listed in §7) plus twenty years of implementation judgment. Nothing
-here originates in any employer's internal documentation.
+(listed in §8) plus twenty years of implementation judgment, and from
+building an AI system against these same controls (§7). Nothing here
+originates in any employer's internal documentation.
 
 ---
 
@@ -126,6 +127,11 @@ rights and evidence expectations; sub-processor and model supply chain.
 > notification, no change control trigger, and no visible difference in
 > the interface. Sponsor responsibility is not delegable.
 
+**Written up in practice:** *"Your vendor is going to change the model
+underneath your validated system"* — what breaks, why nobody catches it,
+and the four things to put in place.
+→ `[LINKEDIN URL — vendor model change post]`
+
 ---
 
 ## Part 4 — SUSTAIN
@@ -171,6 +177,13 @@ different constraints.
 | **First decisions in a room** | The first three classifications run live, together, not circulated as a document |
 | **Governance body** | Council or equivalent — sized to the organisation. Effectiveness varies materially with company size; a big-pharma council structure transplanted into a mid-size org is friction, not control |
 
+**Written up in practice:** *"The framework that works at big pharma
+breaks at mid-size"* — a first GxP system, 75% out-of-the-box with
+vendor qualification evidence available, validated in full anyway. Two
+months late, with regulatory submission preparation waiting on the date.
+Not a framework gap; nobody had unlearned the default.
+→ `[LINKEDIN URL — mid-size governance post]`
+
 ---
 
 ## Part 6 — PROVE
@@ -191,7 +204,49 @@ useful for credibility, but not the spine of the framework.
 
 ---
 
-## §7 — Sources
+## §7 — Where this comes from
+
+This structure isn't assembled from reading guidance. It comes from
+three places, and the third is the one that changed it most.
+
+**Twenty years of implementation** across big pharma, mid-size, and
+startups — enough cycles to see which parts of a framework survive
+contact with a team that has other work to do.
+
+**Teaching it.** Ten CSV courses and 10,000+ professionals trained. You
+find out very quickly which parts of a framework are actually explicable
+and which ones only sound rigorous.
+
+**Building an AI system that had to meet these controls.** I built
+EVOLV, an AI-assisted CSV platform, against these same standards —
+which meant living inside the controls rather than describing them:
+bounded autonomy with hard exclusions, a tamper-evident audit trail,
+standing evals, reproducibility proof, and a version registry with a
+model-change notification commitment.
+
+Two things surfaced only because of that, and both shaped the framework
+above:
+
+- **Our own standing eval suite found 11 real gaps in our own AI safety
+  rules on its first run.** Rules that read correctly to a human failed
+  against generated edge cases. That's why Part 3 insists a control is
+  evidenced rather than asserted — I'd have asserted those rules were
+  fine.
+- **"Human in the loop" was true in our design and unenforced in our
+  code.** A missing request header silently attributed a human decision
+  to the system itself. Nothing was wrong with the policy; the gap was
+  between the policy and the implementation. That's why Part 1 carries
+  hard exclusions and Part 3.3 asks what the human *actually does*.
+
+Neither of those is in any guidance document. You only find them by
+building the thing and then looking for your own holes.
+
+Happy to answer questions on any of it — the framework, the standards,
+or what building against them actually surfaced.
+
+---
+
+## §8 — Sources
 
 Public regulatory and standards sources this structure is built on:
 
@@ -220,7 +275,7 @@ Public regulatory and standards sources this structure is built on:
 
 ---
 
-## §8 — Deliberately out of scope
+## §9 — Deliberately out of scope
 
 Stating exclusions is what makes a framework usable rather than
 aspirational.
@@ -234,7 +289,7 @@ aspirational.
 
 ---
 
-## §9 — Content harvest map
+## §10 — Content harvest map  •  **INTERNAL — strip before sharing**
 
 Each part yields publishable material in the three-beat format
 (*what the standard says → what actually happens → what to do instead*).
