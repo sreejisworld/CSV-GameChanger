@@ -177,6 +177,18 @@ TOKENS = """
 """
 
 
+# Cloudflare Web Analytics — cookieless, no consent banner needed.
+# Lives here (not just in the built HTML) so a regeneration can't
+# silently drop it from the archive.
+CF_ANALYTICS = (
+    "<!-- Cloudflare Web Analytics -->"
+    "<script type='module' "
+    "src='https://static.cloudflareinsights.com/beacon.min.js' "
+    "data-cf-beacon='{\"token\": \"aea1b00c4fd9441d83e317be4adc97be\"}'>"
+    "</script><!-- End Cloudflare Web Analytics -->"
+)
+
+
 def inline(t):
     t = html.escape(t)
     t = re.sub(r'`([^`]+)`', r'<code>\1</code>', t)
@@ -377,6 +389,7 @@ def article_page(ed):
 </div>
 <footer>Powered by EVOLV | A WingstarTech Inc. Product &middot; &copy; 2026</footer>
 {DEMO_JS}
+{CF_ANALYTICS}
 </body></html>"""
 
 
@@ -510,6 +523,7 @@ def index_page():
   <a href="mailto:sreejith@evolifeval.com" style="color:var(--muted);">sreejith@evolifeval.com</a>
 </footer>
 {DEMO_JS}
+{CF_ANALYTICS}
 </body></html>"""
 
 
