@@ -1,7 +1,7 @@
 # AI GxP Governance Framework — Skeleton
 
-*Working structure · v0.1 · built from public standards and
-practitioner judgment only*
+*Working structure · v0.3 · built from public standards, attributed
+practitioner literature, and implementation judgment*
 
 ---
 
@@ -15,10 +15,12 @@ It is organised by the *question each part answers*, not by control
 domain — because the failure mode in the field isn't a missing control
 domain, it's nobody being able to answer a question in the room.
 
-**Provenance:** every element derives from public regulatory sources
-(listed in §8) plus twenty years of implementation judgment, and from
-building an AI system against these same controls (§7). Nothing here
-originates in any employer's internal documentation.
+**Provenance:** every element derives from public regulatory sources and
+attributed practitioner literature (listed in §8), twenty years of
+implementation judgment, and building an AI system against these same
+controls (§7). Where a concept originates with another author, it is
+credited in place. Nothing here originates in any employer's internal
+documentation.
 
 ---
 
@@ -42,6 +44,12 @@ the point — a framework with no position is a table of contents.
    output, a sample, or none — and show the review is effective.
 5. **Adoption is a first-class part of the framework.** Most frameworks
    fail on human factors, not design. Part 5 exists because of that.
+6. **Control must live where the action happens.** GxP attribution grew
+   up around a person at a validated screen. As AI agents increasingly
+   act through APIs and tool integrations without opening that screen,
+   authority, evidence, and attribution have to be anchored in the data
+   and policy layer the agent actually touches. *(Adapted from Dr.
+   Dennis Janning, "Headless Pharma", 2026 — §8.)*
 
 ---
 
@@ -55,10 +63,19 @@ produce the same answer regardless of who runs it.
 |---|---|
 | **Scope trigger** | What brings a system into this framework at all — including AI arriving inside a vendor release that wasn't procured as AI |
 | **Context of Use statement** | The unit of assessment. Intended use, user population, decision it supports, boundaries |
+| **Access mode** | Is the AI screen-mediated (a copilot a person operates) or headless (an agent acting through APIs or tool integrations)? Headless access bypasses the validated screen, so it should raise the assurance tier until attribution is proven below the screen *(concept after Janning — §8)* |
 | **Classification** | Model influence × decision consequence, resolved by a fixed matrix rather than debate |
 | **Proportional assurance tier** | The output: what depth of assurance this use case earns |
 | **Hard exclusions** | Uses that are refused regardless of controls offered (e.g. AI executing an electronic signature, releasing a batch, closing a CAPA autonomously) |
 | **Re-triage triggers** | Model retraining, changed intended use, **vendor-notified model change**, drift breach, related CAPA, new jurisdiction, final publication of pending regulatory texts |
+
+**One procurement, many assessments.** Buying an AI product is not
+itself the validation event. The assessment is triggered when intended
+use, process risk, data access, permissions, audit events, execution
+logic, or user responsibilities change — which means a single
+enterprise-wide AI deployment can open a whole *portfolio* of regulated
+workflows, each needing its own Context of Use and classification
+*(after Janning — §8)*.
 
 **Integrates with:** the organisation's existing system risk assessment
 questionnaire and GxP impact assessment — as added branches, not a new
@@ -100,26 +117,50 @@ An AI requirement that can't be failed can't be validated.
 ## Part 3 — CONTROL
 ### *"What does AI need that conventional CSV doesn't cover?"*
 
-Four control sets that are genuinely new. Everything else is CSV you
+Five control sets that are genuinely new. Everything else is CSV you
 already do.
 
 **3.1 Data governance** — provenance and lineage; curation, labelling,
 versioning; representativeness for the target population; ALCOA+ applied
-to inputs, training data, **prompts**, and outputs; cross-border transfer.
+to inputs, training data, **prompts**, and outputs; cross-border
+transfer. For agentic use, data also has to be usable *by a machine
+within defined permissions* — data that is findable but unpermissioned,
+or accessible but unattributable, is precisely where agents fail
+*(after Janning — §8)*.
 
 **3.2 Model governance** — model registry and versioning; a model
 documentation standard; performance thresholds defined in advance;
 baseline freeze at qualification; explainability evidence proportionate
-to tier.
+to tier. Extend it to **skills and prompts as controlled documents**:
+recurring agent behaviours written down, versioned, reviewed, and
+portable across models, rather than living only inside a vendor's
+configuration *(after Janning — §8)*.
 
 **3.3 Human oversight design** — decision rights; what the human
 actually does; **automation-bias controls**. A confident, fluent,
 well-formatted wrong answer is the failure mode conventional CSV never
-had to handle.
+had to handle. Name which review mode you actually have:
+
+| Review mode | What it looks like |
+|---|---|
+| **Rubber-stamp** | Output approved without the context, time, or basis to challenge it |
+| **Meaningful** | Reviewer can inspect source data, policy basis, and evidence trail |
+| **Adversarial** | The workflow is designed to challenge the output and surface exceptions before approval |
+
+*(Review-mode taxonomy after Janning — §8.)* The taxonomy names the
+modes; a **reviewer disagreement rate** tells you which one you're
+actually in. A sustained rate near zero means rubber-stamp review,
+whatever the SOP says.
 
 **3.4 Supplier and third-party oversight** — qualification of
 AI-as-a-service; **contractual model-change notification**; audit
 rights and evidence expectations; sub-processor and model supply chain.
+**Execution-layer ownership belongs in the contract** too: ownership of
+skills and agent behaviours, orchestration portability, audit access to
+the agent layer, and the ability to operate or evidence the workflow
+without the vendor *(after Janning — §8)*. Regulators inspect the
+regulated company, not its vendor; pointing at the vendor's system is
+not a control answer.
 
 > **3.4 is the one most frameworks under-serve and most organisations
 > most need.** In a vendor-hosted estate, the model underneath a
@@ -132,6 +173,26 @@ underneath your validated system"* — what breaks, why nobody catches it,
 and the four things to put in place.
 → `[LINKEDIN URL — vendor model change post]`
 
+**3.5 Attribution below the screen** — the control set that agentic AI
+makes urgent. Not every agent action needs a formal GxP audit trail, but
+every relevant action needs an accountability record that can answer
+four questions *(record structure after Janning — §8)*:
+
+| Question | What must be reconstructable |
+|---|---|
+| **Who acted?** | The human, system, or agent that initiated it |
+| **Under what authority?** | The policy, role, delegation, or approval that allowed it |
+| **On what data?** | The governed data, version, and context it used |
+| **With what result?** | What was created, changed, approved, challenged, or rolled back |
+
+If those can't be answered for an agent that never opened the screen,
+what you have is activity logging, not accountability.
+
+> This is the failure described in §7: a missing request header silently
+> attributed a human decision to the system. It was found in our own
+> build, driven by FDA's attribution findings under 21 CFR 211.68 —
+> independent confirmation that the problem is real, not theoretical.
+
 ---
 
 ## Part 4 — SUSTAIN
@@ -143,8 +204,10 @@ for four reasons worth stating explicitly in the document:
 1. **The regulatory baseline moves** — pending Annex texts, FDA
    finalisation, EU AI Act phase-ins. Expect substantive revision.
 2. **The estate grows faster than the governance** — every vendor
-   release can introduce AI that wasn't procured as AI, so the inventory
-   goes stale silently.
+   release can introduce AI that wasn't procured as AI, and each module
+   arrives with its own permission model, memory, and audit pattern,
+   which don't combine into one on their own *(after Janning — §8)*. So
+   the inventory goes stale silently.
 3. **Models degrade quietly** — conventional software fails loudly; a
    drifting model keeps producing plausible output.
 4. **Knowledge concentrates in two or three people** — and surfaces as a
@@ -192,15 +255,67 @@ Not a framework gap; nobody had unlearned the default.
 Evidence and inspection readiness — the framework's output, not an
 afterthought.
 
-Inventory of AI-enabled systems with classification · classification
-records with reasoning · specification-to-evidence traceability ·
-independent evaluation results · monitoring records and threshold
-breaches · change control and re-triage history · supplier
+**Inventory of AI-enabled systems and pilots** — for each: model or
+service, memory, permission model, data-access path, audit trail,
+process owner, and classification *(inventory fields after Janning —
+§8)* · classification records with reasoning · specification-to-evidence
+traceability · independent evaluation results · monitoring records and
+threshold breaches · change control and re-triage history · supplier
 qualification evidence including model-change notifications · training
-records · periodic review outcomes.
+records · periodic review outcomes · attribution records for agent
+actions (Part 3.5).
 
 **Plus a standards mapping** for procurement and executive audiences —
 useful for credibility, but not the spine of the framework.
+
+---
+
+## Blind-spot questions
+
+*Run these against any AI deployment before approval. Each maps to a
+part of the framework. The questions that expose the most are the ones
+nobody in the room can answer. This is a working checklist, not a
+scoring instrument — for scoring an organisation's headless readiness,
+use Janning's diagnostic in the original (§8).*
+
+**Decide (Part 1)**
+- If this output is wrong, what happens — and who finds out?
+- Is anyone treating the purchase as the validation event, when the real
+  triggers are changes to use, data access, permissions, or execution
+  logic?
+- Does this AI act through a screen a person operates, or through an API
+  an agent calls? *(Janning)*
+
+**Build (Part 2)**
+- Can every requirement fail? What observable outcome counts as failure?
+- What does the current, manual process actually achieve — has anyone
+  measured it?
+
+**Control (Part 3)**
+- Where does a reviewer's challenge come from — context and time, or a
+  button that says approve?
+- What is the reviewer disagreement rate? If it's near zero, why?
+- Are recurring agent behaviours written down and versioned, or do they
+  live only in a vendor's configuration? *(Janning)*
+- Could you operate or evidence this workflow if the vendor disappeared
+  tomorrow? *(Janning)*
+- For an action no person performed on a screen: who acted, under what
+  authority, on what data, with what result? *(Janning)*
+
+**Sustain (Part 4)**
+- Who is told when the vendor changes the model — and is it before or
+  after the change ships?
+- How many AI-enabled modules are in the estate today, and how many were
+  procured *as* AI?
+
+**Adopt (Part 5)**
+- Which of the team's habits came from a bigger organisation — and do
+  they fit here?
+- Who decides when QA and the business disagree about a classification?
+
+**Prove (Part 6)**
+- If an inspector asked for the AI inventory tomorrow, how long would it
+  take to produce — and would it be complete?
 
 ---
 
@@ -248,7 +363,7 @@ or what building against them actually surfaced.
 
 ## §8 — Sources
 
-Public regulatory and standards sources this structure is built on:
+### Regulatory and standards sources
 
 - **ISPE GAMP 5: A Risk-Based Approach to Compliant GxP Computerized
   Systems (2nd Edition)**
@@ -257,10 +372,18 @@ Public regulatory and standards sources this structure is built on:
 - **FDA draft guidance** on AI to support regulatory decision-making for
   drug and biological products — context of use, risk-based credibility
   assessment, model influence × decision consequence
+- **FDA Computer Software Assurance** guidance for production and
+  quality system software
 - **EMA Reflection Paper** on AI in the medicinal product lifecycle
 - **Joint FDA–EMA Guiding Principles of Good AI Practice in Drug
   Development**
-- **EU GMP Annex 11 (revision) and draft Annex 22** on AI
+- **EU GMP Annex 11 (revision) and draft Annex 22** on AI. As drafted
+  for the 2025 consultation, Annex 22 centres on static, deterministic
+  models and signals that generative AI and LLMs should not be used in
+  critical GMP applications; that position has been reported as under
+  reassessment through 2026 (per Janning, below). **Verify its current
+  status before relying on it** — it bears directly on the hard
+  exclusions in Part 1.
 - **ICH E6(R3)** — computerised systems, data governance, and
   non-delegable sponsor oversight of service providers
 - **ISO/IEC 42001** (AI management system), **42005** (impact
@@ -268,10 +391,25 @@ Public regulatory and standards sources this structure is built on:
 - **EU AI Act** — horizontal obligations and phase-in dates
 - **NIST AI Risk Management Framework**
 
+### Practitioner literature
+
+- **Dr. Dennis Janning, "Headless Pharma: Governing agentic AI when the
+  screen is no longer the control layer"** — msg industry advisors,
+  August 2026. Source of the headless-control argument (design
+  principle 6, access mode in Part 1), the one-procurement-many-
+  assessments point, skills as controlled documents (3.2), the
+  review-mode taxonomy (3.3), execution-layer contract clauses (3.4),
+  the attribution-record structure (3.5), and the inventory fields
+  (Part 6). The paper also contains a five-dimension headless-readiness
+  diagnostic for scoring an organisation's stack — **deliberately not
+  reproduced here; use the original.**
+
 > **Before any client use:** verify the current status, version, and
 > publication date of every source above. Several are drafts with moving
 > finalisation dates, and citing a superseded version is the fastest way
-> to lose a technical audience.
+> to lose a technical audience. Practitioner sources reflect their
+> author's reading of events and should be checked against the primary
+> references they cite.
 
 ---
 
@@ -283,6 +421,10 @@ aspirational.
 - **Tool and platform selection** — process first; tooling follows
 - **Model development methodology** — this governs, it doesn't teach
   data science
+- **Enterprise data and control architecture** — this framework sets
+  the control requirements (Part 3.5) but doesn't design the governed
+  data-and-policy layer itself. For that architectural layer, and for
+  scoring headless readiness, see Janning (§8)
 - **Non-GxP AI** — referenced for inventory completeness only
 - **Cybersecurity** — interfaces with, does not replace, the existing
   security programme
@@ -293,16 +435,18 @@ aspirational.
 
 Each part yields publishable material in the three-beat format
 (*what the standard says → what actually happens → what to do instead*).
-One pass, two outputs.
+One pass, two outputs. Posts drawing on Janning's concepts must credit
+him by name.
 
 | Part | Post |
 |---|---|
 | 1 | "Is this AI?" is the wrong question ✅ *published* |
-| 5 | Big-pharma governance breaks at mid-size ✅ *scheduled* |
 | 3.4 | Your vendor is going to change the model ✅ *published* |
-| 2 | An AI requirement that can't be failed can't be validated |
+| 5 | Big-pharma governance breaks at mid-size ✅ *published* |
+| 2 | An AI requirement that can't be failed can't be validated ✅ *scheduled* |
 | 1 | The five things that should refuse an AI use case outright |
-| 3.3 | "Human in the loop" is not a control |
+| 3.5 | Who acted, when no one opened the screen? — *respond to and credit Janning* |
+| 3.3 | Rubber-stamp, meaningful, adversarial: which review do you have? — *credit Janning* |
 | 4 | Why AI frameworks decay faster than CSV |
 | 6 | What an inspector will actually ask for |
 | 5 | Governance councils don't transplant between company sizes |
