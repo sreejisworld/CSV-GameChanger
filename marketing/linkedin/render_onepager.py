@@ -10,7 +10,7 @@ with sync_playwright() as p:
                     device_scale_factor=2)
     pg.goto(SRC)
     pg.wait_for_timeout(2500)
-    pg.pdf(path=str(ROOT / "AI-CSV-Readiness-Assessment.pdf"),
+    pg.pdf(path=str(ROOT / "AI-GxP-Assurance-Assessment.pdf"),
            format="A4", print_background=True,
            margin={"top": "0", "bottom": "0", "left": "0", "right": "0"})
     pg.locator(".page").screenshot(
