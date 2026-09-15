@@ -1,0 +1,78 @@
+[
+  {
+    "type": "cover",
+    "title": "Someone is now hiring\nfor the role the\n*AI era* created.",
+    "sub": "A recruiter sent me the job description this week. No names — just the signal."
+  },
+  {
+    "type": "statement",
+    "title": "What the role actually is:",
+    "text": "An embedded quality authority who sits *inside* the AI and data-science teams, not outside them.\n\nIn sprint reviews, architecture discussions and stage-gate decisions — not only at the formal quality checkpoint at the end."
+  },
+  {
+    "type": "point",
+    "num": "THE SHIFT",
+    "title": "From reviewer\nto participant.",
+    "text": "Validation used to arrive after the build. This role arrives at inception — naming the controls, the risks and the mitigations while the model is still being shaped.",
+    "tag": "Shift-left, applied to AI"
+  },
+  {
+    "type": "list",
+    "title": "What they expect\nyou to know:",
+    "items": [
+      "*Model types* — classical ML, deep learning, LLMs, vision, NLP",
+      "*The stack* — training, fine-tuning, RAG, prompting, evaluation",
+      "*AI failure modes* — bias, drift, hallucination, explainability, lineage",
+      "*The regulations* — Part 11, GAMP 5 2nd ed, Annex 11, ICH Q9(R1), CSA, EU AI Act",
+      "*The judgment* — right-sized control for each use case"
+    ]
+  },
+  {
+    "type": "statement",
+    "title": "Read that list again.",
+    "text": "Half of it isn't CSV. It's data science.\n\nThe ask is for validation people who can hold a real conversation with engineers — and be credible while doing it."
+  },
+  {
+    "type": "point",
+    "num": "THE LINE THAT STOPPED ME",
+    "title": "They want someone\ncomfortable slowing\nthings down.",
+    "text": "It is written into the qualifications — the person in the room whose job is occasionally to say not yet.\n\nThat isn't a documentation skill. That's standing.",
+    "tag": "Hard to hire. Harder to fake."
+  },
+  {
+    "type": "point",
+    "num": "ALSO IN THE POSTING",
+    "title": "A live inventory of\nAI use cases.",
+    "text": "Every AI initiative, its current validation and control status, visible to leadership.\n\nNot an annual system list. A standing view of where AI is influencing GxP decisions right now.",
+    "tag": "Most orgs cannot produce this today"
+  },
+  {
+    "type": "statement",
+    "title": "What this tells us:",
+    "text": "The market has stopped debating whether AI belongs in GxP.\n\nIt is now hiring on the assumption that AI is already in the building — and that somebody has to be accountable for how it gets used."
+  },
+  {
+    "type": "list",
+    "title": "If you work in CSV,\nthis is your window:",
+    "items": [
+      "*Learn the vocabulary* — enough to ask a data scientist a real question",
+      "*Practise proportionality* — not every use case earns the full package",
+      "*Produce decisions, not documents* — proceed, control, validate, refuse",
+      "*Get in the room early* — a review at the end is a review too late"
+    ]
+  },
+  {
+    "type": "list",
+    "title": "If you lead QA or IT,\nthree questions:",
+    "items": [
+      "How many AI use cases touch a GxP decision today?",
+      "For each one, who decided the level of control was proportionate?",
+      "Could we show an inspector that reasoning — this week?"
+    ]
+  },
+  {
+    "type": "statement",
+    "title": "Has your org started the\nAI-in-GxP journey?",
+    "text": "Forward this to your QA, CSV or IT lead — this is the role they're about to be asked to fill, or to become.\n\nQuestions welcome in the comments.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV · big, mid & startup pharma · 10,000+ trained\n*evolifeval.com*"
+  }
+]
