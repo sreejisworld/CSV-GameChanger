@@ -1,0 +1,75 @@
+[
+  {
+    "type": "cover",
+    "title": "Your 200-person biotech\nalready has *five*\nAI use cases.",
+    "sub": "Nobody approved them as a programme. Here is what each one actually needs."
+  },
+  {
+    "type": "statement",
+    "title": "Ask your QA lead how many\nAI use cases touch a\nGxP decision today.",
+    "text": "The honest answer in most mid-size companies is \"I would have to ask around.\"\n\nThat is not a governance failure. It is what happens when AI arrives as a feature rather than a project."
+  },
+  {
+    "type": "point",
+    "num": "THE TEST",
+    "title": "Two questions decide\neverything else.",
+    "text": "*How much does the AI influence the decision?*\nSuggestion, draft, or the decision itself.\n\n*What happens if it is wrong?*\nRework, a finding, or patient harm.",
+    "tag": "Everything below is just these two applied"
+  },
+  {
+    "type": "point",
+    "num": "USE CASE 01",
+    "title": "Drafting SOPs,\nprotocols, reports.",
+    "text": "Influence: low. A human still authors and approves.\nConsequence if wrong: rework, or a sloppy document nobody caught.\n\n*Decision: proceed with controls.* The named author stays accountable. No AI text goes in without review, and the record shows AI was used.",
+    "tag": "Most companies are already here"
+  },
+  {
+    "type": "point",
+    "num": "USE CASE 02",
+    "title": "A chatbot answering\n\"what does our SOP say?\"",
+    "text": "Influence: medium. People act on the answer without opening the document.\nConsequence if wrong: someone follows a procedure that does not exist.\n\n*Decision: proceed with controls.* Answers must cite the current effective document, and the bot must refuse when it has no source.",
+    "tag": "Grounding is the whole control"
+  },
+  {
+    "type": "point",
+    "num": "USE CASE 03",
+    "title": "Generating validation\ntest scripts.",
+    "text": "Influence: medium. The script decides what gets tested, and what does not.\nConsequence if wrong: a gap in evidence that surfaces during an inspection, not before.\n\n*Decision: proceed with controls.* A qualified reviewer approves coverage before execution. Speed is in the drafting, not the judgement.",
+    "tag": "Review the coverage, not the grammar"
+  },
+  {
+    "type": "point",
+    "num": "USE CASE 04",
+    "title": "Flagging anomalies in\nlab or process data.",
+    "text": "Influence: high. It shapes what a human investigates and what passes unexamined.\nConsequence if wrong: a real signal is never looked at.\n\n*Decision: validate.* Measure it against known cases, including the ones it should catch. Missing a true signal matters more than a false alarm.",
+    "tag": "Here the misses are the risk"
+  },
+  {
+    "type": "point",
+    "num": "USE CASE 05",
+    "title": "The vendor feature that\narrived switched on.",
+    "text": "Influence: whatever the vendor decided.\nConsequence if wrong: you own it, and you did not choose it.\n\n*Decision: assess before the release goes live.* Read the release notes for AI features, decide on each, and record the decision. Default-on is still a decision, just not yours.",
+    "tag": "Sachin Bhandari made this point well recently"
+  },
+  {
+    "type": "list",
+    "title": "\"Proceed with controls\"\nmeans five specific things:",
+    "items": [
+      "*A named human* who owns the output, not the tool",
+      "*A grounded source* the answer can be traced back to",
+      "*A review step* where disagreeing is realistic, not theatre",
+      "*A recorded decision* saying why this level of control fits",
+      "*A trigger to revisit* when the model or the vendor changes"
+    ]
+  },
+  {
+    "type": "statement",
+    "title": "And a short list where\nno control is enough.",
+    "text": "AI signing a record. AI releasing product. AI closing a CAPA on its own. AI making a clinical decision. AI writing to a validated record with no human signature.\n\nThose are refusals, not higher tiers. Knowing where your line sits is faster than debating each request."
+  },
+  {
+    "type": "statement",
+    "title": "Has your org started the\nAI-in-GxP journey?",
+    "text": "Forward this to your QA, CSV or IT lead. Five use cases, five decisions, one afternoon of work.\n\nQuestions welcome in the comments.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV - big, mid and startup pharma - 10,000+ trained\n*evolifeval.com*"
+  }
+]
