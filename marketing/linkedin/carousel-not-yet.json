@@ -1,8 +1,15 @@
 [
   {
     "type": "cover",
-    "title": "The cheapest person\nin a validation budget\nis the one who can\nsay *not yet*.",
-    "sub": "And most AI programmes do not have one."
+    "title": "Your AI in GxP work\ndoes not need a committee.\nIt needs one person\nwho can say *not yet*.",
+    "sub": "Most mid-size companies have not named that person."
+  },
+  {
+    "type": "point",
+    "num": "WHO I MEAN",
+    "title": "Not a steering group.\nNot the reviewer at\nthe release gate.",
+    "text": "One named person who sits with the teams while the thing is being built, understands what it actually does, and has the standing to pause it.\n\nQA lead, CSV lead, IT compliance head, or an advisor brought in for it. The title matters less than the seat.",
+    "tag": "If nobody has the seat, nobody has the job"
   },
   {
     "type": "statement",
