@@ -1,0 +1,47 @@
+[
+  {
+    "type": "cover",
+    "title": "The cheapest person\nin a validation budget\nis the one who can\nsay *not yet*.",
+    "sub": "And most AI programmes do not have one."
+  },
+  {
+    "type": "statement",
+    "title": "Watch what happens\nwhen nobody can.",
+    "text": "Either everything gets a blanket no, and good low-risk work sits idle for a quarter.\n\nOr everything gets a quiet yes, and a year later nobody can show who decided what."
+  },
+  {
+    "type": "point",
+    "num": "THE MISREAD",
+    "title": "\"Not yet\" is not\na veto.",
+    "text": "A veto ends the conversation. *Not yet* is a decision with a date and a condition attached: what has to be true before this proceeds, and who confirms it.\n\nTeams can work with that. They cannot work with silence.",
+    "tag": "It is the fastest no in the building"
+  },
+  {
+    "type": "list",
+    "title": "Five things that have\nto be true first:",
+    "items": [
+      "*A mandate* - someone senior agreed this role decides",
+      "*An early seat* - in the sprint review, not the release gate",
+      "*A written basis* - risk, not opinion, so it survives being challenged",
+      "*An escalation path* - disagreement goes somewhere, not nowhere",
+      "*Willingness to be unpopular* on a Friday afternoon"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "THE MATH",
+    "title": "Both failure modes\ncost more.",
+    "text": "A blanket no means paid engineering time waiting on a governance answer that never arrives.\n\nA quiet yes means reconstructing decisions under inspection pressure, a year later, with the people who made them gone.",
+    "tag": "One is slow. The other is expensive"
+  },
+  {
+    "type": "statement",
+    "title": "The scarce skill is not\nknowing the regulation.",
+    "text": "It is sitting with engineers all week, understanding what they are actually building, and still being able to say not yet on Friday - with a reason they accept.\n\nThat combination is rare, and it is what AI in GxP needs right now."
+  },
+  {
+    "type": "statement",
+    "title": "Who says it\nat your company?",
+    "text": "If the answer is nobody, that is the gap, not the framework.\n\nForward this to your QA, CSV or IT lead.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV - big, mid and startup pharma - 10,000+ trained\n*evolifeval.com*"
+  }
+]
