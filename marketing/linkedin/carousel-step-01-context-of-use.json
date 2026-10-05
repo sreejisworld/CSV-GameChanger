@@ -1,0 +1,54 @@
+[
+  {
+    "type": "cover",
+    "title": "Step 1 of 10:\nBefore you validate\nanything, write the\n*context of use*.",
+    "sub": "One paragraph. It decides everything that comes after it."
+  },
+  {
+    "type": "statement",
+    "title": "Most AI arguments are\nnot about AI.",
+    "text": "Two people disagree about whether a tool needs validation, and three meetings later it turns out they were describing two different uses of it.\n\nThe disagreement was never about risk. It was about an undefined use case."
+  },
+  {
+    "type": "list",
+    "title": "Your paragraph has to\nanswer five things:",
+    "items": [
+      "*What the AI does* - in plain words, one sentence",
+      "*What it produces* - a draft, a score, a flag, a decision",
+      "*Who acts on the output* - by name of role, not \"the business\"",
+      "*What that person decides* with it",
+      "*What happens if it is wrong* - and who finds out"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "BEFORE",
+    "title": "What usually\ngets written.",
+    "text": "~\"We are using AI to improve deviation handling.\"~\n\nNobody can validate that. It does not say what the AI touches, who relies on it, or what breaks if it is wrong. Every meeting after this one will be spent guessing.",
+    "tag": "This is a project name, not a use case"
+  },
+  {
+    "type": "point",
+    "num": "AFTER",
+    "title": "What you can\nactually work with.",
+    "text": "*\"The model reads the deviation description and suggests a category. The QA reviewer sees the suggestion with the matching procedure text, and selects the final category. If the suggestion is wrong and the reviewer accepts it, the deviation is mis-trended and the trend report is wrong.\"*",
+    "tag": "Same tool. Now it can be assessed"
+  },
+  {
+    "type": "point",
+    "num": "THE TEST",
+    "title": "Give it to two people.",
+    "text": "Ask your QA lead and the engineer building it to write the paragraph separately.\n\nIf the two versions do not match, you are not ready to classify it, let alone validate it. Resolve that gap first. It takes an hour and saves a quarter.",
+    "tag": "Cheapest control in the whole lifecycle"
+  },
+  {
+    "type": "statement",
+    "title": "What this one\nparagraph unlocks:",
+    "text": "The risk classification. The level of testing. Who has to review what. The entry in your AI inventory. The answer when an inspector asks what this thing does.\n\nAll of it comes from here. Skip it and every later step is guesswork."
+  },
+  {
+    "type": "statement",
+    "title": "Step 2 next week:\nis it GxP at all?",
+    "text": "Half the use cases people bring to QA do not need to be there. Knowing which ones is the fastest way to earn trust from the teams building them.\n\nFollow along if this is useful, and forward it to whoever is being asked these questions.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV - big, mid and startup pharma - 10,000+ trained\n*evolifeval.com*"
+  }
+]
