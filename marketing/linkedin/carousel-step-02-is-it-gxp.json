@@ -1,0 +1,57 @@
+[
+  {
+    "type": "cover",
+    "title": "Step 2 of 10:\nIs it *GxP* at all?",
+    "sub": "Half of what lands on QA's desk does not belong there. Knowing which half is how you earn trust."
+  },
+  {
+    "type": "statement",
+    "title": "Saying yes to everything\nlooks careful.",
+    "text": "It is how QA becomes the queue everyone routes around. Teams stop asking, and you find out about the AI after it is live.\n\nThe fastest way to be included early is to be quick and clear about what you do not need to see."
+  },
+  {
+    "type": "list",
+    "title": "Three questions\nsettle most of it:",
+    "items": [
+      "Does the output *create, change or inform a GxP record*?",
+      "Does a person make a *GxP decision* using it - release, deviation, CAPA, submission, patient safety?",
+      "Could a wrong output *reach product, patient or submission* before a human would notice?"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "THE RULE",
+    "title": "Follow the output,\nnot the tool.",
+    "text": "The same model is in scope in one place and out of it in another. What matters is where the output lands and who relies on it.\n\nAsk where this output goes next. Keep asking until it either reaches a regulated record or it does not.",
+    "tag": "Tools are not GxP. Uses are"
+  },
+  {
+    "type": "list",
+    "title": "The quick sort:",
+    "items": [
+      "*In scope* - drafting a deviation summary that enters the record",
+      "*In scope* - generating validation test scripts, your own evidence",
+      "*In scope* - flagging anomalies a reviewer relies on",
+      "*Out of scope* - drafting a job advert, a slide deck, an internal email",
+      "*Out of scope* - summarising a meeting nobody cites as evidence",
+      "*Grey* - a chatbot over SOPs: no record, but it shapes what people do"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "THE TRAP",
+    "title": "Out of GxP scope is not\nout of scope entirely.",
+    "text": "Confidential data, personal data, IP leaving the company, security review, licence terms. All still apply.\n\nSaying \"not GxP\" is not permission. It is a routing decision: this one goes to IT and security, not to validation.",
+    "tag": "Say where it goes, not just that it leaves you"
+  },
+  {
+    "type": "statement",
+    "title": "Then write the decision\ndown. One line.",
+    "text": "What it is, in or out of GxP scope, the reason, who decided, the date.\n\nThat single line is the start of your AI inventory, and it is the answer when someone asks two years later why this was never validated."
+  },
+  {
+    "type": "statement",
+    "title": "Step 3 next week:\nclassify what is left.",
+    "text": "In scope does not mean one treatment for everything. Next step is influence times consequence, and the four decisions that come out of it.\n\nFollow along if this is useful, and forward it to whoever is answering these questions today.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV - big, mid and startup pharma - 10,000+ trained\n*evolifeval.com*"
+  }
+]
