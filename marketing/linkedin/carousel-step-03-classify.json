@@ -1,0 +1,53 @@
+[
+  {
+    "type": "cover",
+    "title": "Step 3 of 10:\nClassify what\nis *left*.",
+    "sub": "Two axes. Four decisions. About ten minutes per use case."
+  },
+  {
+    "type": "statement",
+    "title": "In scope does not mean\none treatment for all.",
+    "text": "Validate everything and nothing ships. Wave everything through and you are reconstructing decisions under inspection pressure two years later.\n\nThe work is deciding how much control each one earns."
+  },
+  {
+    "type": "point",
+    "num": "AXIS 1",
+    "title": "How much does the AI\ninfluence the outcome?",
+    "text": "*Low* - it informs a person who was going to decide anyway.\n\n*Medium* - it drafts or scores, and a person edits or confirms.\n\n*High* - it decides, acts, or nobody meaningfully checks before the output is used.",
+    "tag": "Be honest about which one you are"
+  },
+  {
+    "type": "point",
+    "num": "AXIS 2",
+    "title": "What happens when\nit is wrong?",
+    "text": "*Low* - rework, wasted time, an embarrassing draft.\n\n*Medium* - a GxP record is wrong, a trend is skewed, data integrity is affected.\n\n*High* - it reaches product, patient or a submission.",
+    "tag": "Ask who finds out, and how long it takes"
+  },
+  {
+    "type": "list",
+    "title": "Four decisions come\nout of the grid:",
+    "items": [
+      "*Proceed* - low influence, low consequence. Use it. Record the decision and move on",
+      "*Proceed with controls* - a named owner, a grounded source, a real review step",
+      "*Validate* - requirements, acceptance criteria, evidence, the full package",
+      "*Refuse* - the use case itself is the problem, not the amount of control"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "WHERE PEOPLE GET IT WRONG",
+    "title": "\"It is only a\nsuggestion.\"",
+    "text": "If the reviewer accepts the suggestion every single time, the influence is high, whatever the design document says.\n\nSo measure it. *How often does your reviewer disagree with the model?* If the answer is never, you do not have a control. You have a signature.",
+    "tag": "A point I raised in Dennis Janning and Martin Heitmann's series"
+  },
+  {
+    "type": "statement",
+    "title": "Then add it to\nthat same line.",
+    "text": "Step 2 gave you a line per use case: what it is, in or out of scope, who decided.\n\nNow add two words and a reason. Medium influence, high consequence, validate, because a wrong category reaches the trend report nobody re-checks."
+  },
+  {
+    "type": "statement",
+    "title": "Step 4 next week:\nthe refuse list.",
+    "text": "The short set of uses where no amount of control makes it acceptable. Agreeing that list in advance is faster than arguing each request on its merits.\n\nForward this to whoever is being asked these questions today.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV - big, mid and startup pharma - 10,000+ trained\n*evolifeval.com*"
+  }
+]
