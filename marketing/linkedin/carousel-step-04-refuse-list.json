@@ -1,0 +1,54 @@
+[
+  {
+    "type": "cover",
+    "title": "Step 4 of 10:\nThe *refuse* list.",
+    "sub": "The short set of uses where no amount of control makes it acceptable. Agree them once, in advance."
+  },
+  {
+    "type": "statement",
+    "title": "Decide these before\nsomeone asks.",
+    "text": "Without a list, every request becomes a negotiation, and the answer quietly depends on who is asking and how senior they are.\n\nWith a list, the answer is the same on a Friday afternoon as it is in a steering meeting."
+  },
+  {
+    "type": "list",
+    "title": "Five that belong on\nalmost every list:",
+    "items": [
+      "AI *signing* a record or applying an electronic signature",
+      "AI *releasing* a batch, a lot or a product",
+      "AI *closing* a deviation or CAPA on its own",
+      "AI making a *clinical decision* that affects a patient",
+      "AI *writing to a validated record* with no human signature gate"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "THE TEST",
+    "title": "What makes it a refusal\nrather than a high tier?",
+    "text": "A high tier means more control makes it acceptable.\n\nA refusal is where the thing being removed *is* the control. The human judgement was the safeguard, and automating it does not leave a smaller safeguard behind. It leaves none.",
+    "tag": "Not a risk level. A different question"
+  },
+  {
+    "type": "point",
+    "num": "HOW TO SAY IT",
+    "title": "Never \"policy\nsays no.\"",
+    "text": "Say what would have to be true instead, and offer the shape next door.\n\n*\"The model cannot approve the deviation. It can draft the assessment, show the matching procedure text, and prepare it for your signature. Same time saved, and the accountability stays where it has to.\"*",
+    "tag": "Almost every refusal has a permitted version"
+  },
+  {
+    "type": "statement",
+    "title": "Then put the list in\nthe procedure.",
+    "text": "A refuse list that lives in one person's head is an opinion, and it gets overruled.\n\nIn an SOP it stops being personal. It protects the person who has to say no, and it answers the question before it is asked."
+  },
+  {
+    "type": "point",
+    "num": "THE TRAP",
+    "title": "Keep it short.",
+    "text": "A refuse list of twenty items is a ban with extra steps, and teams will route around it.\n\nFive items, firmly held, buys credibility for every yes you give. That is the trade: be absolute about very little, so you can be flexible about the rest.",
+    "tag": "Short list, no exceptions"
+  },
+  {
+    "type": "statement",
+    "title": "Step 5 next week:\nrequirements that can fail.",
+    "text": "An AI requirement that cannot fail cannot be validated. Next step is writing ones that can.\n\nForward this to whoever is being asked these questions today.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV - big, mid and startup pharma - 10,000+ trained\n*evolifeval.com*"
+  }
+]
