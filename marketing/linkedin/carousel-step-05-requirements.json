@@ -1,0 +1,54 @@
+[
+  {
+    "type": "cover",
+    "title": "Step 5 of 10:\nWrite a requirement\nit can *fail*.",
+    "sub": "If nothing can fail, nothing can be tested. Most AI requirements are aspirations wearing the word shall."
+  },
+  {
+    "type": "statement",
+    "title": "The sentence that gets\nthrough every review.",
+    "text": "\"The system shall accurately extract data from batch records.\"\n\nEveryone nods. Nobody can test it. The decision moves downstream to whoever is holding the script at 6pm, and they invent the threshold under deadline."
+  },
+  {
+    "type": "list",
+    "title": "Five parts, or it is\nnot a requirement:",
+    "items": [
+      "*The property* - accuracy, recall, consistency, latency",
+      "*The threshold* - a number, and the reason for that number",
+      "*The conditions* - which data, which population, which document type",
+      "*The evidence* - how pass and fail get recorded",
+      "*The owner* - who decides, before anyone executes"
+    ]
+  },
+  {
+    "type": "point",
+    "num": "WHERE THE NUMBER COMES FROM",
+    "title": "Not from the air.\nFrom three places.",
+    "text": "*What humans currently achieve.* Measure it on 50 to 100 real cases. You usually find the human baseline is not 100% either.\n\n*What the consequence demands.* A miss that reaches the batch record needs a different number than a miss that annoys an author.\n\n*What the business already tolerates* elsewhere in the same process.",
+    "tag": "A threshold with no rationale fails its first audit question"
+  },
+  {
+    "type": "point",
+    "num": "EXAMPLE 01",
+    "title": "When there is a\nright answer.",
+    "text": "~\"The system shall accurately extract data from batch records.\"~\n\n*\"Field-level accuracy of at least 98% against a 200-record human-adjudicated reference set, with no single field below 95%. Measured at qualification and re-measured after any model change.\"*",
+    "tag": "Classification, extraction, matching"
+  },
+  {
+    "type": "point",
+    "num": "EXAMPLE 02",
+    "title": "When there is no\nright answer.",
+    "text": "Generative drafts have no single correct output, so write the requirement around the review instead.\n\n*\"Every statement in the draft cites a current effective source document. Across 30 consecutive drafts, at least 80% are accepted by the reviewer without a material factual edit. Material edits are logged with the reason.\"*",
+    "tag": "You are testing the system plus its reviewer"
+  },
+  {
+    "type": "statement",
+    "title": "Three traps worth\nnaming out loud.",
+    "text": "*Demanding 100%.* It guarantees failure and tells you nothing. Nobody holds the humans to it.\n\n*A threshold with no conditions.* 98% on what data, in which language, from which scanner?\n\n*Criteria written after the run.* That is not acceptance. That is explaining the result you got."
+  },
+  {
+    "type": "statement",
+    "title": "Step 6 next week:\nright-size the testing.",
+    "text": "You have a requirement that can fail. Next is how much testing it actually earns, and what you deliberately do not test.\n\nForward this to whoever is writing these requirements today.\n\n*Sreejith Kanhirangadan*\n20 yrs CSV - big, mid and startup pharma - 10,000+ trained\n*evolifeval.com*"
+  }
+]
